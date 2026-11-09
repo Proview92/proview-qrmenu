@@ -83,7 +83,7 @@ A('op-co-create',()=>{
   if(D.type!=='Dine-In'&&!D.cname.trim())return toast('Enter the customer name');
   if(D.type==='Delivery'&&(!D.cphone.trim()||!D.caddr.trim()))return toast('Enter phone and address for delivery');
   if(!D.items.length)return toast('Add at least one item');
-  seq++;const t=now(),daily=S.orders.filter(o=>o.sent&&o.sent.startsWith(t.slice(0,10))).length+1;
+  seq=Math.max(seq,...S.orders.concat(S.archived||[]).map(o=>+String(o.id).replace(/\D/g,'')||0))+1;const t=now(),daily=S.orders.filter(o=>o.sent&&o.sent.startsWith(t.slice(0,10))).length+1;
   const o={id:'#'+seq,dailyNo:daily,status:'Waiting',type:D.type,source:'Dashboard',customer:D.type==='Dine-In'?(D.name||'—'):D.cname,phone:D.cphone,address:D.caddr,table:D.type==='Dine-In'?D.table:'—',guests:+D.guests||1,name:D.name,waiter:'—',items:D.items.map(i=>({name:i.name,price:i.price,qty:i.qty})),total:coTotal(),notes:D.notes,updated:t,sent:t,timeline:[{t,text:'Order created from Dashboard'}]};
   S.orders.unshift(o);closeDrawer();toast(`Order ${o.id} created`);if(App.current()==='orders-all--live')refresh();else App.go('orders-all--live')});
 

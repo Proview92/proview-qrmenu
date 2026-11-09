@@ -427,13 +427,13 @@ A('ed-save-item',()=>{
 });
 
 /* ---------- right column actions ---------- */
-const MENU_URL=()=>`https://menu.proviewtech.co.uk/SJ5RJTroD/menu/${M.id}`;
-A('ed-qr',()=>App.modal({title:'QR Code',body:`${UI.qr('menu-'+M.id,200)}<p style="text-align:center;margin:12px 0 4px;font-weight:600;color:var(--ink)">${esc(M.name)}</p><div class="field" style="margin-top:10px"><div class="input-group"><input readonly value="https://pv.mn/SJ5RJTroD" aria-label="Short link"><span class="after" style="cursor:pointer" data-copy="https://pv.mn/SJ5RJTroD">${ic('copy','sm')}</span></div></div>`,footer:`<button class="btn primary" data-action="download">${ic('download','sm')}Download</button>`}));
+const MENU_URL=()=>App.guestUrl({m:M.id});
+A('ed-qr',()=>App.modal({title:'QR Code',body:`${UI.qr('menu-'+M.id,200)}<p style="text-align:center;margin:12px 0 4px;font-weight:600;color:var(--ink)">${esc(M.name)}</p><div class="field" style="margin-top:10px"><div class="input-group"><input readonly value="${MENU_URL()}" aria-label="Short link"><span class="after" style="cursor:pointer" data-copy="${MENU_URL()}">${ic('copy','sm')}</span></div></div>`,footer:`<button class="btn primary" data-action="download">${ic('download','sm')}Download</button>`}));
 A('ed-share-wa',()=>toast('Opening WhatsApp share…'));
 A('ed-share-sms',()=>toast('Opening SMS share…'));
 A('ed-open',()=>App.modal({title:esc(M.name),wide:true,body:`<div style="display:flex;justify-content:center">${phoneHTML(true)}</div><p class="help" style="text-align:center">Guest view · ${MENU_URL()}</p>`}));
 A('ed-copy-menu-link',()=>App.copy(MENU_URL(),'Menu link copied'));
-A('ed-copy-share-link',()=>App.copy('https://pv.mn/SJ5RJTroD','Share link copied'));
+A('ed-copy-share-link',()=>App.copy(App.guestUrl({m:M.id}),'Share link copied'));
 A('ed-pv-refresh',()=>{promoClosed=false;rSide();toast('Preview refreshed')});
 A('ed-pv-menu',el=>{pvMenu=el.dataset.id;pvQ='';const p=$('#edPhone');if(p)p.innerHTML=phoneHTML()});
 A('ed-pv-search',el=>{pvQ=el.value;const b=$('#edPvBody');if(b)b.innerHTML=pvBody(menus().find(m=>m.id===pvMenu)||M)});

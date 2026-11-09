@@ -274,7 +274,7 @@ function lockHTML(h,t){const plans=Object.entries(PLANS||{});return `<div class=
   <p style="margin:16px 0 0">Or renew through the <a href="${CFG.lic}" target="_blank" rel="noopener">licence portal</a>, or call <strong>${CFG.phone}</strong>.</p>
   <div style="display:flex;gap:10px;justify-content:center;margin-top:18px"><button class="btn secondary" data-action="pq-recheck">${ic('refresh','sm')}Check again</button>${CTX.sites.filter(s=>!s.archived).length>1?`<a class="btn ghost" href="#locations">Other locations</a>`:''}</div></div>`}
 let PLANS={};function loadPlans(){sb.rpc('pq_plans').then(r=>{PLANS=r.data||{}}).catch(()=>{})}
-function updateCounts(){const w=(App.state.orders||[]).filter(o=>/Waiting/i.test(o.status||'')).length;const b=$('#pqBellCnt');if(b)b.textContent=w||'';
+function updateCounts(){const w=(App.state.orders||[]).filter(o=>/Waiting/i.test(o.status||'')).length+(App.state.services||[]).filter(x=>!x.done).length;const b=$('#pqBellCnt');if(b)b.textContent=w||'';
   const m=(App.state.feedbacks||[]).filter(f=>f.unread).length+(App.state.reviews||[]).filter(r=>r.status==='Waiting').length;const c=$('#pqMailCnt');if(c)c.textContent=m||''}
 
 /* ---------- header actions ---------- */
@@ -292,8 +292,11 @@ A('account',()=>drawer({title:'Account Settings',body:UI.field({label:'Email',co
 A('pq-chat',()=>drawer({title:'Chat',width:400,body:UI.empty('msg','No messages yet','Team chat isn\'t part of Proview QR Menu. Use Help → Start Live Chat to talk to Proview.')}));
 A('pq-inbox',()=>{const fb=(App.state.feedbacks||[]).filter(f=>f.unread),rv=(App.state.reviews||[]).filter(r=>r.status==='Waiting');
   drawer({title:'Inbox',width:440,body:(fb.length||rv.length)?`${fb.map(f=>`<a class="review" style="display:block;color:inherit;text-decoration:none" href="#feedbacks--results"><strong style="color:var(--ink)">New feedback · ${esc(f.id)}</strong><div class="help">${esc(f.date)}</div></a>`).join('')}${rv.map(r=>`<a class="review" style="display:block;color:inherit;text-decoration:none" href="#engagement-reviews--all"><strong style="color:var(--ink)">Review waiting · ${'★'.repeat(r.rate)}</strong><div class="help">${esc(r.text)}</div></a>`).join('')}`:UI.empty('mail','Inbox is empty','New feedback and reviews waiting for approval show here.')})});
-A('pq-bell',()=>{const w=(App.state.orders||[]).filter(o=>/Waiting|In Progress|Ready/i.test(o.status||''));
-  drawer({title:'Notifications',width:440,body:w.length?w.map(o=>`<a class="review" style="display:flex;gap:10px;color:inherit;text-decoration:none" href="#orders-all--live"><span class="itile" style="width:36px;height:36px">${ic('orders','sm')}</span><div><strong style="color:var(--ink)">${esc(o.id)} · ${esc(o.status)}</strong><div class="help">${esc(o.type||'')} · ${esc(o.table||o.customer||'')}</div></div></a>`).join(''):UI.empty('bell','No new notifications','New orders and status changes show here.')})});
+A('pq-bell',()=>{const w=(App.state.orders||[]).filter(o=>/Waiting|In Progress|Ready/i.test(o.status||''));const sv=(App.state.services||[]).filter(x=>!x.done);
+  drawer({title:'Notifications',width:440,body:(sv.length?`<div class="eyebrow" style="margin:0 0 6px">Service requests</div>`+sv.map(x=>`<div class="review" style="display:flex;gap:10px;align-items:center"><span class="itile" style="width:36px;height:36px">${ic('hand','sm')}</span><div style="flex:1"><strong style="color:var(--ink)">${esc(x.table)} · ${esc(x.request)}</strong><div class="help">${esc(x.at)}${x.note?' · '+esc(x.note):''}</div></div><button class="btn secondary sm" data-action="pq-svc-done" data-id="${x.id}">Done</button></div>`).join(''):'')+
+    (w.length?`<div class="eyebrow" style="margin:14px 0 6px">Live orders</div>`+w.map(o=>`<a class="review" style="display:flex;gap:10px;color:inherit;text-decoration:none" href="#orders-all--live"><span class="itile" style="width:36px;height:36px">${ic('orders','sm')}</span><div><strong style="color:var(--ink)">${esc(o.id)} · ${esc(o.status)}</strong><div class="help">${esc(o.type||'')} · ${esc(o.table&&o.table!=='—'?o.table:o.customer||'')}</div></div></a>`).join(''):'')
+    ||UI.empty('bell','No new notifications','New orders and service requests from the QR menu show here.')})});
+A('pq-svc-done',el=>{const x=(App.state.services||[]).find(s=>String(s.id)===el.dataset.id);if(x)x.done=true;App.actions['pq-bell']();updateCounts();toast('Marked as done')});
 A('pq-search',openPalette);
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'&&booted){e.preventDefault();openPalette()}});
 function openPalette(){App.modal({title:'Search',body:`<label class="search" style="max-width:none">${ic('search','sm')}<input id="pqQ" placeholder="Pages, menu items, orders, guests…" autocomplete="off"></label><div id="pqRes" style="margin-top:10px;max-height:50vh;overflow:auto"></div>`});
@@ -387,6 +390,128 @@ A('pq-user-del-yes',async el=>{const {error}=await sb.rpc('pq_remove_member',{p_
 setInterval(async()=>{if(!booted||!CTX.email)return;const {data}=await sb.rpc('pq_whoami');if(!data)return;CTX.who=data;
   if(!CTX.master&&CTX.org&&!(data.memberships||[]).some(m=>m.org_id===CTX.org.id)){await sb.auth.signOut();purge();location.reload();return}
   if(CTX.org){const {data:s}=await sb.rpc('pq_sites_of',{p_org:CTX.org.id});if(s){CTX.sites=s;fillLoc()}}},300000);
+
+/* ---------- guest inbox: orders, feedback, reviews, likes and service requests from the QR menu ---------- */
+const pad2=n=>String(n).padStart(2,'0');
+const stamp=d=>{d=new Date(d);return `${pad2(d.getDate())}/${pad2(d.getMonth()+1)}/${d.getFullYear()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`};
+let pulling=false;
+async function pullInbox(){
+  if(!booted||pulling||!CTX.org||CTX.siteId==='all'||!navigator.onLine)return;pulling=true;
+  try{
+    const sid=CTX.siteId;const {data,error}=await sb.rpc('pq_inbox_take',{p_site:sid});
+    if(error||!Array.isArray(data)||!data.length||sid!==CTX.siteId)return;
+    const S=App.state;S.orders=S.orders||[];S.feedbacks=S.feedbacks||[];S.reviews=S.reviews||[];S.customers=S.customers||[];S.likes=S.likes||{};S.services=S.services||[];
+    S.inboxSeen=S.inboxSeen||[];const seen=new Set(S.inboxSeen);const notes=[];
+    for(const m of data){ if(seen.has(m.id))continue; const p=m.payload||{},t=stamp(m.at);
+      if(m.kind==='order'){
+        const max=Math.max(1000,...S.orders.concat(S.archived||[]).map(o=>+String(o.id).replace(/\D/g,'')||0));
+        const day=t.slice(0,10),daily=S.orders.filter(o=>(o.sent||'').startsWith(day)).length+1;
+        const type=p.type||'Dine-In';
+        const o={id:'#'+(max+1),dailyNo:daily,status:'Waiting',type,source:type==='Dine-In'?'QR Menu':type==='Pick-Up'?'Pick-Up Menu':'Delivery Menu',
+          customer:p.customer?.name||(type==='Dine-In'?'—':'Guest'),phone:p.customer?.phone||'',email:p.customer?.email||'',address:p.customer?.address||'',
+          table:type==='Dine-In'?(p.table||'—'):'—',guests:p.guests||1,name:p.customer?.name||'',waiter:'—',
+          items:(p.items||[]).map(i=>({name:i.name,price:+i.price||0,qty:+i.qty||1,options:i.options||[],notes:i.notes||''})),
+          subtotal:+p.subtotal||0,tip:+p.tip||0,service:+p.service||0,discount:+p.discount||0,promo:p.promo||'',total:+p.total||0,payment:p.payment||'',
+          when:p.when||'',notes:p.notes||'',guestRef:m.ref,updated:t,sent:t,timeline:[{t,text:'Order received from the QR menu'+(p.payment?' · '+p.payment:'')}]};
+        S.orders.unshift(o);notes.push(`New order ${o.id}${o.table&&o.table!=='—'?' · '+o.table:''}`);
+        if(p.customer?.name&&(p.customer.email||p.customer.phone)){const ex=S.customers.find(c=>(p.customer.email&&c.email===p.customer.email)||(p.customer.phone&&c.phone===p.customer.phone));
+          if(ex){ex.orders=(ex.orders||0)+1;ex.spend=(ex.spend||0)+o.total;ex.last='Today'}else S.customers.unshift({id:'c'+m.id,name:p.customer.name,email:p.customer.email||'',phone:p.customer.phone||'',tags:[],orders:1,spend:o.total,visits:1,last:'Today'})}
+      }else if(m.kind==='feedback'){
+        const n=Math.max(1000,...S.feedbacks.map(f=>+String(f.id).replace(/\D/g,'')||0))+1;
+        S.feedbacks.unshift({id:'Form '+n,date:t,form:p.form||'Sample Form',table:p.table||'—',unread:true,answers:(p.answers||[]).map(a=>[a.q,a.a])});notes.push('New feedback');
+      }else if(m.kind==='review'){
+        const instant=(S.cfg||{})['eng.instant']&&(+p.rate||0)>=3;
+        S.reviews.unshift({id:'r'+m.id,text:p.text||'',rate:+p.rate||0,item:p.item||'',customer:p.name||'Guest',date:t,status:instant?'Live':'Waiting',archived:false});notes.push('New review');
+      }else if(m.kind==='like'){ if(p.item){S.likes[p.item]=Math.max(0,(S.likes[p.item]||0)+(p.on===false?-1:1))} }
+      else if(m.kind==='service'){S.services.unshift({id:m.id,at:t,table:p.table||'—',request:p.request||'Call waiter',note:p.note||'',done:false});notes.push(`${p.table||'A guest'}: ${p.request||'Call waiter'}`)}
+      else if(m.kind==='customer'){ if(p.email&&!S.customers.some(c=>c.email===p.email))S.customers.unshift({id:'c'+m.id,name:p.name||p.email,email:p.email,phone:p.phone||'',tags:['Signed up'],orders:0,spend:0,visits:1,last:'Today'}) }
+      S.inboxSeen.push(m.id);
+    }
+    S.inboxSeen=S.inboxSeen.slice(-500);
+    await save();
+    if(snapshot()===lastSaved){await sb.rpc('pq_inbox_ack',{p_site:sid,p_ids:data.map(m=>m.id)})}
+    if(notes.length){App.toast(notes.length>1?`${notes.length} new from the QR menu`:notes[0]);
+      const k=App.current().split('--')[0];if(/^(orders|engagement|feedbacks|dashboard|reports)/.test(k)&&!document.querySelector('#scrim.show,#drawer.show'))App.render();else updateCounts()}
+  }catch(e){console.warn('inbox',e)}finally{pulling=false}
+}
+setInterval(pullInbox,15000);
+const _openSite=openSite;openSite=async function(id,quiet){await _openSite(id,quiet);setTimeout(pullInbox,500)};
+App.pullInbox=pullInbox;
+
+/* ---------- remember the fields on Ordering / Engagement / Feedback settings per location ---------- */
+const FORM_ROUTES=/^(orders-settings|engagement-settings|feedbacks)$/;
+function fieldLabel(el){const t=x=>x&&x.textContent.replace(/\s+/g,' ').trim().slice(0,80);
+  return t(el.closest('label.radio-card')?.querySelector('strong'))||t(el.closest('.form-row')?.querySelector('.txt strong'))||t(el.closest('.field')?.querySelector(':scope>label'))||
+    t(el.closest('label.check'))||el.getAttribute('aria-label')||el.placeholder||el.name||'field'}
+function formFields(){const route=App.current();const count={};
+  return [...document.querySelectorAll('#view input,#view select,#view textarea')].filter(el=>el.type!=='file'&&!el.closest('.search')&&el.type!=='search').map(el=>{
+    const base=route+'|'+(el.type==='radio'?'radio:'+(el.name||fieldLabel(el.closest('.radio-cards,div')||el)):fieldLabel(el));count[base]=(count[base]||0)+1;
+    return {el,key:el.type==='radio'?base:base+'|'+count[base]}})}
+function restoreForm(){const cfg=(App.state.cfg=App.state.cfg||{});const of=cfg.forms||{};
+  formFields().forEach(({el,key})=>{if(!(key in of))return;const v=of[key];
+    if(el.type==='checkbox'){if(el.checked!==!!v){el.checked=!!v;el.dispatchEvent(new Event('change',{bubbles:true}))}}
+    else if(el.type==='radio'){const c=el.value===v;if(c&&!el.checked){el.checked=true;el.dispatchEvent(new Event('change',{bubbles:true}))}}
+    else if(el.value!==v){el.value=v}})}
+function collectForm(){const cfg=(App.state.cfg=App.state.cfg||{});cfg.forms=cfg.forms||{};
+  formFields().forEach(({el,key})=>{if(el.type==='radio'){if(el.checked)cfg.forms[key]=el.value}else cfg.forms[key]=el.type==='checkbox'?el.checked:el.value})}
+App.formValue=(route,label,n=1)=>{const f=(App.state.cfg||{}).forms||{};return f[route+'|'+label+'|'+n]};
+document.addEventListener('click',e=>{const b=e.target.closest('#view button');if(!b||!FORM_ROUTES.test(App.current().split('--')[0]))return;
+  if(/^\s*save\b/i.test(b.textContent||'')){collectForm();queueSave()}},true);
+const _render2=App.render;App.render=function(){_render2();const k=App.current().split('--')[0];if(FORM_ROUTES.test(k)){restoreForm();setTimeout(restoreForm,0)}};
+
+/* ---------- real guest-menu links and scannable QR codes ---------- */
+App.guestUrl=(o={})=>{const sid=CTX.siteId&&CTX.siteId!=='all'?CTX.siteId:(CTX.sites.find(s=>!s.archived)||{}).id||'';
+  const q=new URLSearchParams({l:sid});if(o.t)q.set('t',o.t);if(o.m)q.set('m',o.m);if(o.o)q.set('o',o.o);if(o.v)q.set('v','1');if(o.p)q.set('p',o.p);
+  return location.origin+'/m/?'+q.toString()};
+const baseQr=UI.qr;
+function qrSeedUrl(seed){seed=String(seed);const S=App.state;
+  if(seed.startsWith('menu-display'))return App.guestUrl({v:1});
+  if(seed.startsWith('menu-'))return App.guestUrl({m:seed.slice(5)});
+  if(seed.startsWith('dp-'))return App.guestUrl({o:/deliver/i.test(seed)?'delivery':'pickup'});
+  if(seed.startsWith('tablet-'))return App.guestUrl({o:'tablet'});
+  const t=(S.tables||[]).find(x=>x.id===seed||x.name===seed);if(t)return App.guestUrl({t:t.name});
+  return App.guestUrl({})}
+UI.qr=(seed,size=180)=>{if(seed==='pv-art'||typeof qrcode!=='function')return baseQr(seed,size);
+  const url=qrSeedUrl(seed);const q=qrcode(0,'M');q.addData(url);q.make();const n=q.getModuleCount(),m=2,N=n+m*2;let d='';
+  for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(q.isDark(r,c))d+=`M${c+m} ${r+m}h1v1h-1z`;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${N} ${N}" role="img" aria-label="QR code for ${esc(url)}" data-qr-url="${esc(url)}" shape-rendering="crispEdges" style="display:block;margin:0 auto"><rect width="100%" height="100%" fill="#fff"/><path d="${d}" fill="#1A2330"/></svg>`};
+A('download',el=>{const box=el.closest('.modal,.drawer,.card,#view')||document;const svgs=[...box.querySelectorAll('svg[data-qr-url]')];
+  const all=svgs.length?svgs:[...document.querySelectorAll('#modal svg[data-qr-url],#view svg[data-qr-url]')];
+  if(!all.length){toast('Nothing to download here');return}
+  all.slice(0,60).forEach((svg,i)=>{const img=new Image(),c=document.createElement('canvas');c.width=c.height=1024;
+    img.onload=()=>{const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,1024,1024);x.drawImage(img,0,0,1024,1024);
+      const a=document.createElement('a');const u=new URL(svg.dataset.qrUrl);a.download=`qr-${(u.searchParams.get('t')||u.searchParams.get('o')||'menu').replace(/\W+/g,'-').toLowerCase()}${all.length>1?'-'+(i+1):''}.png`;a.href=c.toDataURL('image/png');document.body.appendChild(a);a.click();a.remove()};
+    img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(new XMLSerializer().serializeToString(svg))});
+  toast(all.length>1?`Downloading ${Math.min(all.length,60)} QR codes`:'QR code downloaded')});
+A('ed-open',()=>{const mid=App.current().split('--')[1];window.open(App.guestUrl(mid?{m:mid}:{}),'_blank','noopener')});
+A('copy-share-link',()=>App.copy(App.guestUrl({}),'Share link copied'));
+
+/* ---------- media uploads (item photos, logo, landing image) to Supabase Storage ---------- */
+let PENDING={img:null,video:null};
+document.addEventListener('change',async e=>{const inp=e.target.closest&&e.target.closest('input[data-upload]');if(!inp||!inp.files[0]||!booted)return;
+  if(!CTX.org||CTX.siteId==='all'){toast('Choose a location first');return}
+  const f=inp.files[0];if(f.size>10*1024*1024){toast('That file is over 10 MB');return}
+  const ext=(f.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'');const path=`${CTX.siteId}/${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
+  const tile=inp.closest('.upload');if(tile){tile.querySelector('div')&&(tile.querySelector('div').textContent='Uploading…')}
+  const {error}=await sb.storage.from('qrmenu').upload(path,f,{contentType:f.type||undefined,upsert:false});
+  if(error){toast('Upload failed: '+error.message);if(tile)tile.classList.remove('done');return}
+  const url=sb.storage.from('qrmenu').getPublicUrl(path).data.publicUrl;inp.dataset.url=url;
+  if(tile){tile.querySelector('div')&&(tile.querySelector('div').textContent=f.name);if(/^image/.test(f.type)){tile.style.backgroundImage=`url("${url}")`;tile.style.backgroundSize='cover';tile.style.backgroundPosition='center';tile.style.color='#fff';tile.style.textShadow='0 1px 3px rgba(0,0,0,.6)'}}
+  if(inp.closest('#drawer')){if(/^video/.test(f.type))PENDING.video=url;else PENDING.img=url;toast('Photo uploaded – press Save to keep it');return}
+  const label=fieldLabel(inp);const S=App.state;S.cfg=S.cfg||{};S.cfg['upload|'+App.current()+'|'+label]=url;
+  if(/^settings-venue/.test(App.current())&&/logo/i.test(label))S.venue={...(S.venue||{}),logo:url};
+  if(/^settings-welcome/.test(App.current())){const ch=App.current().split('--')[1]||'dinein';S.cfg[`wp.${ch}.${/^video/.test(f.type)?'landingVideo':'landingImg'}`]=url}
+  if(/^settings-design/.test(App.current())&&/background/i.test(label))S.cfg['dz.bgImg']=url;
+  queueSave();toast('Uploaded')},true);
+function findItemByName(menuId,name){const m=(App.state.menus||[]).find(x=>x.id===menuId);if(!m)return null;for(const s of m.sections)for(const i of s.items)if(i.name===name)return i;return null}
+const _edSave=App.actions['ed-save-item'];
+if(_edSave)App.action('ed-save-item',(...a)=>{const name=(document.getElementById('edName')||{}).value?.trim();const P={...PENDING};_edSave(...a);
+  if(name&&(P.img||P.video)){const it=findItemByName(App.current().split('--')[1],name);if(it){if(P.img){it.img=it.img||P.img;it.imgs=[...(it.imgs||[]),P.img];it.photo=true}if(P.video)it.video=P.video;queueSave();setTimeout(paintThumbs,50)}}
+  PENDING={img:null,video:null}});
+function paintThumbs(){if(!/^menu-editor/.test(App.current()))return;const m=(App.state.menus||[]).find(x=>x.id===App.current().split('--')[1]);if(!m)return;const by={};m.sections.forEach(s=>s.items.forEach(i=>by[i.id]=i));
+  document.querySelectorAll('#view [data-id]').forEach(row=>{const it=by[row.dataset.id];if(!it||!it.img)return;const th=row.querySelector('.thumb');if(th&&!th.dataset.painted){th.dataset.painted=1;th.textContent='';th.classList.remove('none');th.style.background=`center/cover url("${it.img}")`}})}
+const _render3=App.render;App.render=function(){_render3();paintThumbs()};
+document.addEventListener('click',()=>setTimeout(paintThumbs,30));
 
 window.PQ.start=start;
 })();
