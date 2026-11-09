@@ -198,8 +198,7 @@ const TITLES={dashboard:'Dashboard',locations:'Locations',users:'Users','menu-ma
 function title(key){if(TITLES[key])return TITLES[key];const k=Object.keys(TITLES).filter(t=>key.startsWith(t)).sort((a,b)=>b.length-a.length)[0];return TITLES[k]||'Proview QR Menu'}
 function decorateShell(){
   const top=$('.top');
-  top.innerHTML=`<button class="iconbtn" data-action="collapse" aria-label="Collapse sidebar">${ic('sidebar')}</button>
-   <h1 class="pq-title" id="pqTitle">Dashboard</h1><select id="pqLoc" aria-label="Location"></select><div class="spacer"></div>
+  top.innerHTML=`<h1 class="pq-title" id="pqTitle">Dashboard</h1><select id="pqLoc" aria-label="Location"></select><div class="spacer"></div>
    <div class="hdr-cap"><span class="hdr-dot" id="pqDot" role="img" aria-label="Online" title="Online · all changes saved"></span>
      <button data-action="pq-search" aria-label="Search (Ctrl+K)" title="Search (Ctrl+K)">${ic('search')}</button>
      <button data-action="pq-chat" aria-label="Chat" title="Chat">${ic('msg')}</button>
@@ -209,8 +208,11 @@ function decorateShell(){
    ${UI.dd(`<span class="me" id="pqAv">?</span>`,[],{cls:'iconbtn',aria:'Account menu'}).replace('class="iconbtn"','class="iconbtn" style="border:0;width:auto"').replace('<div class="dd-menu ">','<div class="dd-menu" id="pqAcct" style="width:270px">')}
    <button class="iconbtn" data-action="pq-signout" aria-label="Sign out" title="Sign out">${ic('logout')}</button>`;
   $('#pqLoc').addEventListener('change',e=>chooseLoc(e.target.value));
-  // sidebar venue card → this business's locations
-  const vb=$('.side .venue');if(vb)vb.parentElement.querySelector('.dd-menu').innerHTML=`<div id="venueList"></div>`;
+  // Proview shell: the location picker lives in the header only; the menu ends with COLLAPSE (as Label, Signage, Bookings)
+  const vb=$('.side .venue');if(vb)vb.closest('.dd').remove();
+  const cr=$('.side .credits');if(cr)cr.remove();
+  const col=localStorage.getItem('pq.sideCollapsed')==='1';App._userCollapsed=col;$('#app').classList.toggle('collapsed',col);
+  $('.side').insertAdjacentHTML('beforeend',`<div class="side-foot"><button class="sf-link" id="sfCollapse" data-action="collapse" title="${col?'Expand menu':'Collapse menu'}" aria-label="${col?'Expand menu':'Collapse menu'}">${ic('left','sm')}<span class="lbl">COLLAPSE</span></button></div>`);
   const brand=$('.side .brand');if(brand)brand.outerHTML=`<a class="brand" href="#${CTX.master&&!CTX.org?'locations':'dashboard'}" title="Proview QR Menu"><img class="brand-mark" src="app-icon.svg" alt=""><div class="wordmark">PROVIEW<span>QR MENU</span></div></a>`;
   fillLoc();fillAcct()}
 function fillAcct(){const a=$('#pqAcct');if(!a)return;$('#pqAv').textContent=initials(CTX.email.split('@')[0]);
@@ -267,7 +269,17 @@ function decorateNav(key){const nav=$('#nav');if(!nav)return;
     const f=k==='dashboard'?null:featureOf(k==='menu-management'?'menu-management':k);
     if(allMode){a.classList.add('grey');a.classList.remove('on');a.dataset.grey='1'}
     else if(f&&!can(f))a.style.display='none'});
-  nav.querySelectorAll('.nav-group').forEach(g=>{if(![...g.querySelectorAll('a')].some(a=>a.style.display!=='none'))g.style.display='none'})}
+  nav.querySelectorAll('.nav-group').forEach(g=>{if(![...g.querySelectorAll('a')].some(a=>a.style.display!=='none'))g.style.display='none'});
+  flattenNav(nav)}
+// same markup as the other Proview back offices: section labels, then links (icon, label, short rail label, badge)
+const SHORT={'locations':'Locations','dashboard':'Home','menu-management':'Menus','website-builder':'Website','brand-kit':'Brand','ai-media-studio':'Media','ai-marketing':'Marketing','ai-reports':'AI Reports','orders':'Orders','reservations':'Bookings','engagement':'Guests','reports':'Reports','marketplace':'Market','settings':'Settings','ai-media-library':'Library','users':'Users'};
+function flattenNav(nav){let h='';
+  nav.querySelectorAll('.nav-group').forEach(g=>{if(g.style.display==='none')return;const vis=[...g.querySelectorAll('a')].filter(a=>a.style.display!=='none');if(!vis.length)return;
+    const sep=g.querySelector('.eyebrow');if(sep)h+=`<div class="nav-sep">${esc(sep.textContent)}</div>`;
+    vis.forEach(a=>{const k=a.getAttribute('href').slice(1),l=a.title||a.textContent.trim(),svg=a.querySelector('svg')?.outerHTML||'',isNew=!!a.querySelector('.new'),grey=a.dataset.grey;
+      h+=grey?`<a href="#${k}" class="off" data-grey="1" role="link" aria-disabled="true" title="${esc(l)} – choose a location first" aria-label="${esc(l)} – choose a location first">${svg}<span class="lbl">${esc(l)}</span><span class="slbl">${esc(SHORT[k]||l)}</span>${isNew?'<span class="cnt">New</span>':''}</a>`
+        :`<a href="#${k}" class="${a.classList.contains('on')?'active':''}" title="${esc(l)}" aria-label="${esc(l)}"${a.classList.contains('on')?' aria-current="page"':''}>${svg}<span class="lbl">${esc(l)}</span><span class="slbl">${esc(SHORT[k]||l)}</span>${isNew?'<span class="cnt">New</span>':''}</a>`})});
+  nav.innerHTML=h}
 document.addEventListener('click',e=>{const a=e.target.closest('#nav a[data-grey]');if(a){e.preventDefault();e.stopPropagation();toast('Choose a location in the dropdown first');pulseLoc()}},true);
 function lockHTML(h,t){const plans=Object.entries(PLANS||{});return `<div class="pq-lock card pad"><span class="itile" style="margin:0 auto 14px;width:56px;height:56px;background:var(--bad-tint);color:var(--bad)">${ic('lock')}</span><h1 style="font-size:24px">${h}</h1><p class="muted">${t}</p>
   ${plans.length?`<div class="pq-plans">${plans.map(([k,p])=>`<a class="select-card" style="text-decoration:none" href="${esc(p.link)}?client_reference_id=pvq__${CTX.siteId}__${k}&prefilled_email=${encodeURIComponent(CTX.email)}" target="_blank" rel="noopener"><strong style="color:var(--ink)">${esc(p.label)}</strong><div style="font-size:20px;font-weight:700;color:var(--ink);margin-top:4px">£${(p.amount/100).toFixed(2)}</div><small class="muted">Buy / renew online</small></a>`).join('')}</div>`:''}
@@ -296,6 +308,8 @@ A('pq-bell',()=>{const w=(App.state.orders||[]).filter(o=>/Waiting|In Progress|R
   drawer({title:'Notifications',width:440,body:(sv.length?`<div class="eyebrow" style="margin:0 0 6px">Service requests</div>`+sv.map(x=>`<div class="review" style="display:flex;gap:10px;align-items:center"><span class="itile" style="width:36px;height:36px">${ic('hand','sm')}</span><div style="flex:1"><strong style="color:var(--ink)">${esc(x.table)} · ${esc(x.request)}</strong><div class="help">${esc(x.at)}${x.note?' · '+esc(x.note):''}</div></div><button class="btn secondary sm" data-action="pq-svc-done" data-id="${x.id}">Done</button></div>`).join(''):'')+
     (w.length?`<div class="eyebrow" style="margin:14px 0 6px">Live orders</div>`+w.map(o=>`<a class="review" style="display:flex;gap:10px;color:inherit;text-decoration:none" href="#orders-all--live"><span class="itile" style="width:36px;height:36px">${ic('orders','sm')}</span><div><strong style="color:var(--ink)">${esc(o.id)} · ${esc(o.status)}</strong><div class="help">${esc(o.type||'')} · ${esc(o.table&&o.table!=='—'?o.table:o.customer||'')}</div></div></a>`).join(''):'')
     ||UI.empty('bell','No new notifications','New orders and service requests from the QR menu show here.')})});
+A('collapse',()=>{if(innerWidth<=900)return;const a=$('#app');const on=!a.classList.contains('collapsed');a.classList.toggle('collapsed',on);App._userCollapsed=on;try{localStorage.setItem('pq.sideCollapsed',on?'1':'0')}catch(e){}
+  const b=$('#sfCollapse');if(b){b.title=on?'Expand menu':'Collapse menu';b.setAttribute('aria-label',b.title)}});
 A('pq-svc-done',el=>{const x=(App.state.services||[]).find(s=>String(s.id)===el.dataset.id);if(x)x.done=true;App.actions['pq-bell']();updateCounts();toast('Marked as done')});
 A('pq-search',openPalette);
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'&&booted){e.preventDefault();openPalette()}});

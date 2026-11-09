@@ -245,3 +245,66 @@ body.dark{--page:#0f0f12;--bg:#0f0f12;--surface:#17171c;--line:#2a2a33;--border:
   .auth2-form .box{padding:26px 20px}
   .wordmark2{font-size:17px;letter-spacing:.1em}
 }
+
+/* ===== Proview shell menu: the same menu as Proview Label, Signage, Bookings, Employee and WiFi =====
+   desktop: 236px menu (COLLAPSE to a 72px icon rail) · 701-900px: 72px labelled rail · phones: 60px labelled rail */
+html body .app{grid-template-columns:236px minmax(0,1fr)}
+html body .app.collapsed{grid-template-columns:72px minmax(0,1fr)}
+html body .side{background:#141418;color:#c9c9d1;display:flex;flex-direction:column;overflow:hidden;min-height:0;height:100vh;height:100dvh;position:sticky;top:0;font-size:15px;border-right:0;padding:0}
+html body .side .brand{display:flex;align-items:center;gap:10px;padding:18px 10px 14px 14px;color:#fff;text-decoration:none;flex:none}
+html body .side .brand .brand-mark{width:30px;height:30px;border-radius:22%}
+html body .side .wordmark{letter-spacing:.04em;font-size:15px;line-height:20px;white-space:nowrap;font-weight:500;color:#fff}
+html body .side .nav{flex:1;min-height:0;overflow:auto;padding:6px 10px;display:flex;flex-direction:column;gap:0}
+html body .side .nav>*{flex-shrink:0}
+html body .side .nav-sep{font-size:11px;line-height:13px;letter-spacing:.08em;text-transform:uppercase;color:#6e6e78;padding:10px 10px 3px;flex:none;font-weight:400}
+html body .side .nav a{display:flex;align-items:center;gap:10px;height:30px;min-height:0;flex:none;box-sizing:border-box;padding:0 12px;margin:0;border-radius:9px;color:#c9c9d1;text-decoration:none;font-size:14px;font-weight:550;line-height:22px;position:relative;background:none}
+html body .side .nav a svg{width:16px;height:16px;flex:none;color:inherit}
+html body .side .nav a:hover{background:#1f1f25;color:#fff}
+html body .side .nav a.active{background:#26262e;color:#fff;font-weight:550}
+html body .side .nav a.active svg{color:var(--pri)}
+html body .side .nav a.off{opacity:.45;cursor:not-allowed}
+html body .side .nav a.off:hover{background:none;color:#c9c9d1}
+html body .side .nav .lbl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto}
+html body .side .nav .slbl{display:none}
+html body .side .nav .cnt{margin-left:auto;font-size:11px;line-height:16px;font-weight:600;background:rgba(255,255,255,.12);color:#fff;padding:0 7px;border-radius:10px}
+html body .side-foot{display:flex;align-items:center;padding:0 10px 14px;flex:none;margin:0;border:0;gap:0}
+html body .sf-link{display:flex;align-items:center;gap:6px;background:none;border:0;color:#8b8b95;letter-spacing:.06em;font-size:12px;font-weight:600;line-height:17px;padding:6px 8px;border-radius:9px;cursor:pointer;font-family:inherit}
+html body .sf-link:hover{color:#fff}html body .sf-link svg{width:14px;height:14px;flex:none}
+@media (min-width:901px){
+ html body .app.collapsed .side{padding:18px 10px}
+ html body .app.collapsed .wordmark,html body .app.collapsed .nav-sep,html body .app.collapsed .side .nav .lbl,html body .app.collapsed .side .nav .cnt,html body .app.collapsed .sf-link .lbl{display:none}
+ html body .app.collapsed .side .brand{justify-content:center;padding:4px 0 18px;gap:10px}
+ html body .app.collapsed .side .nav{padding:6px 10px}
+ html body .app.collapsed .side .nav a{width:32px;min-width:0;margin:0 auto;padding:0 12px;justify-content:center;box-sizing:content-box}
+ html body .app.collapsed .side-foot{flex-direction:column;align-items:center;gap:4px;padding:0 10px 14px}
+ html body .app.collapsed .sf-link{width:30px;height:26px;padding:6px 8px;justify-content:center;box-sizing:border-box}
+ html body .app.collapsed .sf-link svg{transform:rotate(180deg)}
+}
+/* iPad and narrow windows: a 72px rail with a short label under each icon */
+@media (min-width:701px) and (max-width:900px){
+ html body .app,html body .app.collapsed{grid-template-columns:72px minmax(0,1fr)}
+ html body .app .side{padding:0;position:sticky;transform:none;width:auto;box-shadow:none}
+ html body .app .wordmark,html body .app .nav-sep,html body .app .side-foot,html body .app .side .nav .cnt,html body .app .side .nav .lbl{display:none}
+ html body .app .side .brand{justify-content:center;padding:18px 0 14px}
+ html body .app .side .nav{padding:6px 10px}
+ html body .app .side .nav a{height:56px;width:auto;flex-direction:column;justify-content:center;align-items:center;gap:5px;padding:0 2px;font-size:15px}
+ html body .app .side .nav a svg{width:18px;height:18px}
+ html body .app .side .nav .slbl{display:block;font-size:10.5px;line-height:12px;font-weight:500;letter-spacing:-.1px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:64px}
+}
+/* phones: the same compact icon menu always on the left (60px; every button 50 x 52) */
+@media (max-width:700px){
+ html body .app,html body .app.collapsed{grid-template-columns:60px minmax(0,1fr)}
+ html body .app .side{position:sticky;top:0;transform:none;width:auto;z-index:5;box-shadow:none;padding:10px 5px calc(10px + env(safe-area-inset-bottom));overflow-y:auto;overflow-x:hidden}
+ html body .app .side .brand{justify-content:center;padding:2px 0 10px;gap:0}
+ html body .app .side .brand .brand-mark{width:30px;height:30px;margin:0 auto}
+ html body .app .wordmark,html body .app .nav-sep,html body .app .side-foot,html body .app .side .nav .cnt,html body .app .side .nav .lbl{display:none}
+ html body .app .side .nav{padding:0;align-items:center;overflow:visible;flex:1 0 auto}
+ html body .app .side .nav a{width:50px;height:52px;margin:0 auto;padding:0 1px;flex-direction:column;justify-content:center;align-items:center;gap:4px;font-size:15px}
+ html body .app .side .nav a svg{width:18px;height:18px}
+ html body .app .side .nav .slbl{display:block;font-size:10px;line-height:12px;font-weight:500;letter-spacing:-.1px;text-align:center;white-space:nowrap;max-width:58px;overflow:hidden;text-overflow:ellipsis}
+ html body .app.mobile-open::after{display:none}
+}
+html body .app.full{grid-template-columns:minmax(0,1fr)}
+@media (min-width:701px){html body .top .pq-title{flex-shrink:0;max-width:none}html body .top #pqLoc{flex:0 1 auto;min-width:170px}}
+@media (min-width:701px) and (max-width:1200px){html body .top{gap:8px;padding:12px 14px}html body .top .pv-dash span{display:none}html body .top .pv-dash{padding:0 10px}html body .top #pqLoc{min-width:120px;max-width:220px}html body .top .pq-title{max-width:34%;flex-shrink:1;min-width:60px}}
+html body .main{min-width:0;overflow-x:hidden}
