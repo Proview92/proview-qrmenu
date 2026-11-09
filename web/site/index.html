@@ -7,9 +7,13 @@
 <meta name="robots" content="noindex">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="app-icon.svg">
-<meta name="theme-color" content="#141418">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;550;600;650;700;750&display=swap" rel="stylesheet">
+<meta name="theme-color" content="#171c29">
+<script>/* Proview Navy: theme + menu position before first paint (shared keys pv.theme / pv.menu) */
+(function(){var d=document.documentElement,t='dark',m='side';try{t=localStorage.getItem('pv.theme')==='light'?'light':'dark';m=localStorage.getItem('pv.menu')==='bottom'?'bottom':'side'}catch(e){}
+d.setAttribute('data-theme',t);if(m==='bottom')d.classList.add('menu-bottom');
+var c=document.querySelector('meta[name=theme-color]');if(c)c.setAttribute('content',t==='light'?'#f2f4f9':'#171c29')})();</script>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/app.css">
 <link rel="stylesheet" href="css/theme.css">

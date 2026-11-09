@@ -6,14 +6,14 @@ const A=App.action;
 
 /* editor-only styles */
 const css=document.createElement('style');css.textContent=`
-.ed-price{display:flex;align-items:center;border:1px solid var(--border-input);border-radius:8px;height:36px;overflow:hidden;background:#fff}
+.ed-price{display:flex;align-items:center;border:1px solid var(--border-input);border-radius:8px;height:36px;overflow:hidden;background:var(--surface)}
 .ed-price input{border:0;outline:0;width:100%;text-align:right;font-weight:600;padding:0 6px;min-width:0;background:transparent}
 .ed-price span{padding:0 8px 0 2px;color:var(--muted)}
 .ed-price .ed-enter{display:none;border:0;background:var(--brand-tint);color:var(--brand-700);height:100%;padding:0 8px;cursor:pointer}
 .ed-price:focus-within{border-color:var(--brand-700);box-shadow:0 0 0 1px var(--brand-700)}
 .ed-price:focus-within .ed-enter{display:grid;place-items:center}
 .ed-dot{width:8px;height:8px;border-radius:50%;background:var(--ok);flex:none;display:inline-block}
-.ed-dot.off{background:#B5BEC8}
+.ed-dot.off{background:var(--border-input)}
 .ed-coll{display:flex;align-items:center;gap:12px;width:100%;padding:14px 18px;background:none;border:0;cursor:pointer;text-align:left;font:inherit;color:inherit}
 .ed-bulk{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 14px;margin-bottom:14px;position:sticky;top:72px;z-index:6;box-shadow:var(--shadow)}
 .ed-sections .section{overflow:visible}
@@ -27,8 +27,8 @@ const css=document.createElement('style');css.textContent=`
 .ed-tile i{display:grid;place-items:center;width:72px;height:52px;border-radius:10px;background:var(--brand-tint);color:var(--brand-700);font-style:normal;font-weight:700;margin-bottom:4px}
 .ed-toolbar{display:flex;gap:2px;border:1px solid var(--border-input);border-bottom:0;border-radius:10px 10px 0 0;padding:4px;background:var(--page);flex-wrap:wrap}
 .ed-toolbar button{min-width:30px;height:28px;border:0;background:none;border-radius:6px;cursor:pointer;font-weight:700;color:var(--ink-2);display:grid;place-items:center}
-.ed-toolbar button:hover{background:#fff}
-.ed-rte{border:1px solid var(--border-input);border-radius:0 0 10px 10px;min-height:90px;padding:10px 12px;outline:0;background:#fff}
+.ed-toolbar button:hover{background:var(--surface)}
+.ed-rte{border:1px solid var(--border-input);border-radius:0 0 10px 10px;min-height:90px;padding:10px 12px;outline:0;background:var(--surface)}
 .ed-rte:focus{border-color:var(--brand-700)}
 .ed-rte:empty::before{content:attr(data-ph);color:var(--muted)}
 .ed-drop-over{outline:2px dashed var(--brand-500);outline-offset:-2px}
@@ -37,7 +37,7 @@ const css=document.createElement('style');css.textContent=`
 .ed-po label{font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--muted);text-transform:uppercase;display:block;margin-bottom:4px}
 .ed-chips{display:flex;gap:6px;flex-wrap:wrap}
 .ed-gen-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 18px 14px}
-.ed-gen-grid label{display:flex;align-items:center;gap:10px;border:1px solid var(--border);border-radius:10px;padding:8px 10px;cursor:pointer;background:#fff}
+.ed-gen-grid label{display:flex;align-items:center;gap:10px;border:1px solid var(--border);border-radius:10px;padding:8px 10px;cursor:pointer;background:var(--surface)}
 .ed-gen-grid label:has(input:checked){border-color:var(--brand-700);background:var(--brand-tint-subtle)}
 .ed-promo{position:absolute;inset:0;background:rgba(26,35,48,.55);display:flex;align-items:flex-end;z-index:3}
 .ed-promo>div{background:#fff;border-radius:18px 18px 0 0;padding:18px;width:100%;position:relative}
@@ -81,7 +81,7 @@ App.route('menu-editor',id=>{
       <div id="edScore">${scoreHTML()}</div>
       <div id="edGen">${genHTML()}</div>
       <div style="display:flex;gap:10px;margin-bottom:14px">
-        <label class="search" style="background:#fff;max-width:none;flex:1">${ic('search','sm')}<input id="edSearch" placeholder="Search for a section or item" value="${esc(q)}" data-input="ed-search"></label>
+        <label class="search" style="background:var(--surface);max-width:none;flex:1">${ic('search','sm')}<input id="edSearch" placeholder="Search for a section or item" value="${esc(q)}" data-input="ed-search"></label>
         ${UI.dd(`${ic('plus','sm')}Add`,[{label:'Section',icon:'layers',action:'ed-add-section'},{label:'Item',icon:'menu',action:'ed-add-item'},{label:'Combo',icon:'blocks',action:'ed-add-combo'}],{cls:'btn secondary',aria:'Add section/item'}).replace('class="btn secondary"','class="btn secondary" title="Add section/item" style="height:40px"')}
       </div>
       <div id="edBulk">${bulkHTML()}</div>
@@ -327,7 +327,7 @@ function itemDrawer(id,secId){
   ctx.item={id:it?it.id:null,sec:sec.id};
   const mods=App.state.modifiers||[];
   const gen=`<p class="muted" style="margin-top:0">Set the core details, media, pricing and visibility for this item. Changes apply across every menu this item appears on.</p>
-   <div class="card" style="display:flex;gap:12px;align-items:center;padding:14px;margin-bottom:8px;background:var(--brand-tint-subtle);border-color:#C9DCF5"><span class="itile ai-grad" style="width:38px;height:38px;color:#fff">${ic('sparkle','sm')}</span><div style="flex:1"><strong style="color:var(--ink)">Auto-fill with AI</strong><div class="help" style="margin:0">Fill calories, nutrition facts, ingredient warnings and more in one go.</div></div><button type="button" class="btn ai-btn sm" data-action="ed-autofill">Auto-fill</button></div>
+   <div class="card" style="display:flex;gap:12px;align-items:center;padding:14px;margin-bottom:8px;background:var(--brand-tint-subtle);border-color:var(--border)"><span class="itile ai-grad" style="width:38px;height:38px;color:#fff">${ic('sparkle','sm')}</span><div style="flex:1"><strong style="color:var(--ink)">Auto-fill with AI</strong><div class="help" style="margin:0">Fill calories, nutrition facts, ingredient warnings and more in one go.</div></div><button type="button" class="btn ai-btn sm" data-action="ed-autofill">Auto-fill</button></div>
    ${group('Basics','Name and description shown to guests',
      UI.field({label:'Name',required:true,id:'edName',control:UI.input({id:'edName',value:d.name,placeholder:'Pasta Alfredo',attrs:'data-input="ed-name"'})})+
      `<div class="field"><label style="display:flex;justify-content:space-between">Description<button type="button" class="btn ghost sm" style="height:24px;padding:0 6px" data-action="ed-enhance-desc">${ic('sparkle','sm')}Enhance with AI</button></label>
@@ -360,7 +360,7 @@ function itemDrawer(id,secId){
      :`<div class="card">${UI.empty('layers','No modifier groups yet','Create a group like "Milk choice" or "Add extras", then attach it here.',`<button type="button" class="btn primary" data-action="ed-goto-modifiers">${ic('plus','sm')}Add Modifier Option</button>`)}</div>`}`;
   const nut=`<p class="muted" style="margin-top:0">Add nutrition details for this item. Each section publishes to your guest menu independently — flip its toggle off to keep it as a draft.</p>
    <div class="card pad" style="margin-bottom:12px"><div style="display:flex;align-items:center;gap:12px"><div style="flex:1"><strong style="color:var(--ink)">Nutrition Facts</strong><div class="help" style="margin:0">Standardized label: serving size, calories & % daily values</div></div><small class="muted" id="edNfLbl">${d.nf.shown?'Shown':'Hidden'}</small>${UI.toggle(d.nf.shown,'id="edNfOn" data-change="ed-nf-toggle" aria-label="Show nutrition facts"')}</div>
-    <div id="edNutNotice" class="card" style="margin-top:12px;padding:12px;background:var(--warn-tint);border-color:#F5D9A8;color:var(--warn);${d.priceOptions.length?'display:none':''}">${ic('info','sm')} Add a price option in the <a href="javascript:void 0" data-action="ed-goto-po">Price Options</a> tab first — nutrition details are set per price option.</div>
+    <div id="edNutNotice" class="card" style="margin-top:12px;padding:12px;background:var(--warn-tint);border-color:var(--pv-warn-line,#F5D9A8);color:var(--warn);${d.priceOptions.length?'display:none':''}">${ic('info','sm')} Add a price option in the <a href="javascript:void 0" data-action="ed-goto-po">Price Options</a> tab first — nutrition details are set per price option.</div>
     <div id="edNfFields" class="grid g3" style="gap:10px;margin-top:12px;${d.priceOptions.length?'':'display:none'}">${NF.map(([l,u])=>UI.field({label:l,control:UI.input({suffix:u,value:d.nf.v[l]||'',attrs:`data-nf="${esc(l)}" inputmode="decimal"`})})).join('')}</div></div>
    <div class="card pad"><div style="display:flex;align-items:center;gap:12px;margin-bottom:12px"><div style="flex:1"><strong style="color:var(--ink)">Nutritional Content</strong><div class="help" style="margin:0">Your own label + value pairs</div></div><small class="muted" id="edNcLbl">${d.nc.shown?'Shown':'Hidden'}</small>${UI.toggle(d.nc.shown,'id="edNcOn" data-change="ed-nc-toggle" aria-label="Show nutritional content"')}</div>
     <div id="edNC">${d.nc.rows.map(ncRow).join('')}</div><button type="button" class="btn ghost sm" data-action="ed-nc-add">${ic('plus','sm')}Add row</button></div>`;

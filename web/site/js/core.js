@@ -37,6 +37,8 @@ help:'<circle cx="12" cy="12" r="9"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3
 bell:'<path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 0 0 3.4 0"/>',
 rocket:'<path d="M4.5 16.5c-1.5 1.3-2 5-2 5s3.7-.5 5-2c.7-.8.7-2.1-.1-2.9a2.2 2.2 0 0 0-2.9-.1zM12 15l-3-3a22 22 0 0 1 2-3.9A12.9 12.9 0 0 1 22 2c0 2.7-.8 7.5-6 11a22.4 22.4 0 0 1-4 2zM9 12H4s.6-3 2-4c1.6-1.1 5 0 5 0M12 15v5s3-.6 4-2c1.1-1.6 0-5 0-5"/>',
 sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+panelb:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 15h18"/>',
+panell:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/>',
 moon:'<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
 plus:'<path d="M12 5v14M5 12h14"/>',
 minus:'<path d="M5 12h14"/>',
@@ -277,8 +279,19 @@ A('mark-read',()=>toast('All notifications marked as read'));
 A('whats-new',()=>{const b=$('#wnBadge');b&&b.remove();drawer({title:`What's New <span class="pill" style="margin-left:6px">11 new</span>`,width:460,body:`<div style="text-align:right;margin:-8px 0 8px"><button class="btn ghost sm" data-action="mark-read">Mark all as read</button></div>`+
   [['Website Builder redesigned, with version history','Edit every section side by side with a live preview, then restore any earlier version.',['Sections on the left, live preview in the middle','Version history and one-click restore','Rebuild with AI any time'],18],['Post straight to Instagram','Generate a post from a menu item and publish it without leaving Proview.',['Templates for feed posts and stories','AI-written captions'],24],['AI Reports','Daily KPIs, forecasts and anomaly alerts in one place.',['11 report tabs','Hourly refresh'],30]].map(([t,d,l,a])=>`<div class="card" style="margin-bottom:14px;overflow:hidden"><div class="thumbbg" style="height:120px"></div><div style="padding:14px"><span class="pill">Product update</span> <small class="muted">${a} days ago</small><h3 style="margin-top:8px">${t}</h3><p style="margin:6px 0">${d}</p><ul style="margin:0;padding-left:18px">${l.map(x=>`<li>${x}</li>`).join('')}</ul></div></div>`).join(''),
   footer:`<button class="iconbtn" aria-label="Settings" data-action="soon">${ic('gear')}</button><button class="btn primary" data-action="soon">See all updates</button>`})});
-A('theme',()=>{document.body.classList.toggle('dark');toast(document.body.classList.contains('dark')?'Dark theme on':'Light theme on')});
-A('change-theme',()=>modal({title:'Change Theme',body:UI.radioCards('th',[{value:'light',label:'Light'},{value:'dark',label:'Dark'},{value:'system',label:'Use system setting'}],'light'),footer:`<button class="btn primary" data-action="close-toast" data-msg="Theme updated">Save</button>`}));
+/* Proview Navy switches: Light/Dark ("pv.theme") and Menu at bottom ("pv.menu"), shared by every Proview app */
+const pvLS={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+function pvSync(){const d=document.documentElement,light=d.getAttribute('data-theme')==='light',bottom=d.classList.contains('menu-bottom');
+  const mc=document.querySelector('meta[name=theme-color]');if(mc)mc.setAttribute('content',light?'#f2f4f9':'#171c29');
+  const t=$('#pvThemeBtn');if(t){const l=light?'Dark mode':'Light mode';t.innerHTML=ic(light?'moon':'sun')+`<span class="lbl">${l}</span>`;t.title=l;t.setAttribute('aria-label',l)}
+  const m=$('#pvMenuBtn');if(m){const l=bottom?'Menu at left':'Menu at bottom';m.innerHTML=ic(bottom?'panell':'panelb')+`<span class="lbl">${l}</span>`;m.title=l;m.setAttribute('aria-label',l)}}
+App.pvSync=pvSync;
+A('pv-theme',()=>{const light=document.documentElement.getAttribute('data-theme')!=='light';document.documentElement.setAttribute('data-theme',light?'light':'dark');pvLS.set('pv.theme',light?'light':'dark');pvSync()});
+A('pv-menu',()=>{const b=document.documentElement.classList.toggle('menu-bottom');pvLS.set('pv.menu',b?'bottom':'side');$('#app')&&$('#app').classList.remove('mobile-open');pvSync()});
+A('theme',()=>{actions['pv-theme']();toast(document.documentElement.getAttribute('data-theme')==='light'?'Light mode on':'Dark mode on')});
+window.addEventListener('storage',e=>{if(e.key==='pv.theme')document.documentElement.setAttribute('data-theme',e.newValue==='light'?'light':'dark');if(e.key==='pv.menu')document.documentElement.classList.toggle('menu-bottom',e.newValue==='bottom');pvSync()});
+A('change-theme',()=>modal({title:'Change Theme',body:UI.radioCards('th',[{value:'dark',label:'Dark'},{value:'light',label:'Light'}],document.documentElement.getAttribute('data-theme')==='light'?'light':'dark'),footer:`<button class="btn primary" data-action="save-theme">Save</button>`}));
+A('save-theme',()=>{const v=$('input[name=th]:checked')?.value||'dark';document.documentElement.setAttribute('data-theme',v);pvLS.set('pv.theme',v);pvSync();close();toast('Theme updated')});
 A('change-language',()=>modal({title:'Change Language',body:UI.radioCards('ln',['English','Türkçe','Español','Deutsch','Français','العربية'].map(l=>({value:l,label:l})),'English'),footer:`<button class="btn primary" data-action="close-toast" data-msg="Language updated">Save</button>`}));
 A('change-sound',()=>modal({title:'Change Sound',body:UI.radioCards('snd',['Classic bell','Soft chime','Kitchen ticket','Silent'].map(l=>({value:l,label:l})),'Classic bell'),footer:`<button class="btn primary" data-action="close-toast" data-msg="Sound updated">Save</button>`}));
 A('account',()=>drawer({title:'Account Settings',body:UI.field({label:'First name',control:UI.input({value:'Ömer'})})+UI.field({label:'Last name',control:UI.input({value:'Altun'})})+UI.field({label:'Email',control:UI.input({value:'altun@proviewtech.co.uk'})})+UI.field({label:'Password',control:`<button class="btn secondary">Change password</button>`}),footer:`<button class="btn secondary" data-close>Cancel</button><button class="btn primary" data-action="close-toast" data-msg="Account saved">Save</button>`}));
