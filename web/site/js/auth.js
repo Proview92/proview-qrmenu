@@ -65,41 +65,57 @@ document.head.insertAdjacentHTML('beforeend',`<link rel="preconnect" href="https
 @media (max-width:700px){.top{flex-wrap:wrap;height:auto;padding:8px 12px;gap:8px}#pqLoc{order:10;flex-basis:100%;height:36px;font-size:13px;max-width:none}.pq-title{font-size:17px;max-width:150px}.pv-dash{width:34px;height:34px;padding:0;justify-content:center}.pv-dash span{display:none}.hdr-cap>button{width:30px;min-width:30px;height:30px}}
 </style>`);
 const APPICON=ic('qr');
-document.body.insertAdjacentHTML('afterbegin',`<div id="pqLoad" role="status" aria-label="Loading"><div class="ico">${APPICON}</div></div><div id="pqAuth"></div>`);
+document.body.insertAdjacentHTML('afterbegin',`<div id="pqLoad" role="status" aria-label="Loading"><div class="ico"><img src="app-icon.svg" alt=""></div></div><div id="pqAuth"></div>`);
 const loader=on=>{$('#pqLoad').style.display=on?'grid':'none'};
 
-/* ---------- auth screens ---------- */
-function authShow(html){const a=$('#pqAuth');a.innerHTML=`<div class="pq-card"><div class="logo"><span class="ico">${APPICON}</span><div><strong style="color:var(--ink);font-size:17px">Proview QR Menu</strong><div class="help" style="margin:0">Digital menus, ordering & guests</div></div></div>${html}</div>`;a.classList.add('show');loader(false);const f=a.querySelector('input');f&&f.focus()}
-const msg=(t,k='err')=>t?`<div class="pq-msg ${k}">${esc(t)}</div>`:'';
-function signInScreen(note='',kind='err'){authShow(`<h1>Sign in</h1><p class="sub" style="margin-bottom:18px">Welcome back.</p>${msg(note,kind)}
-  <form id="pqSignIn">${UI.field({label:'Email',control:UI.input({id:'pqEmail',type:'email',attrs:'required autocomplete="username"'})})}${UI.field({label:'Password',control:UI.input({id:'pqPass',type:'password',attrs:'required autocomplete="current-password"'})})}
-  <div style="text-align:right;margin:-6px 0 14px"><a href="#" data-pq="forgot">Forgot password?</a></div><button class="btn primary">Sign in</button></form>
-  <div class="pq-or">or</div><a class="btn secondary" style="width:100%;height:46px" href="${CFG.dash}">${ic('user','sm')}Sign in with Proview account</a>
-  <p style="text-align:center;margin:20px 0 0" class="muted">New here? <a href="#" data-pq="signup">Start your free 3-day trial</a></p>`);
+/* ---------- auth screens (auth2 layout shared by the Proview apps) ---------- */
+const BRAND2=`<div class="auth2-fbrand"><img src="app-icon.svg" alt=""><div class="wordmark2">PROVIEW<span>QR MENU</span></div></div>`;
+function art(){return `<div class="auth2-art"><div class="art-glow"></div>
+  <div class="auth2-brand"><img src="app-icon.svg" alt=""><div class="wordmark">PROVIEW<span>QR MENU</span></div></div>
+  <div><h2>Every menu, every order — in one place.</h2>
+    <div class="art-cards">
+      <div class="art-menu" style="left:0;top:10px;transform:rotate(-3deg)"><div class="h">Breakfast &amp; Brunch<small>LIVE</small></div>
+        <div class="r"><b>Turkish Eggs</b><span>£12.95</span></div><div class="r"><b>Pistachio French Toast</b><span>£15.95</span></div><div class="r"><b>Flat White</b><span>£3.60</span></div></div>
+      <div class="art-qr" style="left:280px;top:40px;transform:rotate(4deg)">${UI.qr('pv-art',92)}</div>
+      <div class="art-pill" style="left:40px;top:205px"><i>✓</i><div><b>New order · Table 7</b><br><span style="color:#55555f;font-size:12px">3 items · £31.50 · just now</span></div></div>
+    </div></div>
+  <div class="auth2-sub">Digital QR menus, ordering, reservations and guest marketing for every location you run.</div></div>`}
+function authShow(html){const a=$('#pqAuth');a.innerHTML=`<div class="auth2">${art()}<div class="auth2-form"><div><div class="box">${BRAND2}${html}</div></div></div></div>`;a.classList.add('show');loader(false);const f=a.querySelector('input');f&&f.focus()}
+const msg=(t,k='err')=>t?`<div class="${k==='ok'?'lg-ok':k==='info'?'lg-info':'lg-err'}" role="alert">${esc(t)}</div>`:'';
+const inp=(id,label,type='text',attrs='')=>`<label for="${id}">${label}</label><input class="inp" id="${id}" type="${type}" ${attrs}>`;
+function signInScreen(note='',kind='err'){authShow(`<h1>Sign in</h1><p class="auth2-mut">Manage menus, orders, guests and marketing across your locations.</p>${msg(note,kind)}
+  <form id="pqSignIn" style="display:flex;flex-direction:column;gap:14px;margin:0;padding:0;border:0;box-shadow:none" novalidate>${inp('pqEmail','Email','email','required autocomplete="username" placeholder="you@company.com"')}${inp('pqPass','Password','password','required autocomplete="current-password" placeholder="Password"')}
+  <button class="go" type="submit">Sign in</button></form>
+  <div class="or">or</div><a class="ghost2" href="${CFG.dash}?app=qrmenu&return=${encodeURIComponent(location.origin+'/')}">Sign in with Proview account</a>
+  <div class="auth2-links"><a href="#" data-pq="signup">Start a free 3-day trial</a><a href="#" data-pq="forgot">Forgot password?</a></div>`);
   $('#pqSignIn').onsubmit=async e=>{e.preventDefault();const b=e.target.querySelector('button');b.disabled=true;b.textContent='Signing in…';
     const {error}=await sb.auth.signInWithPassword({email:$('#pqEmail').value.trim(),password:$('#pqPass').value});
     if(error){signInScreen(/confirm/i.test(error.message)?'Confirm your email address first (check your inbox).':'Wrong email or password.');return}
     afterSignIn()}}
-function signUpScreen(note=''){authShow(`<h1>Start your free trial</h1><p class="sub" style="margin-bottom:18px">3 days free. No card needed.</p>${msg(note)}
-  <form id="pqSignUp">${UI.field({label:'Email',control:UI.input({id:'pqEmail',type:'email',attrs:'required autocomplete="email"'})})}${UI.field({label:'Password',help:'At least 8 characters.',control:UI.input({id:'pqPass',type:'password',attrs:'required minlength="8" autocomplete="new-password"'})})}
-  <button class="btn primary">Create account</button></form><p style="text-align:center;margin:20px 0 0" class="muted">Already have an account? <a href="#" data-pq="signin">Sign in</a></p>`);
-  $('#pqSignUp').onsubmit=async e=>{e.preventDefault();const em=$('#pqEmail').value.trim();
+const FORM='style="display:flex;flex-direction:column;gap:14px;margin:0;padding:0;border:0;box-shadow:none" novalidate';
+function signUpScreen(note=''){authShow(`<h1>Create your login</h1><p class="auth2-mut">Start your free 3-day trial. No card needed.</p>${msg(note)}
+  <form id="pqSignUp" ${FORM}>${inp('pqEmail','Email','email','required autocomplete="email" placeholder="you@company.com"')}${inp('pqPass','Password','password','required minlength="8" autocomplete="new-password" placeholder="At least 8 characters"')}
+  <button class="go" type="submit">Create login</button></form><div class="auth2-links"><a href="#" data-pq="signin">I already have a login</a></div>`);
+  $('#pqSignUp').onsubmit=async e=>{e.preventDefault();const em=$('#pqEmail').value.trim();if($('#pqPass').value.length<8)return signUpScreen('Use at least 8 characters.');
     const {data,error}=await sb.auth.signUp({email:em,password:$('#pqPass').value,options:{emailRedirectTo:location.origin+location.pathname}});
     if(error)return signUpScreen(error.message);
     if(data.session)return afterSignIn();
-    authShow(`<h1>Check your inbox</h1>${msg('We sent a confirmation link to '+em+'. Open it on this device to continue.','info')}<a class="btn secondary" href="#" data-pq="signin">Back to sign in</a>`)}}
-function forgotScreen(note='',kind='err'){authShow(`<h1>Reset password</h1><p class="sub" style="margin-bottom:18px">We'll email you a link.</p>${msg(note,kind)}
-  <form id="pqForgot">${UI.field({label:'Email',control:UI.input({id:'pqEmail',type:'email',attrs:'required'})})}<button class="btn primary">Send reset link</button></form>
-  <p style="text-align:center;margin:20px 0 0"><a href="#" data-pq="signin">Back to sign in</a></p>`);
+    authShow(`<h1>Check your inbox</h1>${msg('We sent a confirmation link to '+em+'. Open it on this device to continue.','info')}<a class="ghost2" href="#" data-pq="signin">Back to sign in</a>`)}}
+function forgotScreen(note='',kind='err'){authShow(`<h1>Reset your password</h1><p class="auth2-mut">We’ll email you a link to choose a new one.</p>${msg(note,kind)}
+  <form id="pqForgot" ${FORM}>${inp('pqEmail','Email','email','required placeholder="you@company.com"')}<button class="go" type="submit">Send reset link</button></form>
+  <div class="auth2-links"><a href="#" data-pq="signin">Back to sign in</a></div>`);
   $('#pqForgot').onsubmit=async e=>{e.preventDefault();const {error}=await sb.auth.resetPasswordForEmail($('#pqEmail').value.trim(),{redirectTo:location.origin+location.pathname});
-    forgotScreen(error?error.message:'If that email has an account, a reset link is on its way.',error?'err':'ok')}}
-function newPasswordScreen(note=''){authShow(`<h1>Choose a new password</h1>${msg(note)}<form id="pqNewPw">${UI.field({label:'New password',control:UI.input({id:'pqPass',type:'password',attrs:'required minlength="8" autocomplete="new-password"'})})}<button class="btn primary">Save password</button></form>`);
+    forgotScreen(error?error.message:'If that email has a login, a reset link is on its way.',error?'err':'ok')}}
+function newPasswordScreen(note=''){authShow(`<h1>Choose a new password</h1><p class="auth2-mut">At least 8 characters.</p>${msg(note)}<form id="pqNewPw" ${FORM}>${inp('pqPass','New password','password','required minlength="8" autocomplete="new-password"')}<button class="go" type="submit">Save password</button></form>`);
   $('#pqNewPw').onsubmit=async e=>{e.preventDefault();const {error}=await sb.auth.updateUser({password:$('#pqPass').value});if(error)return newPasswordScreen(error.message);toast('Password updated');afterSignIn()}}
-function trialSetupScreen(note=''){authShow(`<h1>Set up your business</h1><p class="sub" style="margin-bottom:18px">Start your free 3-day trial.</p>${msg(note)}
-  <form id="pqTrial">${UI.field({label:'Business name',required:true,control:UI.input({id:'pqBiz',attrs:'required'})})}${UI.field({label:'First location',help:'e.g. Camden. You can add more later.',control:UI.input({id:'pqLocName',placeholder:'Main'})})}${UI.field({label:'Phone',control:UI.input({id:'pqPhone',type:'tel'})})}
-  <button class="btn primary">Start free trial</button></form><p style="text-align:center;margin:20px 0 0"><a href="#" data-pq="signout">Sign out</a></p>`);
-  $('#pqTrial').onsubmit=async e=>{e.preventDefault();const {error}=await sb.rpc('pq_self_trial',{p_business:$('#pqBiz').value,p_location:$('#pqLocName').value||null,p_phone:$('#pqPhone').value||null});
-    if(error)return trialSetupScreen(error.message);toast('Your 3-day trial has started');afterSignIn()}}
+function trialSetupScreen(note=''){authShow(`<h1>Set up your business</h1><p class="auth2-mut">Start your free 3-day trial${CTX.email?' as '+esc(CTX.email):''}.</p>${msg(note)}
+  <form id="pqTrial" ${FORM}>${inp('pqBiz','Business name','text','required maxlength="120" autocomplete="organization" placeholder="e.g. Alici\'s"')}${inp('pqLocName','First location','text','maxlength="120" placeholder="Same as the business name"')}${inp('pqPhone','Phone (optional)','tel','')}
+  <button class="go" type="submit">Start free trial</button><button class="ghost2" type="button" data-pq="signout">Sign out</button>
+  <p class="hint">After 3 days the location locks until you buy a licence at <a href="${CFG.lic}" target="_blank" rel="noopener">license.proviewcrm.co.uk</a>. Joining an existing business? Ask its owner to add your email, then sign in again.</p></form>`);
+  $('#pqTrial').onsubmit=async e=>{e.preventDefault();const b=$('#pqBiz').value.trim();if(!b)return trialSetupScreen('Enter your business name.');
+    const go=e.target.querySelector('.go');go.disabled=true;go.textContent='Setting up…';
+    const {error}=await sb.rpc('pq_self_trial',{p_business:b,p_location:$('#pqLocName').value||null,p_phone:$('#pqPhone').value||null});
+    if(error)return trialSetupScreen(error.message);toast('Your free trial has started');afterSignIn()}}
 document.addEventListener('click',e=>{const a=e.target.closest('[data-pq]');if(!a)return;e.preventDefault();
   ({signin:()=>signInScreen(),signup:()=>signUpScreen(),forgot:()=>forgotScreen(),signout:()=>signOut()})[a.dataset.pq]?.()});
 
@@ -125,7 +141,7 @@ async function afterSignIn(){
   // device cache: forget businesses this person can no longer open
   const saved=ls.get('pq_last_'+who.email)||{};
   const mems=who.memberships||[];
-  if(!CTX.master&&!mems.length){if(!who.trial_used)return trialSetupScreen();await sb.auth.signOut();purge();return signInScreen('Ask your owner or Proview to give you access.','info')}
+  if(!CTX.master&&!mems.length){if(!who.trial_used){CTX.email=who.email;return trialSetupScreen()}await sb.auth.signOut();purge();return signInScreen('Ask your owner or Proview to give you access.','info')}
   let orgId=null;
   if(CTX.master)orgId=saved.org||null;else orgId=(mems.find(x=>x.org_id===saved.org)||mems[0]).org_id;
   if(orgId){const ok=await openOrg(orgId,saved.site,true);if(!ok&&!CTX.master){await sb.auth.signOut();purge();return signInScreen('Ask your owner or Proview to give you access to a location.','info')}}
@@ -195,7 +211,7 @@ function decorateShell(){
   $('#pqLoc').addEventListener('change',e=>chooseLoc(e.target.value));
   // sidebar venue card → this business's locations
   const vb=$('.side .venue');if(vb)vb.parentElement.querySelector('.dd-menu').innerHTML=`<div id="venueList"></div>`;
-  const brand=$('.side .brand span');if(brand)brand.textContent='QR Menu';
+  const brand=$('.side .brand');if(brand)brand.outerHTML=`<a class="brand" href="#${CTX.master&&!CTX.org?'locations':'dashboard'}" title="Proview QR Menu"><img class="brand-mark" src="app-icon.svg" alt=""><div class="wordmark">PROVIEW<span>QR MENU</span></div></a>`;
   fillLoc();fillAcct()}
 function fillAcct(){const a=$('#pqAcct');if(!a)return;$('#pqAv').textContent=initials(CTX.email.split('@')[0]);
   const role=CTX.master?'Proview master':({owner:'Owner',admin:'Admin',manager:'Manager',staff:'Staff'})[CTX.role]||'';
