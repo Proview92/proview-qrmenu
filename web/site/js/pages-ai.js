@@ -47,7 +47,7 @@ App.route('website-builder-build',()=>`
    <h1>Build your website</h1>
    <p class="sub" style="margin-bottom:8px">AI drafts a first version of your site. You can change every section, the design and the navigation afterwards – nothing goes public until you publish.</p>
    ${stepLbl(1,'Bring in your restaurant details')}
-   <div class="card pad" style="display:flex;gap:12px;align-items:flex-start;background:var(--ok-tint);border-color:var(--border)"><span style="color:var(--ok)">${ic('check')}</span><div><strong style="color:var(--ink)">Google Business connected</strong><div class="help">Details from your Google Business Profile are kept up to date on your website automatically.</div></div></div>
+   <div class="card pad" style="display:flex;gap:12px;align-items:flex-start;background:var(--ok-tint);border-color:#BFE3CD"><span style="color:var(--ok)">${ic('check')}</span><div><strong style="color:var(--ink)">Google Business connected</strong><div class="help">Details from your Google Business Profile are kept up to date on your website automatically.</div></div></div>
    <div style="display:flex;align-items:center;justify-content:space-between">${stepLbl(2,'Describe your restaurant','Optional')}<button class="btn ghost sm" data-action="ai-wb-tips">💡 Prompt tips</button></div>
    <div class="card pad">
     <textarea class="input" id="wbPrompt" rows="5" maxlength="300" placeholder="Describe your website in detail..." data-input="ai-wb-count">${esc(App._wbPrompt||'')}</textarea>

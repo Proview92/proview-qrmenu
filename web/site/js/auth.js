@@ -32,7 +32,7 @@ function lic(s){if(!s)return{k:'none',t:'No licence',c:'grey'};if(s.archived)ret
   return{k:'ok',t:'Active until '+fmtD(s.expires_at),c:days<=14?'warn':'ok',days}}
 
 /* ---------- styles ---------- */
-document.head.insertAdjacentHTML('beforeend',`<style>
+document.head.insertAdjacentHTML('beforeend',`<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&display=swap" rel="stylesheet"><style>
 #pqLoad{position:fixed;inset:0;background:var(--page);display:grid;place-items:center;z-index:200}
 #pqLoad .ico{width:72px;height:72px;border-radius:18px;background:var(--brand-700);color:#fff;display:grid;place-items:center;animation:pqPulse 1.2s ease-in-out infinite}
 #pqLoad .ico svg{width:38px;height:38px}
@@ -45,7 +45,7 @@ document.head.insertAdjacentHTML('beforeend',`<style>
 .pq-or{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px;margin:18px 0}.pq-or::before,.pq-or::after{content:"";flex:1;border-top:1px solid var(--border)}
 .pq-msg{border-radius:var(--r-md);padding:10px 12px;margin-bottom:14px;font-size:14px}.pq-msg.err{background:var(--bad-tint);color:var(--bad)}.pq-msg.ok{background:var(--ok-tint);color:var(--ok)}.pq-msg.info{background:var(--brand-tint);color:var(--brand-900)}
 .pq-title{font-size:20px;line-height:28px;font-weight:700;color:var(--ink);margin:0 4px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px}
-#pqLoc{height:38px;border-radius:10px;border:1px solid #e4e2dc;background:#fff;color:#17171c;font:600 14px var(--font);padding:0 30px 0 12px;min-width:170px;max-width:320px;cursor:pointer}
+#pqLoc{height:38px;border-radius:10px;border:1px solid #e4e2dc;background:#fff;color:#17171c;font:600 14px Inter,var(--font);padding:0 30px 0 12px;min-width:170px;max-width:320px;cursor:pointer}
 #pqLoc.pulse{animation:pqLocPulse .5s ease-in-out 3}@keyframes pqLocPulse{50%{box-shadow:0 0 0 4px rgba(21,101,192,.35)}}
 .hdr-cap{display:flex;align-items:center;gap:2px;background:#f3f2ee;border-radius:12px;padding:3px;flex:none}
 .hdr-cap>button{width:34px;height:34px;min-width:34px;border-radius:9px;background:transparent;border:0;display:grid;place-items:center;position:relative;color:#17171c;cursor:pointer}
@@ -69,9 +69,9 @@ document.body.insertAdjacentHTML('afterbegin',`<div id="pqLoad" role="status" ar
 const loader=on=>{$('#pqLoad').style.display=on?'grid':'none'};
 
 /* ---------- auth screens (auth2 layout shared by the Proview apps) ---------- */
-const BRAND2=`<div class="auth2-fbrand"><img src="app-icon.svg" alt=""><div class="wordmark2">Proview <i>QR Menu</i></div></div>`;
+const BRAND2=`<div class="auth2-fbrand"><img src="app-icon.svg" alt=""><div class="wordmark2">PROVIEW<span>QR MENU</span></div></div>`;
 function art(){return `<div class="auth2-art"><div class="art-glow"></div>
-  <div class="auth2-brand"><img src="app-icon.svg" alt=""><div class="wordmark">Proview <i>QR Menu</i></div></div>
+  <div class="auth2-brand"><img src="app-icon.svg" alt=""><div class="wordmark">PROVIEW<span>QR MENU</span></div></div>
   <div><h2>Every menu, every order — in one place.</h2>
     <div class="art-cards">
       <div class="art-menu" style="left:0;top:10px;transform:rotate(-3deg)"><div class="h">Breakfast &amp; Brunch<small>LIVE</small></div>
@@ -198,7 +198,7 @@ const TITLES={dashboard:'Dashboard',locations:'Locations',users:'Users','menu-ma
 function title(key){if(TITLES[key])return TITLES[key];const k=Object.keys(TITLES).filter(t=>key.startsWith(t)).sort((a,b)=>b.length-a.length)[0];return TITLES[k]||'Proview QR Menu'}
 function decorateShell(){
   const top=$('.top');
-  top.innerHTML=`<div class="pq-tw"><div class="pq-eyebrow" id="pqEyebrow">Proview</div><h1 class="pq-title" id="pqTitle">Dashboard</h1></div><select id="pqLoc" aria-label="Location"></select><div class="spacer"></div>
+  top.innerHTML=`<h1 class="pq-title" id="pqTitle">Dashboard</h1><select id="pqLoc" aria-label="Location"></select><div class="spacer"></div>
    <div class="hdr-cap"><span class="hdr-dot" id="pqDot" role="img" aria-label="Online" title="Online · all changes saved"></span>
      <button data-action="pq-search" aria-label="Search (Ctrl+K)" title="Search (Ctrl+K)">${ic('search')}</button>
      <button data-action="pq-chat" aria-label="Chat" title="Chat">${ic('msg')}</button>
@@ -212,12 +212,9 @@ function decorateShell(){
   const vb=$('.side .venue');if(vb)vb.closest('.dd').remove();
   const cr=$('.side .credits');if(cr)cr.remove();
   const col=localStorage.getItem('pq.sideCollapsed')==='1';App._userCollapsed=col;$('#app').classList.toggle('collapsed',col);
-  // Proview Navy sidebar footer: location card, Menu at bottom, Light mode, then COLLAPSE
-  $('.side').insertAdjacentHTML('beforeend',`<div class="side-foot"><button class="pv-prof" id="pvProf" data-action="pq-prof" title="Choose location"><b id="pvProfName">Proview</b><small><i class="pv-dot"></i><span id="pvProfSub"></span></small></button>
-    <button class="pv-fb" id="pvMenuBtn" data-action="pv-menu"></button><button class="pv-fb" id="pvThemeBtn" data-action="pv-theme"></button>
-    <button class="sf-link" id="sfCollapse" data-action="collapse" title="${col?'Expand menu':'Collapse menu'}" aria-label="${col?'Expand menu':'Collapse menu'}">${ic('left','sm')}<span class="lbl">COLLAPSE</span></button></div>`);
-  const brand=$('.side .brand');if(brand)brand.outerHTML=`<a class="brand" href="#${CTX.master&&!CTX.org?'locations':'dashboard'}" title="Proview QR Menu"><span class="bw">Proview <i>QR Menu</i></span><span class="bm">P<i>Q</i></span></a>`;
-  App.pvSync&&App.pvSync();fillLoc();fillAcct()}
+  $('.side').insertAdjacentHTML('beforeend',`<div class="side-foot"><button class="sf-link" id="sfCollapse" data-action="collapse" title="${col?'Expand menu':'Collapse menu'}" aria-label="${col?'Expand menu':'Collapse menu'}">${ic('left','sm')}<span class="lbl">COLLAPSE</span></button></div>`);
+  const brand=$('.side .brand');if(brand)brand.outerHTML=`<a class="brand" href="#${CTX.master&&!CTX.org?'locations':'dashboard'}" title="Proview QR Menu"><img class="brand-mark" src="app-icon.svg" alt=""><div class="wordmark">PROVIEW<span>QR MENU</span></div></a>`;
+  fillLoc();fillAcct()}
 function fillAcct(){const a=$('#pqAcct');if(!a)return;$('#pqAv').textContent=initials(CTX.email.split('@')[0]);
   const role=CTX.master?'Proview master':({owner:'Owner',admin:'Admin',manager:'Manager',staff:'Staff'})[CTX.role]||'';
   a.innerHTML=`<div style="display:flex;gap:10px;align-items:center;padding:8px 8px 12px;border-bottom:1px solid var(--border);margin-bottom:6px"><span class="avatar">${initials(CTX.email.split('@')[0])}</span><div style="min-width:0"><b style="color:var(--ink);display:block;overflow:hidden;text-overflow:ellipsis">${esc(CTX.email)}</b><small class="muted">${role}${CTX.org?' · '+esc(CTX.org.name):''}</small></div></div>
@@ -239,8 +236,6 @@ function fillLoc(){const sel=$('#pqLoc');if(!sel)return;
     sel.innerHTML=`<option value="all">${esc(allLbl)}</option>`+live.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('');sel.value=CTX.siteId}
   const vl=$('#venueList');if(vl){vl.innerHTML=!CTX.org?'<p class="muted" style="padding:8px">Open a business from Locations.</p>':
     [{id:'all',name:'All locations'},...CTX.sites.filter(s=>!s.archived)].map(s=>`<button data-action="pq-pick-site" data-id="${s.id}" style="${s.id===CTX.siteId?'background:var(--brand-tint);color:var(--brand-900);font-weight:700':''}"><span class="avatar" style="width:28px;height:28px;font-size:12px">${s.id==='all'?ic('layers','sm'):initials(s.name)}</span><span>${esc(s.name)}</span></button>`).join('')}
-  const pn=!CTX.org?'All businesses':CTX.siteId==='all'?CTX.org.name:site()?.name||'';const pr=CTX.master?'Proview master':({owner:'Owner',admin:'Admin',manager:'Manager',staff:'Staff'})[CTX.role]||'';
-  const pb=$('#pvProfName');if(pb)pb.textContent=pn||'Proview';const ps=$('#pvProfSub');if(ps)ps.textContent=(CTX.siteId==='all'?'All locations':'Online')+(pr?' · '+pr:'');const ey=$('#pqEyebrow');if(ey)ey.textContent=pn||'Proview';
   const n=$('#venueName');if(n)n.textContent=!CTX.org?'All businesses':CTX.siteId==='all'?CTX.org.name:site()?.name||'';const av=$('#venueAv');if(av)av.textContent=initials((n&&n.textContent)||'P')}
 async function chooseLoc(v){await openSite(v);if(v==='all'){App.go('locations')}App.render()}
 function pulseLoc(){const s=$('#pqLoc');if(!s)return;s.classList.remove('pulse');void s.offsetWidth;s.classList.add('pulse');s.focus()}
@@ -299,7 +294,6 @@ const A=App.action;
 A('pq-signout',()=>App.modal({title:'Sign out?',body:'<p style="margin:0">Changes are saved automatically.</p>',footer:`<button class="btn secondary" data-close>Cancel</button><button class="btn primary" data-action="pq-signout-yes">Sign out</button>`}));
 A('sign-out',()=>App.actions['pq-signout']());
 A('pq-signout-yes',()=>signOut());
-A('pq-prof',()=>{if(innerWidth<=760)$('#app').classList.remove('mobile-open');pulseLoc()});
 A('pq-pick-site',el=>chooseLoc(el.dataset.id));
 A('switch-venue',el=>chooseLoc(el.dataset.id||'all'));
 A('pq-recheck',async()=>{if(CTX.org){await openOrg(CTX.org.id,CTX.siteId,true);App.render();toast('Licence checked')}});
