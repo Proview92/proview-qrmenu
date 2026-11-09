@@ -176,3 +176,72 @@ body.dark{--page:#0f0f12;--bg:#0f0f12;--surface:#17171c;--line:#2a2a33;--border:
 .app.collapsed .side .venue{margin:0 8px 8px;width:calc(100% - 16px);padding:8px;justify-content:center}
 .app.collapsed .side .venue>svg{display:none}
 .app.collapsed .side .nav a{justify-content:center;padding:0}
+
+/* ---------- phones & small tablets ---------- */
+@media (max-width:760px){
+  html body .app,html body .app.collapsed{grid-template-columns:minmax(0,1fr)}
+  .side{width:264px}
+  /* stack fixed side columns used by some pages */
+  #view [style*="1fr) 2"],#view [style*="1fr) 3"],#view [style*="1fr 2"],#view [style*="1fr 3"],#view [style*="px minmax"],#view [style*="grid-template-columns:2"],#view [style*="grid-template-columns:3"],#view [style*="grid-template-columns: 2"],#view [style*="grid-template-columns: 3"]{grid-template-columns:minmax(0,1fr)!important}
+  #view .grid.g2,#view .grid.g3{grid-template-columns:minmax(0,1fr)!important}
+  #view .grid.g4,#view .grid.g6,#view .kv{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  #view .tabs{min-width:0!important;max-width:100%;overflow-x:auto;flex-wrap:nowrap}
+  #view .split,#view .editor{grid-template-columns:minmax(0,1fr)!important}
+  html,body{overflow-x:hidden}
+  #view .search,.modal .search,.drawer .search{display:flex!important;max-width:none}
+  #view .seg{max-width:100%;min-width:0;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none}
+  #view .card>.seg,#view div>.seg{flex:1 1 100%}
+  #view [style*="1fr auto"]{grid-template-columns:minmax(0,1fr)!important}
+  #view .bars{overflow-x:auto;scrollbar-width:thin}
+  #view .bars .b{flex:1 0 24px}
+  #view .preview{overflow:hidden}
+  #view .phone{max-width:100%}
+  html body .ed-sections .item{grid-template-columns:16px 36px minmax(0,1fr) 76px 40px;gap:8px;padding:10px 12px}
+  html body .ed-sections .item .thumb{width:36px;height:36px;font-size:12px}
+  html body .ed-sections .item .score{display:none}
+  html body .ed-sections .item .nm{white-space:normal!important;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;font-size:13.5px;line-height:18px}
+  html body .ed-sections .item .ed-price input{font-size:13px;padding:0 4px}
+  html body .ed-sections .item .ed-enter{display:none}
+  #view .ed-coll{flex-wrap:wrap;row-gap:6px}
+  #view .hub{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px}
+  #view .hub-card{padding:18px 12px}
+  #view .card,#view .grid>*,#view [style*="display:grid"]>*,#view .split>*,#view .editor>*{min-width:0}
+  #view .seg::-webkit-scrollbar{display:none}
+  #view .seg button{white-space:nowrap;flex:none}
+  #view .chip-btn,#view .chip,#view .pill{white-space:nowrap}
+  #view .card:has(>.seg),#view div:has(>.seg),#view div:has(>.chip-btn),#view div:has(>.chip){flex-wrap:wrap;row-gap:8px}
+  .side{box-shadow:none}.app.mobile-open .side{box-shadow:8px 0 32px rgba(0,0,0,.35)}
+  .app.mobile-open::after{content:"";position:fixed;inset:0;background:rgba(20,20,26,.38);z-index:39}
+  .app.mobile-open .side{z-index:41}
+  /* header: one row of controls, location dropdown on its own row (Proview standard) */
+  html body .top{flex-wrap:wrap;gap:6px;row-gap:8px;padding:8px 12px;min-height:0}
+  .top .iconbtn[data-action=collapse]{width:32px;height:32px}
+  html body .pq-title{flex:1 1 0;min-width:0;font-size:17px;max-width:none;margin:0}
+  .top .spacer{display:none}
+  .hdr-cap{padding:2px;gap:0}
+  html body .hdr-cap>button{width:28px;min-width:28px;height:30px}
+  .hdr-dot{margin:0 6px}
+  html body .pv-dash{width:32px;height:32px;padding:0;justify-content:center}
+  html body .pv-dash span{display:none}
+  .top .me,#pqAv{width:30px!important;height:30px!important;font-size:11px}
+  .top>.iconbtn[data-action=pq-signout]{display:none}
+  html body #pqLoc{order:10;flex:1 0 100%;height:36px;font-size:13px;max-width:none;min-width:0}
+  .content{padding:14px 12px 90px}
+  .page-head{gap:10px;margin-bottom:16px}
+  .page-head h1{font-size:20px;line-height:26px}
+  .page-head .actions{margin-left:0;width:100%}
+  .page-head .actions .btn{flex:1 1 auto}
+  .pq-banner{flex-wrap:wrap;gap:8px}
+  .pq-banner .btn{margin-left:0;width:100%}
+  .toolbar .search,.toolbar select,.toolbar .input{max-width:none;flex:1 1 100%}
+  .tabs{margin-left:-12px;margin-right:-12px;padding:0 12px}
+  .tbl-wrap{margin:0 -1px}
+  .card.pad,.form-card{padding:16px}
+  .fab{right:14px;bottom:14px;width:50px;height:50px}
+  .modal{border-radius:16px 16px 0 0;margin-top:auto;max-height:92vh;overflow:auto}
+  .scrim{padding:0;align-items:flex-end}
+  .drawer{width:100vw!important}
+  .auth2-form{padding:20px 14px}
+  .auth2-form .box{padding:26px 20px}
+  .wordmark2{font-size:17px;letter-spacing:.1em}
+}

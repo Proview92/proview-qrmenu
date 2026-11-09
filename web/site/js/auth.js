@@ -172,7 +172,7 @@ async function openSite(id,quiet){
   if(id==='all'){replaceState(window.PV_BLANK(CTX.org?.name||''));lastSaved=null}
   else{const s=site();const {data}=await sb.from('pq_state').select('data,updated_at').eq('site_id',id).maybeSingle();
     const blank=window.PV_BLANK(s.name);const d=data?.data&&Object.keys(data.data).length?{...blank,...data.data}:blank;
-    d.venue={...blank.venue,...(d.venue||{}),id:id.slice(0,8).toUpperCase(),name:d.venue?.name||s.name};d.integrations=blank.integrations;
+    d.venue={...blank.venue,...(d.venue||{}),id:id.slice(0,8).toUpperCase(),name:d.venue?.name||s.name};Object.keys(blank).forEach(k=>{if(d[k]===undefined||d[k]===null)d[k]=blank[k]});d.integrations=blank.integrations;
     replaceState(d);lastSaved=snapshot()}
   fillLoc();if(!quiet){toast(id==='all'?'All locations':'Switched to '+site().name)}}
 function replaceState(d){const S=App.state;Object.keys(S).forEach(k=>delete S[k]);Object.assign(S,d);const n=$('#venueName');if(n)n.textContent=CTX.siteId==='all'?(CTX.org?.name||'Proview'):site()?.name||''}

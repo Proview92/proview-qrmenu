@@ -73,6 +73,7 @@ window.PV_BLANK=function(name){const d=window.PV_DEMO;return {
   venue:{id:'',name:name||'',address:'',city:'',country:'United Kingdom of Great Britain and Northern Ireland',zip:'',phone:'',timezone:'Europe/London',website:'',pincode:String(1000+Math.floor(Math.random()*9000))},
   venues:[],menus:[],modifiers:[],promotions:[],orders:[],archived:[],tables:[],areas:['No Area'],staff:[],
   customers:[],reviews:[],feedbacks:[],promoCodes:[],
-  forms:JSON.parse(JSON.stringify(d.forms)),integrations:d.integrations,connected:[],media:[]}};
+  forms:JSON.parse(JSON.stringify(d.forms)),integrations:d.integrations,connected:[],media:[],
+  cfg:{},floor:[],mkConn:{instagram:false,facebook:false,meta:false}}};
 window.PV_DATA=window.PV_BLANK('');
 })();
