@@ -1,0 +1,28 @@
+# Proview QR Menu
+
+Digital QR menus, ordering, guests and AI marketing for restaurants: the back office, in the Proview Tech theme.
+Part of the Proview resold apps (Bookings, Employee, Signage, Label, WiFi) and follows the same access model.
+
+- **Live:** https://qrmenu.proviewcrm.co.uk (GitHub Pages from `web/site`, deployed by `.github/workflows/pages.yml`).
+  DNS (GoDaddy): `qrmenu CNAME proview92.github.io`.
+- **Supabase:** project `proview-qrmenu`, ref `yblafwttmqaqvfvedaoc`, eu-west-2 (London).
+- **Licences:** one per location, managed at https://license.proviewcrm.co.uk (product `qrmenu`, Stripe ref prefix `pvq__<location id>__<plan>`).
+
+## Layout
+- `web/site/index.html` – loads the modules below.
+- `web/site/js/core.js` – UI kit, shell, router, actions. `data.js` – blank location template (+ demo data).
+- `web/site/js/pages-*.js` – the app's pages (menus & editor, AI tools, orders/guests/reports, marketplace & settings).
+- `web/site/js/auth.js` – sign-in, Proview account SSO, master login, Locations, location dropdown, Users, licence lock and per-location saving.
+- `supabase/migrations/` – schema and access rules. `supabase/functions/sso-login/` – "Sign in with Proview account".
+
+## Access model
+- **Master** (`pq_masters`, `altun@proviewtech.co.uk`) sees every business, one business at a time, and lands on **Locations**.
+- **Add business** is master-only. Anyone with no business and no invite can start a **free 3-day trial** (one per email).
+- **Owner / Admin**: every location and feature, manage users. **Manager / Staff**: only ticked locations and features
+  (feature switch missing = role default: managers everything except Users and Marketplace; staff Orders, Reservations, Guests).
+- Nobody can change their own access. Writes go through security-definer functions; reads are guarded by row-level security.
+- A location's data is one `pq_state` row (jsonb). Saving is refused by the database when the location's licence has ended.
+
+## Tables
+`pq_orgs` (businesses), `pq_sites` (locations + licence), `pq_members` (logins by email: role, site_ids, features),
+`pq_state` (per-location app data), `pq_masters`, `pq_trials_used`, `pq_sso_used`, `hub_private.config` (licence-portal token hash, plans).
