@@ -470,8 +470,37 @@ A('pq-open-loc',async el=>{const org=el.dataset.org,id=el.dataset.id;loader(true
 A('pq-open-org',async el=>{loader(true);await openOrg(el.dataset.id,null);loader(false);LOCS.st=null;App.go(CTX.siteId==='all'?'locations':'dashboard');App.render();fillAcct()});
 A('pq-close-org',async()=>{await flush();CTX.org=null;CTX.sites=[];CTX.siteId='all';CTX.role=null;CTX.member=null;remember();replaceState(window.PV_BLANK(''));LOCS.st=null;await loadMaster();fillLoc();fillAcct();if(App.current()!=='locations')App.go('locations');App.render()});
 A('pq-switch-org',async el=>{loader(true);await openOrg(el.value,null);loader(false);App.render();fillAcct()});
-A('pq-add-org',()=>modal({title:'Add business',body:`${UI.field({label:'Business name',required:true,control:UI.input({id:'pqNo'})})}${UI.field({label:'Owner email',help:'They sign in with this email (password or Proview account).',control:UI.input({id:'pqNe',type:'email'})})}${UI.field({label:'First location',control:UI.input({id:'pqNl',placeholder:'Main'})})}${UI.field({label:'Phone',control:UI.input({id:'pqNp2',type:'tel'})})}<p class="help">The first location starts on a free 3-day trial. Set its licence in the licence portal.</p>`,footer:`<button class="btn secondary" data-close>Cancel</button><button class="btn primary" data-action="pq-add-org-save">Add business</button>`}));
-A('pq-add-org-save',async()=>{const {data,error}=await sb.rpc('pq_create_org',{p_name:$('#pqNo').value,p_owner_email:$('#pqNe').value,p_location:$('#pqNl').value,p_phone:$('#pqNp2').value||null});if(error)return toast(error.message);closeModal();await loadOrgs();toast('Business added');await openOrg(data,null);App.render();fillAcct()});
+/* "+ Add business" (master only): the business, a location with the same name and its Owner login, in one go, with no email
+   sent (ADD_BUSINESS_SPEC; as Proview Signage). pq_add_business (supabase/migrations/006) does it all-or-nothing on the server. */
+const abF=(id,label,req,control)=>`<div class="field"><label for="${id}">${label}${req?' <span class="req">*</span>':''}</label>${control}</div>`;
+A('pq-add-org',()=>{if(!CTX.master)return;modal({title:'Add business',wide:true,body:`${abF('pqAbBiz','Business name',1,UI.input({id:'pqAbBiz',placeholder:'e.g. Tolians',attrs:'autocomplete="off"'}))}
+  <div class="eyebrow pq-abz-cap">Owner login</div>
+  <div class="pq-abz-grid">${abF('pqAbName','Name',1,UI.input({id:'pqAbName',placeholder:'e.g. Sam Taylor',attrs:'autocomplete="off"'}))}${abF('pqAbMob','Mobile',0,UI.input({id:'pqAbMob',type:'tel',placeholder:'Optional',attrs:'autocomplete="off"'}))}
+  ${abF('pqAbEmail','Email (they sign in with this)',1,UI.input({id:'pqAbEmail',type:'email',placeholder:'name@company.com',attrs:'autocomplete="off"'}))}
+  ${abF('pqAbPw','Password',1,`<div class="pq-abz-pw"><div class="pq-pw"><input class="input" id="pqAbPw" type="password" placeholder="At least 6 characters" autocomplete="new-password"><button type="button" class="pq-pw-eye" data-action="pq-ab-eye" tabindex="-1" aria-label="Show password" title="Show password">${ic('eye')}</button></div><button type="button" class="btn secondary sm" data-action="pq-ab-suggest">Suggest</button></div>`)}</div>
+  <p class="help" style="margin:0">The business gets a location with the same name. This person becomes its Owner / Admin. No email is sent.</p>`,
+  footer:`<button class="btn secondary" data-close>Cancel</button><button class="btn primary" id="pqAbGo" data-action="pq-add-org-save">Add business</button>`});$('#pqAbBiz').focus()});
+const abShow=show=>{const i=$('#pqAbPw'),b=$('#modal [data-action=pq-ab-eye]');if(!i)return;i.type=show?'text':'password';if(b){b.innerHTML=ic(show?'eyeoff':'eye');b.title=show?'Hide password':'Show password';b.setAttribute('aria-label',b.title)}};
+A('pq-ab-eye',()=>{const i=$('#pqAbPw');if(!i)return;abShow(i.type==='password');i.focus()});
+A('pq-ab-suggest',()=>{const a='abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789',r=crypto.getRandomValues(new Uint32Array(10)),i=$('#pqAbPw');if(!i)return;i.value=[...r].map(n=>a[n%a.length]).join('');abShow(true)});
+A('pq-add-org-save',async()=>{if(!CTX.master)return;
+  const v=id=>($('#'+id)?.value||'').trim(),need=(id,m)=>{toast(m);$('#'+id)?.focus()};
+  const biz=v('pqAbBiz'),name=v('pqAbName'),e=v('pqAbEmail').toLowerCase(),mob=v('pqAbMob'),pw=$('#pqAbPw')?.value||'';
+  if(biz.length<2)return need('pqAbBiz','Enter the business name');
+  if(name.length<2)return need('pqAbName','Enter the owner’s name');
+  if(!/^\S+@\S+\.\S+$/.test(e))return need('pqAbEmail','Enter a valid email address');
+  if(pw.length<6)return need('pqAbPw','The password needs at least 6 characters');
+  const go=$('#pqAbGo');if(go)go.disabled=true;
+  const {data:r,error}=await sb.rpc('pq_add_business',{p_business:biz,p_name:name,p_email:e,p_mobile:mob,p_password:pw});
+  if(error||!r){if(go)go.disabled=false;return toast(error?.message||'Couldn’t add the business')}
+  closeModal();await loadOrgs();LOCS.st=null;LOCS.at=0;App.render();
+  const site=location.origin+location.pathname,details=`PROVIEW QR MENU login\n${site}\nEmail: ${e}\nPassword: ${pw}`;
+  modal({title:`${esc(biz)} added`,body:r.existing?`<p style="margin:0">${esc(e)} already had a PROVIEW QR MENU login, so they were made Owner / Admin of this business and keep the password they already use. The password you typed was not applied.</p>`
+    :`<p class="muted" style="margin:0 0 12px">The owner can sign in now. No email was sent, so pass these on yourself:</p>
+    <div class="pq-abz-card"><div><span class="muted">Sign in at</span><b>${esc(site.replace(/^https?:\/\//,''))}</b></div><div><span class="muted">Email</span><b>${esc(e)}</b></div><div><span class="muted">Password</span><b>${esc(pw)}</b></div></div>
+    <button type="button" class="btn secondary" id="pqAbCopy" style="margin-top:12px">${ic('copy','sm')} Copy login details</button>`,
+    footer:`<button class="btn secondary" data-close>Stay here</button><button class="btn primary" data-close data-action="pq-open-loc" data-org="${esc(r.org_id)}" data-id="${esc(r.site_id)}">Open business</button>`});
+  const c=$('#pqAbCopy');if(c)c.onclick=()=>App.copy(details,'Copied')});
 A('pq-suspend-org',async el=>{const {error}=await sb.rpc('pq_update_org',{p_org:el.dataset.id,p_name:null,p_suspended:el.dataset.v==='1'});if(error)return toast(error.message);await loadOrgs();App.render();toast(el.dataset.v==='1'?'Business paused':'Business unpaused')});
 A('pq-del-org',el=>modal({title:'Delete '+esc(el.dataset.name)+'?',body:`<p style="margin-top:0">This permanently deletes the business, all its locations, menus, orders and users. It can't be undone.</p>${UI.field({label:'Type the business name to confirm',control:UI.input({id:'pqDelName'})})}`,footer:`<button class="btn secondary" data-close>Cancel</button><button class="btn danger" data-action="pq-del-org-yes" data-id="${el.dataset.id}" data-name="${esc(el.dataset.name)}">Delete permanently</button>`}));
 A('pq-del-org-yes',async el=>{if($('#pqDelName').value.trim()!==el.dataset.name)return toast('Type the exact business name');const {error}=await sb.rpc('pq_delete_org',{p_org:el.dataset.id});if(error)return toast(error.message);closeModal();await loadOrgs();App.render();toast('Business deleted')});

@@ -151,3 +151,12 @@ body.dark .phone{background:#fff}
 .app.collapsed .brand b{font-size:0}
 .app.collapsed .brand b::after{content:"P";font-size:22px}
 .app.iq-open .fab{display:none}
+/* Add business pop-up (master; as Proview Signage) */
+.pq-abz-cap{margin:2px 0 10px}
+.pq-abz-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+.pq-abz-pw{display:flex;gap:6px;align-items:center}.pq-abz-pw .pq-pw{flex:1;min-width:0}
+.pq-pw{position:relative}.pq-pw .input{width:100%;padding-right:42px}
+.pq-pw-eye{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:34px;height:32px;border:0;background:none;color:var(--muted);cursor:pointer;display:grid;place-items:center;border-radius:8px}
+.pq-pw-eye:hover{color:var(--ink);background:var(--page)}
+.pq-abz-card{display:grid;gap:8px;background:#edf2fd;border:1px solid #cbd8f6;border-radius:10px;padding:10px 14px}.pq-abz-card>div{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}.pq-abz-card b{font-family:ui-monospace,monospace;word-break:break-all}
+@media (max-width:640px){.pq-abz-grid{grid-template-columns:1fr}}
