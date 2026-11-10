@@ -360,7 +360,7 @@ function openPalette(){App.modal({title:'Search',body:`<label class="search" sty
 // counts come only from data the app already has: pq_orgs_list, pq_sites (licences) and each location's saved pq_state
 // (menus switched on; orders sent today, from the orders the back office has already taken in from the QR menu)
 const LOCS={st:null,at:0,busy:false,err:'',q:''};
-const shortD=d=>new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+const shortD=d=>{const x=new Date(d);return x.toLocaleDateString('en-GB',x.getFullYear()===new Date().getFullYear()?{day:'numeric',month:'short'}:{day:'numeric',month:'short',year:'numeric'})};
 const plural=(n,w,ws)=>`${n} ${n===1?w:(ws||w+'s')}`;
 const todayStr=()=>{const d=new Date(),p=n=>String(n).padStart(2,'0');return `${p(d.getDate())}/${p(d.getMonth()+1)}/${d.getFullYear()}`};
 const orgOf=id=>CTX.orgs.find(o=>o.id===id)||(CTX.org&&CTX.org.id===id?CTX.org:null);

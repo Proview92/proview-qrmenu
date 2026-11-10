@@ -18,9 +18,9 @@
 #pqLoad .pv-splash-msg{display:none;font:15px/1.45 Inter,"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;color:#55555f;text-align:center;padding:0 24px}
 #pqLoad.stuck .pv-splash-icon{display:none}#pqLoad.stuck .pv-splash-msg{display:block}
 </style>
-<link rel="stylesheet" href="css/base.css">
-<link rel="stylesheet" href="css/app.css">
-<link rel="stylesheet" href="css/theme.css">
+<link rel="stylesheet" href="css/base.css?v=20261110c">
+<link rel="stylesheet" href="css/app.css?v=20261110c">
+<link rel="stylesheet" href="css/theme.css?v=20261110c">
 </head>
 <body>
 <div id="pqLoad" role="status" aria-label="Loading Proview QR Menu"><div class="pv-splash-icon"></div><div class="pv-splash-msg">Proview QR Menu couldn't load. Check your connection and <a href="" style="color:#4a6cd0">reload</a>.</div></div>
@@ -28,14 +28,14 @@
 setTimeout(function(){if(!window.PQ||!window.PQ.started){var l=document.getElementById('pqLoad');if(l)l.classList.add('stuck')}},8000)</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
-<script src="js/data.js"></script>
-<script src="js/core.js"></script>
-<script src="js/pages-menu.js"></script>
-<script src="js/pages-editor.js"></script>
-<script src="js/pages-ai.js"></script>
-<script src="js/pages-setup.js"></script>
-<script src="js/pages-operate.js"></script>
-<script src="js/auth.js"></script>
+<script src="js/data.js?v=20261110c"></script>
+<script src="js/core.js?v=20261110c"></script>
+<script src="js/pages-menu.js?v=20261110c"></script>
+<script src="js/pages-editor.js?v=20261110c"></script>
+<script src="js/pages-ai.js?v=20261110c"></script>
+<script src="js/pages-setup.js?v=20261110c"></script>
+<script src="js/pages-operate.js?v=20261110c"></script>
+<script src="js/auth.js?v=20261110c"></script>
 <script>PQ.start()</script>
 </body>
 </html>
