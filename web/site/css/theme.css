@@ -13,7 +13,7 @@
   --r-sm:8px;--r-md:10px;--r-lg:12px;--shadow:var(--sh);
   --font:Inter,"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
 }
-body{font-family:var(--font);font-size:14px;line-height:1.45;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}
+body{font-family:var(--font);font-size:15px;line-height:1.45;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}
 h1,h2,h3,h4{font-weight:650;letter-spacing:-.01em}
 h1{font-size:22px;font-weight:700;letter-spacing:-.02em}
 .sub{color:var(--muted)}
@@ -51,11 +51,6 @@ h1{font-size:22px;font-weight:700;letter-spacing:-.02em}
 /* ---------- top bar ---------- */
 .top{background:#fff;border-bottom:1px solid var(--line);min-height:62px;height:auto;padding:12px 22px}
 .top .iconbtn[data-action=collapse]{border:0;background:none}
-.pq-title{font-size:21px;font-weight:650;letter-spacing:-.01em;color:var(--ink)}
-.me{background:var(--grad)!important;color:#fff!important;width:34px;height:34px;font-size:12.5px;font-weight:700}
-#pqAv{background:var(--grad);color:#fff}
-.top>.iconbtn[data-action=pq-signout]{border:0;background:none}
-.top>.iconbtn[data-action=pq-signout]:hover{background:#f3f2ee}
 .content{padding:20px 22px 40px}
 
 /* ---------- surfaces ---------- */
@@ -166,9 +161,6 @@ html body #pqAuth.show{display:block;padding:0;place-items:initial}
 .hint{color:#8b8b95;font-size:12.5px;margin:0}
 @media (max-width:1180px){.auth2-art h2{max-width:300px;font-size:32px}}
 @media (max-width:900px){.auth2{grid-template-columns:1fr}.auth2-art{display:none}}
-html body #pqLoad{background:#f4f3ef}
-html body #pqLoad .ico{background:none;width:72px;height:72px}
-#pqLoad .ico img{width:72px;height:72px;border-radius:22%}
 
 /* dark theme toggle keeps the CRM navy */
 body.dark{--page:#0f0f12;--bg:#0f0f12;--surface:#17171c;--line:#2a2a33;--border:#2a2a33}
@@ -213,22 +205,8 @@ body.dark{--page:#0f0f12;--bg:#0f0f12;--surface:#17171c;--line:#2a2a33;--border:
   .side{box-shadow:none}.app.mobile-open .side{box-shadow:8px 0 32px rgba(0,0,0,.35)}
   .app.mobile-open::after{content:"";position:fixed;inset:0;background:rgba(20,20,26,.38);z-index:39}
   .app.mobile-open .side{z-index:41}
-  /* header: one row of controls, location dropdown on its own row (Proview standard) */
-  html body .top{flex-wrap:wrap;gap:6px;row-gap:8px;padding:8px 12px;min-height:0}
-  .top .iconbtn[data-action=collapse]{width:32px;height:32px}
-  html body .pq-title{flex:1 1 0;min-width:0;font-size:17px;max-width:none;margin:0}
-  .top .spacer{display:none}
-  .hdr-cap{padding:2px;gap:0}
-  html body .hdr-cap>button{width:28px;min-width:28px;height:30px}
-  .hdr-dot{margin:0 6px}
-  html body .pv-dash{width:32px;height:32px;padding:0;justify-content:center}
-  html body .pv-dash span{display:none}
-  .top .me,#pqAv{width:30px!important;height:30px!important;font-size:11px}
-  .top>.iconbtn[data-action=pq-signout]{display:none}
-  html body #pqLoc{order:10;flex:1 0 100%;height:36px;font-size:13px;max-width:none;min-width:0}
   .content{padding:14px 12px 90px}
   .page-head{gap:10px;margin-bottom:16px}
-  .page-head h1{font-size:20px;line-height:26px}
   .page-head .actions{margin-left:0;width:100%}
   .page-head .actions .btn{flex:1 1 auto}
   .pq-banner{flex-wrap:wrap;gap:8px}
@@ -253,7 +231,7 @@ html body .app.collapsed{grid-template-columns:72px minmax(0,1fr)}
 html body .side{background:#141418;color:#c9c9d1;display:flex;flex-direction:column;overflow:hidden;min-height:0;height:100vh;height:100dvh;position:sticky;top:0;font-size:15px;border-right:0;padding:0}
 html body .side .brand{display:flex;align-items:center;gap:10px;padding:18px 10px 14px 14px;color:#fff;text-decoration:none;flex:none}
 html body .side .brand .brand-mark{width:30px;height:30px;border-radius:22%}
-html body .side .wordmark{letter-spacing:.04em;font-size:15px;line-height:20px;white-space:nowrap;font-weight:500;color:#fff}
+html body .side .brand .wordmark{padding:0;margin:0;background:none;border-radius:0;color:#fff;align-self:auto;letter-spacing:.04em;font-size:15px;line-height:20px;white-space:nowrap;font-weight:500;color:#fff}
 html body .side .nav{flex:1;min-height:0;overflow:auto;padding:6px 10px;display:flex;flex-direction:column;gap:0}
 html body .side .nav>*{flex-shrink:0}
 html body .side .nav-sep{font-size:11px;line-height:13px;letter-spacing:.08em;text-transform:uppercase;color:#6e6e78;padding:10px 10px 3px;flex:none;font-weight:400}
@@ -267,7 +245,7 @@ html body .side .nav a.off:hover{background:none;color:#c9c9d1}
 html body .side .nav .lbl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto}
 html body .side .nav .slbl{display:none}
 html body .side .nav .cnt{margin-left:auto;font-size:11px;line-height:16px;font-weight:600;background:rgba(255,255,255,.12);color:#fff;padding:0 7px;border-radius:10px}
-html body .side-foot{display:flex;align-items:center;padding:0 10px 14px;flex:none;margin:0;border:0;gap:0}
+html body .side-foot{display:flex;align-items:center;padding:0 10px 14px;flex:none;margin:0;border:0;gap:normal}
 html body .sf-link{display:flex;align-items:center;gap:6px;background:none;border:0;color:#8b8b95;letter-spacing:.06em;font-size:12px;font-weight:600;line-height:17px;padding:6px 8px;border-radius:9px;cursor:pointer;font-family:inherit}
 html body .sf-link:hover{color:#fff}html body .sf-link svg{width:14px;height:14px;flex:none}
 @media (min-width:901px){
@@ -275,7 +253,7 @@ html body .sf-link:hover{color:#fff}html body .sf-link svg{width:14px;height:14p
  html body .app.collapsed .wordmark,html body .app.collapsed .nav-sep,html body .app.collapsed .side .nav .lbl,html body .app.collapsed .side .nav .cnt,html body .app.collapsed .sf-link .lbl{display:none}
  html body .app.collapsed .side .brand{justify-content:center;padding:4px 0 18px;gap:10px}
  html body .app.collapsed .side .nav{padding:6px 10px}
- html body .app.collapsed .side .nav a{width:32px;min-width:0;margin:0 auto;padding:0 12px;justify-content:center;box-sizing:content-box}
+ html body .app.collapsed .side .nav a{width:32px;min-width:0;margin:0 auto;padding:0 12px;justify-content:center;box-sizing:border-box}
  html body .app.collapsed .side-foot{flex-direction:column;align-items:center;gap:4px;padding:0 10px 14px}
  html body .app.collapsed .sf-link{width:30px;height:26px;padding:6px 8px;justify-content:center;box-sizing:border-box}
  html body .app.collapsed .sf-link svg{transform:rotate(180deg)}
@@ -305,6 +283,149 @@ html body .sf-link:hover{color:#fff}html body .sf-link svg{width:14px;height:14p
  html body .app.mobile-open::after{display:none}
 }
 html body .app.full{grid-template-columns:minmax(0,1fr)}
-@media (min-width:701px){html body .top .pq-title{flex-shrink:0;max-width:none}html body .top #pqLoc{flex:0 1 auto;min-width:170px}}
-@media (min-width:701px) and (max-width:1200px){html body .top{gap:8px;padding:12px 14px}html body .top .pv-dash span{display:none}html body .top .pv-dash{padding:0 10px}html body .top #pqLoc{min-width:120px;max-width:220px}html body .top .pq-title{max-width:34%;flex-shrink:1;min-width:60px}}
 html body .main{min-width:0;overflow-x:hidden}
+
+/* ===== Proview header bar: copied from Proview Signage (HEADER_REFERENCE.md: web/css/app.css + hub.js), same values =====
+   title (only in the top bar), location picker, grey tray (dot, search, chat, inbox, bell), Dashboard, avatar, red sign-out */
+.main{font-size:15px}
+#view{font-size:14px}
+#scrim,#drawer,#toast,.pop,.iq-panel,#pqAuth{font-size:14px}
+html body .side{gap:0}
+html body .side .brand .brand-mark{display:block;width:30px;height:30px;border-radius:22%;flex:none;background:url(../app-icon.svg) center/contain no-repeat}
+html body .side .brand .wordmark{padding:0;margin:0;background:none;border-radius:0;color:#fff;align-self:auto;letter-spacing:.04em;font-size:15px;line-height:20px;font-weight:500;white-space:nowrap;color:#fff}
+html body .side .brand .wordmark b,html body .side .brand .wordmark span{padding:0;border-radius:0;font-size:15px;font-weight:500;letter-spacing:.04em;line-height:20px;margin:0}
+html body .side .wordmark b{color:#fff}
+html body .top{display:flex;align-items:center;gap:12px;padding:12px 22px;background:#fff;border-bottom:1px solid #e4e2dc;min-height:62px;height:auto;box-sizing:border-box;position:sticky;top:0;z-index:20;flex-wrap:nowrap}
+html body .top h2{font-size:18px;font-weight:700;letter-spacing:-.015em;line-height:1.45;color:#17171c;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:auto}
+html body .top .sp{flex:1}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+html body .icon-btn{position:relative;background:none;border:1px solid transparent;border-radius:10px;width:38px;height:38px;padding:0;display:grid;place-items:center;cursor:pointer;color:#17171c;text-decoration:none;box-sizing:border-box}
+html body .icon-btn:hover{background:#f4f3ef;border-color:#e4e2dc}
+html body .icon-btn svg{width:20px;height:20px}
+.top .hdr-pick{margin:0 0 0 6px;flex:0 1 auto;min-width:0}
+.top .hdr-pick select{display:block;width:auto;height:38px;max-width:320px;min-width:170px;border-radius:10px;border:1px solid #e4e2dc;background-color:#fff;color:#17171c;font:600 14px Inter,"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;padding:0 30px 0 12px;cursor:pointer;text-overflow:ellipsis;white-space:nowrap;overflow:hidden;box-sizing:border-box;margin:0}
+.top .hdr-pick select:focus{outline:none;border-color:#e4e2dc}
+.top .hdr-pick select:focus-visible{outline:2px solid #5a8dee;outline-offset:2px}
+.top .hdr-pick select:disabled{opacity:1;cursor:default;color:#17171c;appearance:none;-webkit-appearance:none;padding-right:12px}
+@media (min-width:701px){html body .top h2{flex-shrink:0}.top .hdr-pick select{max-width:min(320px,100%)}}
+.top .hdr-pick.pulse select{animation:hdr-pick-pulse 1s ease-out}
+@keyframes hdr-pick-pulse{0%,60%{box-shadow:0 0 0 3px rgba(90,141,238,.55);border-color:#5a8dee}100%{box-shadow:0 0 0 0 rgba(90,141,238,0)}}
+.hdr-cap{display:flex;align-items:center;gap:2px;background:#f3f2ee;border-radius:12px;padding:3px;flex:none}
+.hdr-cap>button,.hdr-cap>a{width:34px;height:34px;min-width:34px;border-radius:9px;background:transparent!important;border:0!important;display:grid;place-items:center;position:relative;color:#17171c;padding:0!important;cursor:pointer;box-shadow:none!important}
+.hdr-cap>button:hover,.hdr-cap>a:hover{background:#fff!important}
+.hdr-cap svg{width:18px!important;height:18px!important}
+.hdr-dot{width:9px;height:9px;border-radius:50%;background:#12a150;margin:0 9px;flex:none;display:block}
+.hdr-dot.saving{background:#4a6cd0;animation:hubPulse 1s infinite}.hdr-dot.offline{background:#d48a00}.hdr-dot.error{background:#d92d20}
+@keyframes hubPulse{50%{opacity:.35}}
+.hub-badge{position:absolute;top:0;right:0;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:#d92d20;color:#fff;font-size:10.5px;font-weight:700;line-height:16px;text-align:center;box-sizing:border-box}
+.hub-badge:empty,.hub-badge.hidden{display:none}
+.top .bell{position:relative;color:#17171c;margin-left:0}
+.bell .bell-dot{position:absolute;top:1px;right:-2px}
+.bell-dot{min-width:18px;height:18px;border-radius:9px;background:linear-gradient(135deg,#2f84d4 0%,#5a5fbb 100%);color:#fff;font:700 11px/18px Inter,"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;padding:0 5px;text-align:center;box-sizing:border-box}
+.bell-dot.hidden{display:none}
+.pv-dash{display:inline-flex;align-items:center;gap:7px;height:38px;padding:0 13px;border-radius:10px;border:1px solid #e4e2dc;background:#fff;color:#17171c!important;font:inherit;font-weight:600;font-size:14px;text-decoration:none!important;flex:none;white-space:nowrap;box-sizing:border-box}
+.pv-dash:hover{background:#f3f2ee}
+.pv-dash svg{width:17px!important;height:17px!important}
+.hdr-cap>button:focus-visible,.hdr-cap>a:focus-visible,.pv-dash:focus-visible{outline:2px solid #5a8dee;outline-offset:2px}
+.top-me{display:flex;align-items:center;gap:4px;flex:none;margin-left:8px;padding-left:0;border-left:0}
+.top-av{width:34px;height:34px;border-radius:50%;border:0;padding:0;flex:none;display:grid;place-items:center;background:linear-gradient(135deg,#2f84d4 0%,#5a5fbb 100%);color:#fff;font-family:inherit;font-weight:700;font-size:12.5px;line-height:1;cursor:pointer;text-decoration:none}
+.top-av:hover{filter:brightness(1.08)}
+.top-av:focus-visible,.top-me .top-out:focus-visible{outline:2px solid #5a8dee;outline-offset:2px}
+.top-me .top-out svg{width:18px;height:18px}
+/* sign out: red button, white icon (Signage eaae59c) */
+html body .top-me .top-out{background:#d92d20;border-color:#d92d20;color:#fff}
+html body .top-me .top-out:hover{background:#b42318;border-color:#b42318;color:#fff}
+/* account menu (avatar) */
+.pv-acct{position:fixed;z-index:310;width:264px;max-width:calc(100vw - 16px);background:#fff;border:1px solid #e4e2dc;border-radius:12px;box-shadow:0 12px 32px rgba(20,20,30,.16);padding:6px;font-size:14px;color:#17171c;box-sizing:border-box}
+.pv-acct-h{display:flex;align-items:center;gap:10px;padding:8px 8px 12px;margin-bottom:6px;border-bottom:1px solid #eceae4;min-width:0}
+.pv-acct-h .ct{flex:1;min-width:0}.pv-acct-h b{display:block;font-size:14px;font-weight:700;line-height:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pv-acct-h small{display:block;font-size:12.5px;line-height:17px;color:#8b8b95;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pv-acct-i{display:flex;align-items:center;gap:10px;width:100%;height:36px;padding:0 10px;border-radius:8px;border:0;background:none;font:inherit;font-size:14px;font-weight:550;color:#17171c!important;text-decoration:none!important;cursor:pointer;text-align:left;box-sizing:border-box}
+.pv-acct-i:hover,.pv-acct-i:focus-visible{background:#f3f2ee;outline:0}
+.pv-acct-i svg{width:17px!important;height:17px!important;color:#4a4a55;flex:none}
+.pv-acct-sep{height:1px;background:#eceae4;margin:6px 4px}
+.hub-av{width:34px;height:34px;border-radius:50%;flex:none;display:grid;place-items:center;background:linear-gradient(135deg,#2f84d4 0%,#5a5fbb 100%);color:#fff;font-weight:700;font-size:12.5px}
+/* page head: description on the left, buttons on the right (no H1: the title is in the top bar) */
+.page-head{align-items:center}
+.page-head .ph-l{display:flex;align-items:center;gap:12px;min-width:0}
+.page-head .ph-l .sub{margin:0}
+@media (max-width:700px){
+  html body .top{padding:8px 10px;gap:2px;min-height:62px;flex-wrap:wrap;row-gap:6px}
+  html body .top h2{font-size:18px;flex:1;min-width:auto}
+  html body .top .sp{display:none}
+  html body .icon-btn{width:36px;height:36px}
+  .top .hdr-pick{order:1;flex:1 0 100%;margin:0}
+  .top .hdr-pick select{width:100%;min-width:0;max-width:none;height:36px;font-size:13px}
+  .pv-dash{width:34px;height:34px;padding:0;justify-content:center}.pv-dash span{display:none}
+  .hdr-cap{padding:2px;gap:0}.hdr-cap>button,.hdr-cap>a{width:30px;min-width:30px;height:30px}.hdr-dot{margin:0 6px}
+  .top-me{margin-left:4px;gap:2px}
+  .top-av{width:32px;height:32px;font-size:12px}
+}
+@media (hover:none) and (pointer:coarse){.top .hdr-pick select,.pv-loc input.ov-search{font-size:16px!important}}
+/* ===== Locations page = Proview Signage's (LOCATIONS_PAGE_STANDARD.md): web/css/app.css .page-head, .btn, .card, .badge, .ov-* (same values) ===== */
+.pv-loc{font-family:"Inter","Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:1.45;color:var(--ov-ink,#17171c);-webkit-font-smoothing:antialiased;max-width:1236px}
+.pv-loc *,.ov-list *{box-sizing:border-box}
+.pv-loc .pv-ph{display:flex;justify-content:space-between;align-items:center;gap:16px;margin:0 0 22px;padding:0;flex-wrap:wrap}
+.pv-loc .pv-ph>p{margin:0;font-size:15px;font-weight:400;line-height:1.45;letter-spacing:normal;color:var(--ov-ink2,#55555f)}
+.pv-loc .pv-acts{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.pv-loc .btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;height:38px;min-height:0;padding:0 14px;border-radius:10px;border:1px solid var(--ov-line,#e4e2dc);background:var(--ov-panel,#fff);color:var(--ov-ink,#17171c);font:600 14px "Inter","Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;line-height:normal;letter-spacing:normal;cursor:pointer;text-decoration:none;white-space:nowrap;box-shadow:none;box-sizing:border-box;width:auto;max-width:none}
+.pv-loc .btn:hover{border-color:#cfccc4;background:#fbfaf8;color:var(--ov-ink,#17171c)}
+.pv-loc .btn:disabled{opacity:.5;cursor:not-allowed}
+.pv-loc .btn svg{width:16px;height:16px;flex:none}
+.pv-loc .btn.primary,.pv-loc .btn.primary:hover{background:linear-gradient(135deg,#2f84d4 0%,#5a5fbb 100%);border-color:transparent;color:#fff}
+.pv-loc .btn.primary:hover{filter:brightness(.95)}
+.pv-loc .btn.sm{height:32px;padding:0 11px;font-size:13px;border-radius:8px}
+.pv-loc .card,.ov-list .card{background:var(--ov-panel,#fff);border:1px solid var(--ov-line,#e4e2dc);border-radius:12px;box-shadow:0 1px 2px rgba(20,20,30,.06),0 4px 16px rgba(20,20,30,.05)}
+.pv-loc .muted,.ov-list .muted{color:var(--ov-ink2,#55555f)}
+.pv-loc .small,.ov-list .small{font-size:13px}
+.pv-loc .tiny,.ov-list .tiny{font-size:12px;color:var(--ov-ink3,#8b8b95)}
+.pv-loc .grow,.ov-list .grow{flex:1;min-width:0}
+.pv-loc h3{margin:0;letter-spacing:-.015em;line-height:1.45;color:inherit}
+/* status pill (Signage .badge) */
+.ov-pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:650;line-height:1.45;letter-spacing:normal;padding:3px 9px;border-radius:999px;background:#eeece6;color:var(--ov-ink2,#55555f);white-space:nowrap;flex:none}
+.ov-pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor;opacity:.9}
+.ov-pill.ok{background:#e5f6ec;color:#12a150}
+.ov-pill.bad{background:#fdecea;color:#d92d20}
+.ov-pill.warn{background:#fff4dc;color:#a36a00}
+/* summary boxes */
+.ov-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:0 0 16px}
+.pv-loc .ov-stat{display:block;width:auto;height:auto;min-height:0;margin:0;padding:14px 16px;text-align:left;font:inherit;color:inherit;letter-spacing:normal;cursor:pointer;transition:border-color .15s,transform .15s}
+.pv-loc .ov-stat:hover{border-color:#b9c6ea;transform:translateY(-1px)}
+.pv-loc .ov-stat:focus-visible{outline:2px solid #4a6cd0;outline-offset:2px}
+.ov-stat .tiny{display:block}
+.ov-stat.ok .ov-v{color:#12a150}
+.ov-stat.warn .ov-v{color:#d48a00}
+.ov-stat.bad .ov-v{color:#d92d20}
+.ov-v{font-size:26px;font-weight:700;line-height:1.45;letter-spacing:normal;margin-top:4px}
+/* search */
+.ov-tools{display:flex;justify-content:flex-end;margin-bottom:12px}
+.pv-loc input.ov-search{display:block;height:40px;width:100%;max-width:100%;min-width:0;margin:0;font:15px "Inter","Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;color:var(--ov-ink,#17171c);background:var(--ov-panel,#fff);border:1px solid var(--ov-line,#e4e2dc);border-radius:9px;padding:9px 11px;box-shadow:none;box-sizing:border-box}
+.pv-loc input.ov-search:focus{outline:2px solid #4a6cd0;outline-offset:-1px;border-color:transparent}
+@media (hover:none) and (pointer:coarse){.pv-loc input.ov-search{font-size:16px}}
+/* business cards */
+.ov-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:18px;align-items:start}
+.ov-biz{display:flex;flex-direction:column;overflow:hidden}
+.ov-bh{display:flex;align-items:flex-start;gap:10px;padding:16px 18px 12px}
+.pv-loc .ov-bh h3{font-size:17px;font-weight:700;margin:0 0 2px}
+.ov-loc{display:flex;align-items:center;gap:10px;width:100%;padding:11px 18px;margin:0;border:0;border-top:1px solid var(--ov-line,#e4e2dc);border-radius:0;background:none;font:inherit;color:inherit;text-align:left;cursor:pointer}
+button.ov-loc:hover{background:#f8f7f4}
+.ov-bf{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 18px;border-top:1px solid var(--ov-line,#e4e2dc);margin-top:auto}
+.ov-bf .pv-acts{gap:6px;flex-wrap:nowrap}
+.ov-dot{width:9px;height:9px;border-radius:50%;flex:none;background:#c9c7c0}
+.ov-dot.ok{background:#12a150}.ov-dot.warn{background:#d48a00}.ov-dot.bad{background:#d92d20}
+.ov-chev{color:var(--ov-ink3,#8b8b95);font-size:20px;line-height:1}
+/* the lists behind the summary boxes */
+.ov-list{display:flex;flex-direction:column;max-height:60vh;overflow-y:auto;font-size:15px;line-height:1.45}
+.ov-li{display:flex;align-items:center;gap:12px;width:100%;padding:11px 6px;margin:0;border:0;border-bottom:1px solid var(--ov-line,#e4e2dc);border-radius:0;background:none;font:inherit;color:inherit;text-align:left}
+button.ov-li{cursor:pointer}
+button.ov-li:hover{background:#f8f7f4}
+.ov-li:last-child{border-bottom:0}
+.ov-li b{font-weight:700}
+.ov-empty-card{grid-column:1/-1}
+@media (max-width:700px){.ov-grid{grid-template-columns:1fr}.ov-stats{grid-template-columns:repeat(3,1fr);gap:8px}.pv-loc .ov-stat{padding:10px 10px}.ov-stat .tiny{font-size:11px}.ov-v{font-size:21px}}
+.pv-loc .ov-bf .dd>.iconbtn{width:32px;height:32px;border-radius:8px;border:1px solid #e4e2dc;background:#fff;color:#17171c}
+.pv-loc .ov-bf .dd>.iconbtn svg{width:16px;height:16px}
+.pv-loc .ov-bf .dd-menu{font-size:14px}
+.pv-loc .pq-banner{font-size:14px}
+.pv-loc .pv-acts select.input{font:600 14px Inter,"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;border-radius:10px}
+.ov-list .ov-pill{font-size:12px}

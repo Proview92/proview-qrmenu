@@ -29,7 +29,7 @@ A('ai-buy',()=>{closeModal();toast('This is a preview – purchases are disabled
    4.1 AI WEBSITE BUILDER
    ===================================================================== */
 App.route('website-builder',()=>`
-  <div class="page-head"><div><h1><span style="color:var(--ink)">AI</span> <span style="background:linear-gradient(135deg,var(--brand-700),#4F8EF7);-webkit-background-clip:text;background-clip:text;color:transparent">Website Builder</span></h1><p class="sub">Build and run your restaurant's website from one place – live online in minutes.</p></div></div>
+  <div class="page-head"><div><p class="sub" style="margin:0">Build and run your restaurant's website from one place – live online in minutes.</p></div></div>
   ${ST.website?`<div class="card pad" style="display:flex;gap:16px;align-items:center;margin-bottom:24px"><span class="itile">${ic('globe')}</span><div style="flex:1"><h3>Your website</h3><div class="help">${ST.website.published?'Published at '+esc(ST.website.url):'Draft – not public yet'}</div></div><button class="btn primary" data-href="website-editor">${ic('edit','sm')}Open editor</button></div>`:''}
   <div class="section-label">Tutorials</div>
   <div class="grid g3" style="margin-bottom:28px"><button class="card" style="padding:0;overflow:hidden;cursor:pointer;text-align:left" data-action="tutorial">${tile('wbtut',150,`<span style="display:grid;place-items:center;width:100%;height:100%">${ic('play')}</span>`,'border-radius:0')}<div style="padding:14px"><h3>Create a Website with Proview AI</h3><div class="help">4 min video</div></div></button></div>
@@ -44,7 +44,7 @@ const WB_EX={'Fine Dining Restaurant':'An elegant fine dining restaurant with a 
 App.route('website-builder-build',()=>`
   <div style="display:flex;align-items:center;gap:12px;padding:6px 0 18px;border-bottom:1px solid var(--border);margin-bottom:28px"><a href="#website-builder" class="iconbtn" aria-label="Back">${ic('back')}</a><strong style="color:var(--ink)">AI Website Builder</strong><span class="muted">· ${esc(ST.venue.name)}</span></div>
   <div style="max-width:720px;margin:0 auto">
-   <h1>Build your website</h1>
+   <h2 style="font-size:20px;line-height:28px;margin:0 0 4px">Build your website</h2>
    <p class="sub" style="margin-bottom:8px">AI drafts a first version of your site. You can change every section, the design and the navigation afterwards – nothing goes public until you publish.</p>
    ${stepLbl(1,'Bring in your restaurant details')}
    <div class="card pad" style="display:flex;gap:12px;align-items:flex-start;background:var(--ok-tint);border-color:#BFE3CD"><span style="color:var(--ok)">${ic('check')}</span><div><strong style="color:var(--ink)">Google Business connected</strong><div class="help">Details from your Google Business Profile are kept up to date on your website automatically.</div></div></div>
@@ -131,7 +131,7 @@ A('ai-wb-publish-go',()=>{ST.website.published=true;WB.versions.unshift({t:'Publ
    4.2 AI BRAND KIT
    ===================================================================== */
 App.route('brand-kit',()=>{const k=ST.brandKit;return `
-  <div class="page-head"><div><h1>AI Brand Kit</h1><p class="sub">Choose a source and we'll pull out your colours, fonts and tone – then use them on every menu, email and post.</p></div></div>
+  <div class="page-head"><div><p class="sub" style="margin:0">Choose a source and we'll pull out your colours, fonts and tone – then use them on every menu, email and post.</p></div></div>
   ${k?`<div class="card pad" style="margin-bottom:24px;display:flex;gap:18px;align-items:center;flex-wrap:wrap"><div><div class="eyebrow">Your brand kit</div><h2 style="margin-top:4px">${esc(k.name)}</h2>${k.tagline?`<div class="muted">${esc(k.tagline)}</div>`:''}</div>
    <div style="display:flex;gap:6px">${Object.values(k.colors).map(c=>`<span class="swatch" style="background:${c}" title="${c}"></span>`).join('')}</div>
    <div><div class="help" style="margin:0">Typography</div><strong style="color:var(--ink)">${esc(k.typeName)}</strong></div><div><div class="help" style="margin:0">Imagery</div><strong style="color:var(--ink)">${esc(k.mood)}</strong></div>
@@ -203,7 +203,7 @@ function bkPaint(){$('#bkStepper').innerHTML=BK_STEPS.map((t,i)=>`<button class=
   $('#bkFoot').innerHTML=`${BK.step?`<button class="btn secondary" data-action="ai-bk-back">Back</button>`:`<button class="btn secondary" data-href="brand-kit">Cancel</button>`}<span class="muted" style="flex:1;text-align:center">Step ${BK.step+1} of 6</span>${BK.step===5?`<button class="btn ai-btn" data-action="ai-bk-create">${ic('sparkle','sm')}Create kit</button>`:`<button class="btn primary" data-action="ai-bk-next">Continue</button>`}`}
 App.route('brand-kit-scratch',()=>{if(!BK)bkNew();return `
   <a href="#brand-kit" class="btn ghost" style="padding:0;margin-bottom:12px">${ic('back','sm')}Back to brand kit</a>
-  <div class="page-head"><div><h1>Build from scratch</h1><p class="sub">Six short steps – name, logo, colours, type and mood. You can change anything later.</p></div></div>
+  <div class="page-head"><div><p class="sub" style="margin:0">Six short steps – name, logo, colours, type and mood. You can change anything later.</p></div></div>
   <div style="display:grid;grid-template-columns:260px minmax(0,1fr);gap:20px;align-items:start">
    <div class="card pad"><div class="eyebrow" style="margin-bottom:10px">Build from scratch</div><div id="bkStepper"></div></div>
    <div class="card"><div id="bkBody" style="padding:24px"></div><div id="bkFoot" style="display:flex;align-items:center;gap:10px;padding:14px 24px;border-top:1px solid var(--border);background:var(--page);border-radius:0 0 14px 14px"></div></div></div>`},{nav:'brand-kit'});
@@ -337,7 +337,7 @@ function connectCard(ch,title,bul,note){const on=ST.mkConn[ch];return `<div clas
   ${on?`<button class="btn secondary" data-action="ai-mk-disconnect" data-ch="${ch}">Disconnect</button>`:`<button class="btn primary" data-action="ai-mk-connect" data-ch="${ch}">${ic(CH[ch][0],'sm')}Connect ${CH[ch][1]}</button>`}
   ${ch==='meta'?`<div class="help" style="margin-top:12px">You'll be sent to Meta to authorise your Business account. You can manage or disconnect it any time in Settings.</div>`:''}</div>`}
 App.route('ai-marketing',tab=>{tab=tab||'overview';const lib=App._mkLib||'video';return `
-  <div class="page-head"><div><h1>AI Marketing Hub</h1><p class="sub">Turn your dishes into posts and share them on Instagram and Facebook</p></div>
+  <div class="page-head"><div><p class="sub" style="margin:0">Turn your dishes into posts and share them on Instagram and Facebook</p></div>
    <div class="actions">${UI.dd(`<span style="display:inline-flex">${Object.keys(CH).map(k=>`<span class="avatar" style="width:24px;height:24px;margin-right:-6px;border:2px solid #fff;${ST.mkConn[k]?'background:var(--brand-700);color:#fff':''}">${ic(CH[k][0],'sm')}</span>`).join('')}</span><span style="margin-left:10px">${connCount()} of 3 connected</span>${ic('chevd','sm')}`,Object.keys(CH).map(k=>({label:`${CH[k][1]} · ${ST.mkConn[k]?'Connected':'Connect'}`,icon:CH[k][0],action:ST.mkConn[k]?'ai-mk-disconnect':'ai-mk-connect',data:`data-ch="${k}"`})))}</div></div>
   ${UI.tabs([{key:'overview',label:'Overview',href:'ai-marketing--overview'},{key:'instagram',label:'Instagram',href:'ai-marketing--instagram'},{key:'facebook',label:'Facebook',href:'ai-marketing--facebook'},{key:'meta',label:'Paid Ads',tag:'META',href:'ai-marketing--meta'}],tab)}
   ${tab==='instagram'?connectCard('instagram','Instagram Business',['AI-made post visuals from your menu','Publish posts, stories and reels directly','AI-written captions and hashtags','Track reach and engagement']):
@@ -403,7 +403,7 @@ function mcLeft(){if(MC.step===1)return `<div class="card pad"><h2 style="margin
    <div class="help" style="text-align:center">${MC.source==='template'&&!MC.template?'Choose a template to start.':!MC.photo?'Now select a photo.':MC.tmedia==='video'&&!ST.freeVideoUsed?'Your first video is free.':'Costs '+(MC.tmedia==='video'?(MK_VIDEO.find(v=>v[0]===MC.template)||[0,10])[1]:10)+' credits.'}</div></div>`}
 function mcPaint(){$('#mcLeft').innerHTML=mcLeft();$('#mcRight').innerHTML=mcPreview();$('#mcStepper').innerHTML=UI.stepper(['Visual','Caption & publish'],MC.step)}
 App.route('ai-marketing-create',()=>{if(!MC)mcNew();return `
-  <div class="page-head"><div style="display:flex;align-items:center;gap:12px"><a href="#ai-marketing--overview" class="iconbtn" aria-label="Back">${ic('left')}</a><div><h1>Create Post</h1><p class="sub">One visual, the right placements and a caption that fits.</p></div></div></div>
+  <div class="page-head"><div style="display:flex;align-items:center;gap:12px"><a href="#ai-marketing--overview" class="iconbtn" aria-label="Back">${ic('left')}</a><div><p class="sub" style="margin:0">One visual, the right placements and a caption that fits.</p></div></div></div>
   <div id="mcStepper">${UI.stepper(['Visual','Caption & publish'],MC.step)}</div>
   <div class="split" style="grid-template-columns:minmax(0,1.2fr) minmax(0,1fr)"><div id="mcLeft">${mcLeft()}</div><div id="mcRight">${mcPreview()}</div></div>`},{nav:'ai-marketing'});
 A('ai-mc-src',el=>{MC.source=el.dataset.k;mcPaint()});
@@ -526,7 +526,7 @@ function rpActivity(){return `<div class="card"><div class="card-head"><div><h3>
   <p class="muted" style="padding:0 20px">Who did what on your dashboard – when, and from where.</p><div id="rpAct">${UI.empty('history','No activity in this period')}</div></div>`}
 const RP_FN={overview:rpOverview,menu:rpMenu,sales:rpSales,reservations:rpRes,tables:rpTables,employees:rpEmp,customers:rpCust,feedbacks:rpFb,timing:rpTiming,realtime:rpRealtime,activity:rpActivity};
 App.route('ai-reports',tab=>{tab=RP_FN[tab]?tab:'overview';return `
-  <div class="page-head"><div><h1>AI Reporting</h1><p class="sub"><span class="pill grey">${ic('clock','sm')}Updated hourly</span></p></div></div>
+  <div class="page-head"><div><p class="sub" style="margin:0"><span class="pill grey">${ic('clock','sm')}Updated hourly</span></p></div></div>
   <div class="card pad" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px;padding:12px 16px"><span class="muted">${ic('cal')}</span>
    <div class="seg">${[[7,'Last 7 days'],[14,'Last 14 days'],[28,'Last 28 days'],[90,'Last 90 days']].map(([d,l])=>`<button class="${!RP.custom&&RP.days===d?'on':''}" data-action="ai-rp-range" data-d="${d}">${l}</button>`).join('')}<button class="${RP.custom?'on':''}" data-action="ai-rp-custom">Custom ${ic('chevd','sm')}</button></div>
    <span class="muted" style="margin-left:auto;font-weight:600">${rangeLabel()}</span></div>

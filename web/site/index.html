@@ -8,13 +8,24 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="app-icon.svg">
 <meta name="theme-color" content="#141418">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;550;600;650;700;750&display=swap" rel="stylesheet">
+<style>
+/* Loading splash (the Proview standard, as Proview Signage and Bookings): only the 72px app icon, centred on the page,
+   until the sign-in state is known. auth.js hides it; the sign-in form is never shown before that. */
+#pqLoad{position:fixed;inset:0;display:grid;place-items:center;background:#f4f3ef;z-index:2147483000}
+#pqLoad .pv-splash-icon{width:72px;height:72px;border-radius:22%;background:url(app-icon.svg) center/contain no-repeat;opacity:.9;animation:pvsplash 1.2s ease-in-out infinite}
+@keyframes pvsplash{50%{opacity:.35}}
+@media (prefers-reduced-motion:reduce){#pqLoad .pv-splash-icon{animation:none}}
+#pqLoad .pv-splash-msg{display:none;font:15px/1.45 Inter,"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;color:#55555f;text-align:center;padding:0 24px}
+#pqLoad.stuck .pv-splash-icon{display:none}#pqLoad.stuck .pv-splash-msg{display:block}
+</style>
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/app.css">
 <link rel="stylesheet" href="css/theme.css">
 </head>
 <body>
+<div id="pqLoad" role="status" aria-label="Loading Proview QR Menu"><div class="pv-splash-icon"></div><div class="pv-splash-msg">Proview QR Menu couldn't load. Check your connection and <a href="" style="color:#4a6cd0">reload</a>.</div></div>
+<script>/* failsafe: if the app scripts never start (offline, CDN blocked), say so after 8 seconds instead of a splash forever */
+setTimeout(function(){if(!window.PQ||!window.PQ.started){var l=document.getElementById('pqLoad');if(l)l.classList.add('stuck')}},8000)</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <script src="js/data.js"></script>

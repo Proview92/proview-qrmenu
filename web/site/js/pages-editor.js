@@ -74,7 +74,7 @@ App.route('menu-editor',id=>{
   M=m;pvMenu=pvMenu&&menus().some(x=>x.id===pvMenu)&&pvMenu!==null?pvMenu:id;if(!menus().some(x=>x.id===pvMenu))pvMenu=id;
   return `<div class="page-head" style="margin-bottom:18px"><div style="display:flex;align-items:center;gap:12px;min-width:0">
       <a href="#menu-management" class="iconbtn" aria-label="Back to menus">${ic('back')}</a>
-      <div style="min-width:0"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h1 style="font-size:24px;line-height:32px">${esc(m.name)}</h1><span id="edStatus">${statusPill()}</span>${UI.toggle(m.on,'data-change="ed-menu-toggle" aria-label="Menu live"')}</div>
+      <div style="min-width:0"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h2 class="ent-name" style="font-size:18px;line-height:26px;margin:0">${esc(m.name)}</h2><span id="edStatus">${statusPill()}</span>${UI.toggle(m.on,'data-change="ed-menu-toggle" aria-label="Menu live"')}</div>
       <p class="sub" id="edMeta">${metaText()}</p></div></div>
       <div class="actions"><button class="btn ghost" data-action="learn">${ic('book','sm')}Learn More</button></div></div>
     <div class="editor"><div style="min-width:0">

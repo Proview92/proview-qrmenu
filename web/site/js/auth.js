@@ -32,11 +32,7 @@ function lic(s){if(!s)return{k:'none',t:'No licence',c:'grey'};if(s.archived)ret
   return{k:'ok',t:'Active until '+fmtD(s.expires_at),c:days<=14?'warn':'ok',days}}
 
 /* ---------- styles ---------- */
-document.head.insertAdjacentHTML('beforeend',`<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&display=swap" rel="stylesheet"><style>
-#pqLoad{position:fixed;inset:0;background:var(--page);display:grid;place-items:center;z-index:200}
-#pqLoad .ico{width:72px;height:72px;border-radius:18px;background:var(--brand-700);color:#fff;display:grid;place-items:center;animation:pqPulse 1.2s ease-in-out infinite}
-#pqLoad .ico svg{width:38px;height:38px}
-@keyframes pqPulse{50%{transform:scale(.92);opacity:.7}}@media (prefers-reduced-motion:reduce){#pqLoad .ico{animation:none}}
+document.head.insertAdjacentHTML('beforeend',`<style>
 #pqAuth{position:fixed;inset:0;background:var(--page);z-index:150;overflow:auto;display:none}
 #pqAuth.show{display:grid;place-items:center;padding:24px}
 .pq-card{background:#fff;border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--shadow);width:min(420px,100%);padding:32px}
@@ -44,28 +40,17 @@ document.head.insertAdjacentHTML('beforeend',`<link rel="preconnect" href="https
 .pq-card h1{font-size:24px;line-height:30px}.pq-card .btn{width:100%;height:46px}
 .pq-or{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px;margin:18px 0}.pq-or::before,.pq-or::after{content:"";flex:1;border-top:1px solid var(--border)}
 .pq-msg{border-radius:var(--r-md);padding:10px 12px;margin-bottom:14px;font-size:14px}.pq-msg.err{background:var(--bad-tint);color:var(--bad)}.pq-msg.ok{background:var(--ok-tint);color:var(--ok)}.pq-msg.info{background:var(--brand-tint);color:var(--brand-900)}
-.pq-title{font-size:20px;line-height:28px;font-weight:700;color:var(--ink);margin:0 4px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px}
-#pqLoc{height:38px;border-radius:10px;border:1px solid #e4e2dc;background:#fff;color:#17171c;font:600 14px Inter,var(--font);padding:0 30px 0 12px;min-width:170px;max-width:320px;cursor:pointer}
-#pqLoc.pulse{animation:pqLocPulse .5s ease-in-out 3}@keyframes pqLocPulse{50%{box-shadow:0 0 0 4px rgba(21,101,192,.35)}}
-.hdr-cap{display:flex;align-items:center;gap:2px;background:#f3f2ee;border-radius:12px;padding:3px;flex:none}
-.hdr-cap>button{width:34px;height:34px;min-width:34px;border-radius:9px;background:transparent;border:0;display:grid;place-items:center;position:relative;color:#17171c;cursor:pointer}
-.hdr-cap>button:hover{background:#fff}.hdr-cap svg{width:18px;height:18px}
-.hdr-dot{width:9px;height:9px;border-radius:50%;background:#12a150;margin:0 9px;flex:none}
-.hdr-dot.saving{background:#4a6cd0;animation:pqPulse 1s infinite}.hdr-dot.offline{background:#d48a00}.hdr-dot.error{background:#d92d20}
-.hdr-cap .cnt{position:absolute;top:0;right:0;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--brand-700);color:#fff;font-size:10.5px;font-weight:700;line-height:16px;text-align:center}
-.hdr-cap .cnt:empty{display:none}
-.pv-dash{display:inline-flex;align-items:center;gap:7px;height:38px;padding:0 13px;border-radius:10px;border:1px solid #e4e2dc;background:#fff;color:#17171c;font-weight:600;font-size:14px;text-decoration:none;flex:none;white-space:nowrap;cursor:pointer}
-.pv-dash:hover{background:#f3f2ee;text-decoration:none}.pv-dash svg{width:17px;height:17px}
 .nav a.grey{opacity:.42}
 .pq-banner{display:flex;align-items:center;gap:12px;padding:10px 16px;border-radius:var(--r-md);margin-bottom:18px;font-weight:600}
 .pq-banner.warn{background:var(--warn-tint);color:var(--warn)}.pq-banner.bad{background:var(--bad-tint);color:var(--bad)}.pq-banner .btn{margin-left:auto}
 .pq-lock{max-width:560px;margin:40px auto;text-align:center}
 .pq-plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin:18px 0}
 .pq-feat{display:grid;grid-template-columns:1fr 130px;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)}
-@media (max-width:700px){.top{flex-wrap:wrap;height:auto;padding:8px 12px;gap:8px}#pqLoc{order:10;flex-basis:100%;height:36px;font-size:13px;max-width:none}.pq-title{font-size:17px;max-width:150px}.pv-dash{width:34px;height:34px;padding:0;justify-content:center}.pv-dash span{display:none}.hdr-cap>button{width:30px;min-width:30px;height:30px}}
 </style>`);
 const APPICON=ic('qr');
-document.body.insertAdjacentHTML('afterbegin',`<div id="pqLoad" role="status" aria-label="Loading"><div class="ico"><img src="app-icon.svg" alt=""></div></div><div id="pqAuth"></div>`);
+// the splash (#pqLoad) is in index.html, so it shows before any script runs
+if(!document.getElementById('pqLoad'))document.body.insertAdjacentHTML('afterbegin','<div id="pqLoad" role="status" aria-label="Loading Proview QR Menu"><div class="pv-splash-icon"></div></div>');
+document.body.insertAdjacentHTML('afterbegin',`<div id="pqAuth"></div>`);
 const loader=on=>{$('#pqLoad').style.display=on?'grid':'none'};
 
 /* ---------- auth screens (auth2 layout shared by the Proview apps) ---------- */
@@ -122,7 +107,7 @@ document.addEventListener('click',e=>{const a=e.target.closest('[data-pq]');if(!
 /* ---------- session flow ---------- */
 let booted=false,fallback;
 async function start(){
-  loader(true);fallback=setTimeout(()=>{if(!booted)signInScreen('Taking longer than usual. Please sign in.','info')},8000);
+  window.PQ.started=true;loader(true);fallback=setTimeout(()=>{if(!booted)signInScreen('Taking longer than usual. Please sign in.','info')},8000);
   const m=location.hash.match(/pv_sso=([^&]+)/);
   if(m){history.replaceState(null,'',location.pathname+location.search);
     try{const r=await fetch(CFG.url+'/functions/v1/sso-login',{method:'POST',headers:{'content-type':'application/json',apikey:CFG.key},body:JSON.stringify({assertion:decodeURIComponent(m[1])})});
@@ -145,6 +130,7 @@ async function afterSignIn(){
   let orgId=null;
   if(CTX.master)orgId=saved.org||null;else orgId=(mems.find(x=>x.org_id===saved.org)||mems[0]).org_id;
   if(orgId){const ok=await openOrg(orgId,saved.site,true);if(!ok&&!CTX.master){await sb.auth.signOut();purge();return signInScreen('Ask your owner or Proview to give you access to a location.','info')}}
+  if(CTX.master){await loadMaster();CTX._orgsLoaded=true}
   $('#pqAuth').classList.remove('show');
   if(!booted){booted=true;App.boot();decorateShell();loadPlans();if(pending.length)setTimeout(()=>App.toast(pending.splice(0).pop()),300)}
   if(!CTX.org){App.go('locations');App.render()}
@@ -156,7 +142,7 @@ async function signOut(){await flush();await sb.auth.signOut();purge();location.
 
 /* ---------- business / location switching ---------- */
 async function openOrg(orgId,siteId,quiet){
-  await flush();
+  await flush();LOCS.st=null;
   const mem=(CTX.who.memberships||[]).find(m=>m.org_id===orgId);
   const {data:sites,error}=await sb.rpc('pq_sites_of',{p_org:orgId});if(error){toast(error.message);return false}
   const {data:org}=await sb.from('pq_orgs').select('*').eq('id',orgId).maybeSingle();if(!org)return false;
@@ -196,49 +182,89 @@ setInterval(queueSave,15000);
 /* ---------- header (Proview standard) ---------- */
 const TITLES={dashboard:'Dashboard',locations:'Locations',users:'Users','menu-management':'Menus','menu-editor':'Menu editor','menu-create':'Create a Menu','menu-builder':'Menu Builder','menu-modifiers':'Modifiers','translation-center':'Translation Center','in-app-promotions':'In-App Promotions','website-builder':'AI Website Builder','website-builder-build':'AI Website Builder','website-editor':'Website editor','brand-kit':'AI Brand Kit','brand-kit-scratch':'AI Brand Kit','ai-media-studio':'AI Media Studio','ai-marketing':'AI Marketing Hub','ai-marketing-create':'Create Post','ai-reports':'AI Reports','ai-media-library':'AI Media Library',orders:'Orders','orders-all':'All Orders','orders-settings':'Ordering Settings','orders-archived':'Archived Orders',reservations:'Reservations','reservations-list':'Reservations',engagement:'Guests & Engagement','engagement-customers':'Customers','engagement-customer':'Customer','engagement-promo-codes':'Promo Codes','engagement-settings':'Engagement Settings','engagement-reviews':'Reviews',feedbacks:'Feedbacks','feedback-form':'Feedback form',reports:'Reports',marketplace:'Marketplace',settings:'Settings'};
 function title(key){if(TITLES[key])return TITLES[key];const k=Object.keys(TITLES).filter(t=>key.startsWith(t)).sort((a,b)=>b.length-a.length)[0];return TITLES[k]||'Proview QR Menu'}
+// Signage's header icons (24px line icons, 1.8 stroke): HEADER_REFERENCE.md §4
+const SV=(d,cls='')=>`<svg ${cls?`class="${cls}" `:''}viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const HI={search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',chat:'<path d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z"/>',
+  mail:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',bell:'<path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 0 0 3.4 0"/>',
+  grid:'<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+  logout:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>',users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/>',
+  help:'<circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/>',
+  building:'<path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1M9 13h1M9 17h1M14 9h1M14 13h1M14 17h1"/>'};
+App.SV=SV;App.HI=HI;
 function decorateShell(){
   const top=$('.top');
-  top.innerHTML=`<h1 class="pq-title" id="pqTitle">Dashboard</h1><select id="pqLoc" aria-label="Location"></select><div class="spacer"></div>
-   <div class="hdr-cap"><span class="hdr-dot" id="pqDot" role="img" aria-label="Online" title="Online · all changes saved"></span>
-     <button data-action="pq-search" aria-label="Search (Ctrl+K)" title="Search (Ctrl+K)">${ic('search')}</button>
-     <button data-action="pq-chat" aria-label="Chat" title="Chat">${ic('msg')}</button>
-     <button data-action="pq-inbox" aria-label="Inbox" title="Inbox">${ic('mail')}<span class="cnt" id="pqMailCnt"></span></button>
-     <button data-action="pq-bell" aria-label="Notifications" title="Notifications">${ic('bell')}<span class="cnt" id="pqBellCnt"></span></button></div>
-   <a class="pv-dash" id="pqDash" href="${CFG.dash}" target="proview-dashboard" rel="noopener">${ic('grid')}<span>Dashboard</span></a>
-   ${UI.dd(`<span class="me" id="pqAv">?</span>`,[],{cls:'iconbtn',aria:'Account menu'}).replace('class="iconbtn"','class="iconbtn" style="border:0;width:auto"').replace('<div class="dd-menu ">','<div class="dd-menu" id="pqAcct" style="width:270px">')}
-   <button class="iconbtn" data-action="pq-signout" aria-label="Sign out" title="Sign out">${ic('logout')}</button>`;
-  $('#pqLoc').addEventListener('change',e=>chooseLoc(e.target.value));
+  // the Proview header, exactly as Signage's shell(): title, location picker, grey tray, Dashboard, avatar, red sign-out
+  top.innerHTML=`<h2 id="pqTitle">Dashboard</h2>
+   <div class="hdr-pick"><label class="sr" for="hdr-site">Location</label><select id="hdr-site" aria-label="Choose location"></select></div>
+   <div class="sp"></div>
+   <div class="hdr-cap"><span class="hdr-dot" id="pqDot" role="img" aria-label="Online" title="Online"></span>
+     <button type="button" class="hub-search" data-action="pq-search" title="Search (Ctrl+K)" aria-label="Search (Ctrl+K)">${SV(HI.search)}</button>
+     <button type="button" class="hub-chat" data-action="pq-chat" title="Team chat" aria-label="Team chat">${SV(HI.chat)}<span class="hub-badge"></span></button>
+     <button type="button" class="hub-inbox" data-action="pq-inbox" title="Inbox" aria-label="Inbox">${SV(HI.mail)}<span class="hub-badge" id="pqMailCnt"></span></button>
+     <button type="button" class="bell" data-action="pq-bell" title="Notifications" aria-label="Notifications">${SV(HI.bell)}<span class="bell-dot hidden" id="pqBellCnt"></span></button></div>
+   <a class="pv-dash" id="pqDash" href="${CFG.dash}" title="Proview dashboard: all your Proview apps" aria-label="Proview dashboard">${SV(HI.grid)}<span>Dashboard</span></a>
+   <div class="top-me"><button type="button" class="top-av" id="pqAv" aria-label="My account" aria-haspopup="menu" aria-expanded="false">?</button>
+     <button type="button" class="icon-btn top-out" data-action="pq-signout" title="Sign out" aria-label="Sign out">${SV(HI.logout)}</button></div>`;
+  $('#hdr-site').addEventListener('change',e=>chooseLoc(e.target.value));
+  $('#pqAv').addEventListener('click',e=>{e.stopPropagation();acctMenu(e.detail===0)});
   // Proview shell: the location picker lives in the header only; the menu ends with COLLAPSE (as Label, Signage, Bookings)
   const vb=$('.side .venue');if(vb)vb.closest('.dd').remove();
   const cr=$('.side .credits');if(cr)cr.remove();
   const col=localStorage.getItem('pq.sideCollapsed')==='1';App._userCollapsed=col;$('#app').classList.toggle('collapsed',col);
-  $('.side').insertAdjacentHTML('beforeend',`<div class="side-foot"><button class="sf-link" id="sfCollapse" data-action="collapse" title="${col?'Expand menu':'Collapse menu'}" aria-label="${col?'Expand menu':'Collapse menu'}">${ic('left','sm')}<span class="lbl">COLLAPSE</span></button></div>`);
-  const brand=$('.side .brand');if(brand)brand.outerHTML=`<a class="brand" href="#${CTX.master&&!CTX.org?'locations':'dashboard'}" title="Proview QR Menu"><img class="brand-mark" src="app-icon.svg" alt=""><div class="wordmark">PROVIEW<span>QR MENU</span></div></a>`;
+  $('.side').insertAdjacentHTML('beforeend',`<div class="side-foot"><button class="sf-link" id="sfCollapse" data-action="collapse" title="${col?'Expand menu':'Collapse menu'}" aria-label="${col?'Expand menu':'Collapse menu'}">${SV('<path d="m15 18-6-6 6-6"/>')}<span class="lbl">COLLAPSE</span></button></div>`);
+  const brand=$('.side .brand');if(brand)brand.outerHTML=`<a class="brand" href="#${CTX.master&&!CTX.org?'locations':'dashboard'}" title="Proview QR Menu"><span class="brand-mark" role="img" aria-label=""></span><span class="wordmark">PROVIEW<span>QR MENU</span></span></a>`;
   fillLoc();fillAcct()}
-function fillAcct(){const a=$('#pqAcct');if(!a)return;$('#pqAv').textContent=initials(CTX.email.split('@')[0]);
-  const role=CTX.master?'Proview master':({owner:'Owner',admin:'Admin',manager:'Manager',staff:'Staff'})[CTX.role]||'';
-  a.innerHTML=`<div style="display:flex;gap:10px;align-items:center;padding:8px 8px 12px;border-bottom:1px solid var(--border);margin-bottom:6px"><span class="avatar">${initials(CTX.email.split('@')[0])}</span><div style="min-width:0"><b style="color:var(--ink);display:block;overflow:hidden;text-overflow:ellipsis">${esc(CTX.email)}</b><small class="muted">${role}${CTX.org?' · '+esc(CTX.org.name):''}</small></div></div>
-   <button data-action="account">${ic('user','sm')}<span>Account Settings</span></button>
-   <button data-action="pq-change-pw">${ic('lock','sm')}<span>Change password</span></button>
-   <button data-action="copy-menu-link">${ic('share','sm')}<span>Copy menu link</span></button>
-   <button data-action="preview-qr">${ic('qr','sm')}<span>Preview QR Menu</span></button>
-   <button data-action="whats-new">${ic('rocket','sm')}<span>What's New</span></button>
-   <button data-action="support">${ic('help','sm')}<span>Help Center</span></button>
-   <button data-action="live-chat">${ic('msg','sm')}<span>Start Live Chat</span></button>
-   <button data-action="change-language">${ic('translate','sm')}<span>Change Language</span></button>
-   <button data-action="theme">${ic('sun','sm')}<span>Change Theme</span></button>
-   <hr><button data-action="pq-signout" class="danger">${ic('logout','sm')}<span>Sign Out</span></button>`;
+const roleName=()=>CTX.master?'Proview master':({owner:'Owner',admin:'Admin',manager:'Manager',staff:'Staff'})[CTX.role]||'';
+// avatar initials from the email's first part, exactly as Signage ("A" for altun@)
+const avInit=()=>initials(CTX.email.split('@')[0].replace(/[._-]+/g,' '));
+function fillAcct(){const av=$('#pqAv');if(!av)return;av.textContent=avInit();
+  av.title=[CTX.email.split('@')[0],[roleName(),CTX.org?.name].filter(Boolean).join(' · ')].filter(Boolean).join(' · ');
   $('#pqDash').style.display=(CTX.master||['owner','admin'].includes(CTX.role))?'':'none'}
-function fillLoc(){const sel=$('#pqLoc');if(!sel)return;
-  if(!CTX.org){sel.innerHTML=`<option>All businesses</option>`;sel.disabled=true}
-  else{sel.disabled=false;const live=CTX.sites.filter(s=>!s.archived);
-    const allLbl=CTX.master?`${CTX.org.name} (all locations)`:CTX.role==='owner'?`All my locations (${live.length})`:`All locations (${live.length})`;
-    sel.innerHTML=`<option value="all">${esc(allLbl)}</option>`+live.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('');sel.value=CTX.siteId}
-  const vl=$('#venueList');if(vl){vl.innerHTML=!CTX.org?'<p class="muted" style="padding:8px">Open a business from Locations.</p>':
-    [{id:'all',name:'All locations'},...CTX.sites.filter(s=>!s.archived)].map(s=>`<button data-action="pq-pick-site" data-id="${s.id}" style="${s.id===CTX.siteId?'background:var(--brand-tint);color:var(--brand-900);font-weight:700':''}"><span class="avatar" style="width:28px;height:28px;font-size:12px">${s.id==='all'?ic('layers','sm'):initials(s.name)}</span><span>${esc(s.name)}</span></button>`).join('')}
-  const n=$('#venueName');if(n)n.textContent=!CTX.org?'All businesses':CTX.siteId==='all'?CTX.org.name:site()?.name||'';const av=$('#venueAv');if(av)av.textContent=initials((n&&n.textContent)||'P')}
-async function chooseLoc(v){await openSite(v);if(v==='all'){App.go('locations')}App.render()}
-function pulseLoc(){const s=$('#pqLoc');if(!s)return;s.classList.remove('pulse');void s.offsetWidth;s.classList.add('pulse');s.focus()}
+// the account menu under the avatar (Signage's PVHub.accountMenu look): who you are, then the account actions
+function acctMenu(kbd){let m=$('#pqAcct');const av=$('#pqAv');if(m){closeAcct();return}
+  const it=(act,icon,label,cls='')=>`<button type="button" class="pv-acct-i ${cls}" role="menuitem" data-action="${act}">${icon}<span>${label}</span></button>`;
+  m=document.createElement('div');m.id='pqAcct';m.className='pv-acct';m.setAttribute('role','menu');
+  m.innerHTML=`<div class="pv-acct-h"><span class="hub-av">${esc(avInit())}</span><div class="ct"><b>${esc(CTX.email.split('@')[0])}</b><small>${esc(CTX.email)}</small><small>${esc([roleName(),CTX.org?.name].filter(Boolean).join(' · '))}</small></div></div>
+   ${CTX.org&&isAdmin()&&can('users')?it('pq-users',SV(HI.users),'Users &amp; access'):''}
+   ${it('account',ic('user','sm'),'Account settings')}${it('pq-change-pw',ic('lock','sm'),'Change password')}
+   ${CTX.org&&CTX.siteId!=='all'?it('copy-menu-link',ic('share','sm'),'Copy menu link')+it('preview-qr',ic('qr','sm'),'Preview QR Menu'):''}
+   ${it('whats-new',ic('rocket','sm'),"What's new")}${it('support',SV(HI.help),'Help')}${it('live-chat',ic('msg','sm'),'Start live chat')}
+   ${it('change-language',ic('translate','sm'),'Change language')}${it('theme',ic('sun','sm'),'Change theme')}
+   <div class="pv-acct-sep"></div>${it('pq-signout',SV(HI.logout),'Sign out')}`;
+  document.body.appendChild(m);const r=av.getBoundingClientRect();m.style.top=(r.bottom+8)+'px';m.style.right=Math.max(8,innerWidth-r.right)+'px';
+  av.setAttribute('aria-expanded','true');const items=[...m.querySelectorAll('.pv-acct-i')];if(kbd&&items[0])items[0].focus();
+  m.addEventListener('keydown',e=>{const i=items.indexOf(document.activeElement);if(e.key==='ArrowDown'){e.preventDefault();items[(i+1)%items.length].focus()}else if(e.key==='ArrowUp'){e.preventDefault();items[(i-1+items.length)%items.length].focus()}});
+  m.addEventListener('click',e=>{if(e.target.closest('.pv-acct-i'))setTimeout(closeAcct,0)})}
+function closeAcct(focus){const m=$('#pqAcct');if(!m)return;m.remove();const av=$('#pqAv');if(av){av.setAttribute('aria-expanded','false');if(focus)av.focus()}}
+document.addEventListener('click',e=>{if(!e.target.closest('#pqAcct')&&!e.target.closest('#pqAv'))closeAcct()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('#pqAcct'))closeAcct(true)});
+addEventListener('hashchange',()=>closeAcct());
+App.action('pq-users',()=>App.go('users'));
+// the header dropdown: PICKER_STANDARD.md (18:07 update)
+// master: "All locations (N)" (every location on the platform), then each location's name (" · Business" when two share a name);
+// a business opened from Locations reads "<Business> (all locations)". Others: "All my locations (N)" + theirs; one location: disabled box.
+function fillLoc(){const sel=$('#hdr-site');if(!sel)return;
+  const o=(v,t,on,extra='')=>`<option value="${esc(v)}" title="${esc(t)}"${on?' selected':''}${extra}>${esc(t)}</option>`;
+  const byName=(a,b)=>String(a.name).localeCompare(String(b.name));
+  if(CTX.master){const all=(CTX.allSites||[]).filter(s=>!s.archived),orgName=id=>(CTX.orgs.find(x=>x.id===id)||{}).name||(CTX.org&&CTX.org.id===id?CTX.org.name:'');
+    if(CTX.org&&!all.some(s=>s.org_id===CTX.org.id))CTX.sites.filter(s=>!s.archived).forEach(s=>all.push({...s,org_id:CTX.org.id}));
+    const dup=n=>all.filter(x=>String(x.name).toLowerCase()===String(n).toLowerCase()).length>1;
+    sel.disabled=false;
+    sel.innerHTML=o('__all',`All locations (${all.length})`,!CTX.org)+(CTX.org&&CTX.siteId==='all'?o('__biz',`${CTX.org.name} (all locations)`,true,' hidden'):'')+
+      all.slice().sort(byName).map(s=>o(s.id,s.name+(dup(s.name)?' · '+orgName(s.org_id):''),CTX.org&&CTX.siteId===s.id)).join('')}
+  else if(!CTX.org){sel.innerHTML=o('__all','All my locations (0)',true);sel.disabled=true}
+  else{const live=CTX.sites.filter(s=>!s.archived);
+    if(live.length===1){sel.innerHTML=o(live[0].id,live[0].name,true);sel.disabled=true}
+    else{sel.disabled=false;sel.innerHTML=o('all',`All my locations (${live.length})`,CTX.siteId==='all')+live.slice().sort(byName).map(s=>o(s.id,s.name,CTX.siteId===s.id)).join('')}}
+  const cur=sel.options[sel.selectedIndex];sel.title=cur?cur.textContent:'Choose location'}
+async function chooseLoc(v){
+  if(v==='__all'){return App.actions['pq-close-org']()}
+  if(v==='__biz')return;
+  if(CTX.master&&v!=='all'&&!CTX.sites.some(s=>s.id===v)){const s=(CTX.allSites||[]).find(x=>x.id===v);if(!s)return;
+    const wasAll=!CTX.org;loader(true);await openOrg(s.org_id,v,true);loader(false);fillAcct();
+    if(wasAll||App.current()==='locations')App.go('dashboard');App.render();return}
+  await openSite(v);if(v==='all'){App.go('locations')}App.render()}
+function pulseLoc(){const w=$('.top .hdr-pick'),s=$('#hdr-site');if(!w||!s)return;w.classList.remove('pulse');void w.offsetWidth;w.classList.add('pulse');setTimeout(()=>w.classList.remove('pulse'),1100);s.focus()}
 
 /* ---------- wrap the app's render: guard, nav, title, licence ---------- */
 const baseRender=App.render;
@@ -250,8 +276,13 @@ App.render=function(){
   if(f&&!can(f)){toast("You don't have access to that page");location.hash='dashboard';return}
   baseRender();
   // title
-  const t=$('#pqTitle');if(t)t.textContent=title(key);document.title=title(key)+' · Proview QR Menu';
+  // the page title is shown only in the top bar (no H1 in the page). Pages about one thing (a guest, a form…) show its name.
+  const pt=App.pageTitle?(()=>{const d=document.createElement('div');d.innerHTML=App.pageTitle;return d.textContent.trim()})():'';
+  const T=(App.current().includes('--')&&pt)||title(key)||pt;
+  const t=$('#pqTitle');if(t){t.textContent=T;t.title=T}document.title=T+' · Proview QR Menu';
   decorateNav(key);
+  // Proview IQ answers questions about one location's data: not on the Locations page
+  const fab=$('.fab');if(fab)fab.style.display=key==='locations'?'none':'';
   // licence banner / lock
   if(key!=='locations'&&key!=='users'&&CTX.siteId!=='all'){const s=site(),L=lic(s),v=$('#view');
     if(CTX.org?.suspended)v.innerHTML=lockHTML('This business is paused','Please contact Proview to reactivate it.');
@@ -276,7 +307,7 @@ const SHORT={'locations':'Locations','dashboard':'Home','menu-management':'Menus
 function flattenNav(nav){let h='';
   nav.querySelectorAll('.nav-group').forEach(g=>{if(g.style.display==='none')return;const vis=[...g.querySelectorAll('a')].filter(a=>a.style.display!=='none');if(!vis.length)return;
     const sep=g.querySelector('.eyebrow');if(sep)h+=`<div class="nav-sep">${esc(sep.textContent)}</div>`;
-    vis.forEach(a=>{const k=a.getAttribute('href').slice(1),l=a.title||a.textContent.trim(),svg=a.querySelector('svg')?.outerHTML||'',isNew=!!a.querySelector('.new'),grey=a.dataset.grey;
+    vis.forEach(a=>{const k=a.getAttribute('href').slice(1),l=a.title||a.textContent.trim(),svg=SV(k==='locations'?HI.building:(a.querySelector('svg')?.innerHTML||'')),isNew=!!a.querySelector('.new'),grey=a.dataset.grey;
       h+=grey?`<a href="#${k}" class="off" data-grey="1" role="link" aria-disabled="true" title="${esc(l)} – choose a location first" aria-label="${esc(l)} – choose a location first">${svg}<span class="lbl">${esc(l)}</span><span class="slbl">${esc(SHORT[k]||l)}</span>${isNew?'<span class="cnt">New</span>':''}</a>`
         :`<a href="#${k}" class="${a.classList.contains('on')?'active':''}" title="${esc(l)}" aria-label="${esc(l)}"${a.classList.contains('on')?' aria-current="page"':''}>${svg}<span class="lbl">${esc(l)}</span><span class="slbl">${esc(SHORT[k]||l)}</span>${isNew?'<span class="cnt">New</span>':''}</a>`})});
   nav.innerHTML=h}
@@ -286,7 +317,7 @@ function lockHTML(h,t){const plans=Object.entries(PLANS||{});return `<div class=
   <p style="margin:16px 0 0">Or renew through the <a href="${CFG.lic}" target="_blank" rel="noopener">licence portal</a>, or call <strong>${CFG.phone}</strong>.</p>
   <div style="display:flex;gap:10px;justify-content:center;margin-top:18px"><button class="btn secondary" data-action="pq-recheck">${ic('refresh','sm')}Check again</button>${CTX.sites.filter(s=>!s.archived).length>1?`<a class="btn ghost" href="#locations">Other locations</a>`:''}</div></div>`}
 let PLANS={};function loadPlans(){sb.rpc('pq_plans').then(r=>{PLANS=r.data||{}}).catch(()=>{})}
-function updateCounts(){const w=(App.state.orders||[]).filter(o=>/Waiting/i.test(o.status||'')).length+(App.state.services||[]).filter(x=>!x.done).length;const b=$('#pqBellCnt');if(b)b.textContent=w||'';
+function updateCounts(){const w=(App.state.orders||[]).filter(o=>/Waiting/i.test(o.status||'')).length+(App.state.services||[]).filter(x=>!x.done).length;const b=$('#pqBellCnt');if(b){b.textContent=w>9?'9+':w||'';b.classList.toggle('hidden',!w)}
   const m=(App.state.feedbacks||[]).filter(f=>f.unread).length+(App.state.reviews||[]).filter(r=>r.status==='Waiting').length;const c=$('#pqMailCnt');if(c)c.textContent=m||''}
 
 /* ---------- header actions ---------- */
@@ -324,34 +355,120 @@ function openPalette(){App.modal({title:'Search',body:`<label class="search" sty
   function row(h,i,t,s){return `<a href="${h}" data-close style="display:flex;gap:10px;align-items:center;padding:9px;border-radius:8px;color:var(--ink-2);text-decoration:none">${ic(i,'sm')}${esc(t)}<small class="muted" style="margin-left:auto">${esc(s||'')}</small></a>`}
   q.addEventListener('input',run);run()}
 
-/* ---------- Locations page ---------- */
-let bizQ='';
+/* ---------- Locations page: Proview Signage's (LOCATIONS_PAGE_STANDARD.md): description + buttons, six clickable summary
+   boxes, search, one card per business (master) or per location (a business opened from here, and its owner). ---------- */
+// counts come only from data the app already has: pq_orgs_list, pq_sites (licences) and each location's saved pq_state
+// (menus switched on; orders sent today, from the orders the back office has already taken in from the QR menu)
+const LOCS={st:null,at:0,busy:false,err:'',q:''};
+const shortD=d=>new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+const plural=(n,w,ws)=>`${n} ${n===1?w:(ws||w+'s')}`;
+const todayStr=()=>{const d=new Date(),p=n=>String(n).padStart(2,'0');return `${p(d.getDate())}/${p(d.getMonth()+1)}/${d.getFullYear()}`};
+const orgOf=id=>CTX.orgs.find(o=>o.id===id)||(CTX.org&&CTX.org.id===id?CTX.org:null);
+function siteLic(s){const o=orgOf(s.org_id||CTX.org?.id);if(o&&o.suspended)return{k:'paused',t:'Paused',c:'bad'};return lic(s)}
+const works=s=>!s.archived&&['ok','trial'].includes(siteLic(s).k);
+const needs=s=>{if(s.archived)return false;const L=siteLic(s);return ['none','expired','paused'].includes(L.k)||(L.days!=null&&L.days<=14)};
+const tone=s=>{const L=siteLic(s);return s.archived?'':['none','expired','paused'].includes(L.k)?'bad':(L.k==='trial'||(L.days!=null&&L.days<=14))?'warn':'ok'};
+const cnt=(id,k)=>LOCS.st&&LOCS.st[id]?LOCS.st[id][k]:0;
+const sumOf=(list,k)=>list.reduce((t,x)=>t+cnt(x.id,k),0);
+async function loadMaster(){if(!CTX.master)return;
+  const [o,s]=await Promise.all([sb.rpc('pq_orgs_list'),sb.from('pq_sites').select('id,org_id,name,archived,created_at,license_type,starts_at,expires_at,last_seen')]);
+  if(o.error)toast(o.error.message);if(s.error)toast(s.error.message);
+  CTX.orgs=(o.data||CTX.orgs||[]).slice().sort((x,y)=>String(x.name).localeCompare(String(y.name)));CTX.allSites=(s.data||CTX.allSites||[]).slice().sort((x,y)=>String(x.name).localeCompare(String(y.name)));fillLoc()}
+const loadOrgs=loadMaster;
+async function loadCounts(){if(LOCS.busy)return;LOCS.busy=true;const errs=[];
+  const ids=(CTX.org?CTX.sites:CTX.allSites||[]).map(x=>x.id);const st={};
+  if(ids.length){try{let q=sb.from('pq_state').select('site_id,updated_at,menus:data->menus,orders:data->orders,arch:data->archived');if(CTX.org)q=q.in('site_id',ids);
+    const {data,error}=await q;if(error)throw error;const t=todayStr();
+    (data||[]).forEach(r=>{const A=x=>Array.isArray(x)?x:[];const ord=A(r.orders).concat(A(r.arch)).filter(o=>o&&String(o.sent||'').startsWith(t));
+      st[r.site_id]={m:A(r.menus).filter(m=>m&&m.on===true).length,mt:A(r.menus).length,o:ord.length,at:r.updated_at}})}
+    catch(e){errs.push('Couldn’t load menus and orders: '+(e.message||e))}}
+  ids.forEach(id=>{if(!st[id])st[id]={m:0,mt:0,o:0,at:null}});
+  LOCS.st=st;LOCS.at=Date.now();LOCS.err=errs.join(' · ');LOCS.busy=false;
+  if(App.current().split('--')[0]==='locations')App.render()}
+function locHealth(list){if(!LOCS.st)return 'Loading menus and orders…';return `${plural(sumOf(list,'m'),'menu')} live · ${plural(sumOf(list,'o'),'order')} today`}
+// status pill: green all good · grey nothing set up yet · amber trial / ending soon · red expired, no licence or paused
+function bizPill(o,list){const live=list.filter(x=>!x.archived);
+  if(o&&o.suspended)return `<span class="ov-pill bad">Paused</span>`;
+  if(!live.length)return `<span class="ov-pill">No locations yet</span>`;
+  const bad=live.filter(x=>['none','expired'].includes(siteLic(x).k));
+  if(bad.length)return live.length===1?`<span class="ov-pill bad">${siteLic(bad[0]).k==='none'?'No licence':/^Trial/.test(siteLic(bad[0]).t)?'Trial ended':'Expired'}</span>`:`<span class="ov-pill bad">${bad.length} licence${bad.length===1?' needs':'s need'} attention</span>`;
+  const tr=live.find(x=>siteLic(x).k==='trial');if(tr)return `<span class="ov-pill warn">Trial – ends ${esc(shortD(tr.expires_at))}</span>`;
+  const ex=live.filter(x=>siteLic(x).days!=null&&siteLic(x).days<=14).sort((a,b)=>siteLic(a).days-siteLic(b).days)[0];
+  if(ex)return `<span class="ov-pill warn">Licence ends in ${plural(siteLic(ex).days,'day')}</span>`;
+  if(LOCS.st&&!sumOf(live,'m'))return `<span class="ov-pill">No menus live yet</span>`;
+  return `<span class="ov-pill ok">All good</span>`}
+function locPill(x){if(x.archived)return `<span class="ov-pill">Archived</span>`;return bizPill(orgOf(x.org_id||CTX.org?.id),[x])}
+// footer licence text, as Signage: "Licences: lifetime", "2 licences", "Trial ends 12 Nov", "Expired"
+function licText(list){const live=list.filter(x=>!x.archived);if(!live.length)return CTX.master?'Add a location to get started':'No locations yet';
+  if(live.every(x=>x.license_type==='lifetime'))return live.length===1?'Licence: lifetime':'Licences: lifetime';
+  const tr=live.find(x=>(x.license_type||'').startsWith('trial')&&x.expires_at);if(tr)return siteLic(tr).k==='trial'?`Trial ends ${shortD(tr.expires_at)}`:'Trial expired';
+  if(live.every(x=>siteLic(x).k==='expired'))return 'Expired';if(live.every(x=>siteLic(x).k==='none'))return 'No licence';
+  const ok=live.filter(works).length;if(live.length===1)return ok?(live[0].expires_at?'Licence until '+shortD(live[0].expires_at):'Licensed'):'Not licensed';
+  return ok===live.length?plural(live.length,'licence'):`${ok} of ${live.length} licensed`}
+const chev=`<span class="ov-chev" aria-hidden="true">›</span>`,dotH=t=>`<span class="ov-dot ${t}"></span>`;
+const qOf=(...a)=>esc(a.filter(Boolean).join(' ').toLowerCase());
 App.route('locations',()=>{
-  if(!CTX.org)return businessesHTML();
-  const live=CTX.sites;const admin=isAdmin();
-  return `${UI.pageHead({title:`${esc(CTX.org.name)}`,sub:CTX.master?'Proview master · one business at a time':'Your locations and their licences',back:'',
-    actions:`${CTX.master?`<button class="btn secondary" data-action="pq-close-org">${ic('back','sm')}All businesses</button>`:''}${!CTX.master&&(CTX.who.memberships||[]).length>1?UI.select((CTX.who.memberships||[]).map(m=>({value:m.org_id,label:m.org_name})),CTX.org.id,'data-change="pq-switch-org" style="width:220px"'):''}${admin?`<button class="btn primary" data-action="pq-add-site">${ic('plus','sm')}Add location</button>`:''}`})}
-  ${CTX.org.suspended?`<div class="pq-banner bad">${ic('lock','sm')}This business is paused.</div>`:''}
-  <div class="card">${UI.table({cols:['Location','Licence','Ends','Last saved',{label:'',align:'right'}],
-    rows:live.map(s=>{const L=lic(s);return [`<div style="display:flex;gap:10px;align-items:center"><span class="avatar">${initials(s.name)}</span><div><strong style="color:var(--ink)">${esc(s.name)}</strong>${s.id===CTX.siteId?' <span class="pill">Open</span>':''}<div class="help" style="margin:0">Added ${fmtD(s.created_at)}</div></div></div>`,
-      UI.pill(L.t,L.c),s.license_type==='lifetime'?'Never':s.expires_at?fmtD(s.expires_at):'—',s.last_seen?fmtD(s.last_seen):'—',
-      `<div style="display:flex;gap:6px;justify-content:flex-end">${s.archived?'':`<button class="btn primary sm" data-action="pq-pick-site" data-id="${s.id}">Open</button>`}${CTX.master?`<button class="btn secondary sm" data-action="pq-trial" data-id="${s.id}">Trial…</button>`:''}${admin?UI.more([{label:'Rename',icon:'edit',action:'pq-rename-site',data:`data-id="${s.id}"`},{label:s.archived?'Restore':'Archive',icon:'archive',action:'pq-archive-site',data:`data-id="${s.id}" data-v="${s.archived?0:1}"`},{label:'Licence portal',icon:'open',action:'pq-open-lic'}]):''}</div>`]}),
-    empty:'No locations yet'})}</div>
-  <p class="help" style="margin-top:12px">Licences are managed per location from the <a href="${CFG.lic}" target="_blank" rel="noopener">Proview licence portal</a>. New locations start with a free 3-day trial.</p>`});
-function businessesHTML(){
-  const list=CTX.orgs.filter(o=>!bizQ||o.name.toLowerCase().includes(bizQ)||(o.contact_email||'').includes(bizQ));
-  const empty=`<div class="card">${UI.empty('store','No businesses yet','Add the first business, or check the licence portal.',`<div style="display:flex;gap:8px;justify-content:center"><button class="btn primary" data-action="pq-add-org">${ic('plus','sm')}Add business</button><a class="btn secondary" href="${CFG.lic}" target="_blank" rel="noopener">Licence portal</a><button class="btn ghost" data-action="pq-refresh-orgs">${ic('refresh','sm')}Refresh</button></div>`)}</div>`;
-  return `${UI.pageHead({title:'Locations',sub:'Every business using Proview QR Menu. Open one to work in it.',actions:`<a class="btn ghost" href="${CFG.lic}" target="_blank" rel="noopener">${ic('open','sm')}Licence portal</a><button class="btn secondary" data-action="pq-refresh-orgs">${ic('refresh','sm')}Refresh</button><button class="btn primary" data-action="pq-add-org">${ic('plus','sm')}Add business</button>`})}
-   <div class="toolbar">${UI.searchBox('Search businesses','data-input="pq-biz-q" value="'+esc(bizQ)+'"')}<span class="muted">${CTX.orgs.length} business${CTX.orgs.length===1?'':'es'}</span></div>
-   ${CTX.orgs.length?`<div class="card">${UI.table({cols:['Business','Contact','Locations','Users','',{label:'',align:'right'}],rows:list.map(o=>[`<strong style="color:var(--ink)">${esc(o.name)}</strong><div class="help" style="margin:0">Since ${fmtD(o.created_at)}</div>`,esc(o.contact_email||'—'),o.sites,o.users,
-     `${o.self_signup?UI.pill('Self sign-up','grey'):''} ${o.suspended?UI.pill('Paused','bad'):''}`,
-     `<div style="display:flex;gap:6px;justify-content:flex-end"><button class="btn primary sm" data-action="pq-open-org" data-id="${o.id}">Open</button>${UI.more([{label:o.suspended?'Unpause':'Pause',icon:'power',action:'pq-suspend-org',data:`data-id="${o.id}" data-v="${o.suspended?0:1}"`},{label:'Delete business',icon:'trash',action:'pq-del-org',danger:1,data:`data-id="${o.id}" data-name="${esc(o.name)}"`}])}</div>`]),empty:'No businesses match'})}</div>`:empty}`}
-async function loadOrgs(){const {data,error}=await sb.rpc('pq_orgs_list');if(error)toast(error.message);CTX.orgs=data||[]}
-App.after('locations',()=>{if(!CTX.org&&!CTX._orgsLoaded){CTX._orgsLoaded=true;loadOrgs().then(()=>App.render())}});
-A('pq-biz-q',el=>{bizQ=el.value.trim().toLowerCase();const p=el.selectionStart;App.render();const n=$('[data-input="pq-biz-q"]');n.focus();n.setSelectionRange(p,p)});
-A('pq-refresh-orgs',async()=>{await loadOrgs();App.render();toast('Refreshed')});
-A('pq-open-org',async el=>{loader(true);await openOrg(el.dataset.id,null);loader(false);App.go('locations');App.render();fillAcct()});
-A('pq-close-org',async()=>{await flush();CTX.org=null;CTX.sites=[];CTX.siteId='all';CTX.role=null;remember();replaceState(window.PV_BLANK(''));await loadOrgs();fillLoc();fillAcct();App.render()});
+  const M=CTX.master,perLoc=!!CTX.org,admin=isAdmin();
+  const sites=perLoc?CTX.sites.filter(x=>!x.archived||admin).map(x=>({...x,org_id:CTX.org.id})):(CTX.allSites||[]);
+  const live=sites.filter(x=>!x.archived);
+  const orgs=perLoc?[CTX.org]:CTX.orgs;
+  const loading=!perLoc&&!CTX._orgsLoaded;
+  const stat=(k,v,list,t)=>`<button type="button" class="card ov-stat${t?' '+t:''}" data-action="pq-loc-list" data-list="${list}" title="Show the list"><div class="tiny">${k}</div><div class="ov-v">${v}</div></button>`;
+  const nLic=live.filter(works).length,nAtt=live.filter(needs).length,nMenus=LOCS.st?sumOf(live.filter(works),'m'):'…',nOrd=LOCS.st?sumOf(live,'o'):'…';
+  const stats=`<div class="ov-stats">${stat('Businesses',loading?'…':orgs.length,'biz')}${stat('Locations',live.length,'loc')}${stat('Licensed',nLic,'lic',nLic?'ok':'')}${stat('Menus live',nMenus,'menus')}${stat('Orders today',nOrd,'orders')}${stat('Licences need attention',nAtt,'attn',nAtt?'bad':'')}</div>`;
+  const openBtn=(act,attrs,label)=>`<button type="button" class="btn sm primary" data-action="${act}" ${attrs}>${label}</button>`;
+  const bizCard=o=>{const L=live.filter(x=>x.org_id===o.id),single=L.length===1;
+    const sub=single?[L[0].name!==o.name&&L[0].name,locHealth(L)].filter(Boolean).join(' · '):L.length?`${plural(L.length,'location')} · ${locHealth(L)}`:'No locations yet';
+    const rows=single?'':L.map(x=>`<button type="button" class="ov-loc" data-action="pq-open-loc" data-org="${o.id}" data-id="${x.id}" title="Open this location">${dotH(tone(x))}<span class="grow">${esc(x.name)}</span><span class="muted small">${LOCS.st?`${plural(cnt(x.id,'m'),'menu')} · ${plural(cnt(x.id,'o'),'order')}`:'…'}</span>${chev}</button>`).join('');
+    const more=UI.more([{label:o.suspended?'Unpause business':'Pause business',icon:'power',action:'pq-suspend-org',data:`data-id="${o.id}" data-v="${o.suspended?0:1}"`},{label:'Delete business',icon:'trash',action:'pq-del-org',danger:1,data:`data-id="${o.id}" data-name="${esc(o.name)}"`}],'More actions for '+o.name);
+    return `<article class="card ov-biz" data-q="${qOf(o.name,o.contact_email,...L.map(x=>x.name))}"><div class="ov-bh"><div class="grow"><h3>${esc(o.name)}</h3><div class="muted small">${esc(sub)}</div></div>${bizPill(o,L)}</div>${rows}
+      <div class="ov-bf"><span class="muted small">${esc(licText(L))}</span><span class="pv-acts">${more}${openBtn('pq-open-org',`data-id="${o.id}"`,'Open business')}</span></div></article>`};
+  const locCard=x=>{const cur=x.id===CTX.siteId;
+    const more=admin?UI.more([{label:'Rename',icon:'edit',action:'pq-rename-site',data:`data-id="${x.id}"`},{label:x.archived?'Restore':'Archive',icon:'archive',action:'pq-archive-site',data:`data-id="${x.id}" data-v="${x.archived?0:1}"`},{label:'Licence portal',icon:'open',action:'pq-open-lic'}],'More actions for '+x.name):'';
+    return `<article class="card ov-biz" data-q="${qOf(CTX.org.name,x.name)}"><div class="ov-bh"><div class="grow"><h3>${esc(x.name)}</h3><div class="muted small">${esc(x.archived?'Archived · added '+fmtD(x.created_at):locHealth([x]))}</div></div>${locPill(x)}</div>
+      <div class="ov-bf"><span class="muted small">${esc(x.archived?'Archived':licText([x]))}</span><span class="pv-acts">${M&&!x.archived?`<button type="button" class="btn sm" data-action="pq-trial" data-id="${x.id}" title="Extend, end or clear this location's free trial">Trial…</button>`:''}${more}${x.archived?'':openBtn('pq-pick-site',`data-id="${x.id}"`,cur?'Back to this location':'Open location')}</span></div></article>`};
+  const cards=perLoc?sites.slice().sort((a,b)=>(a.archived-b.archived)||String(a.name).localeCompare(String(b.name))).map(locCard):orgs.map(bizCard);
+  const empty=`<div class="card ov-empty-card"><div style="display:flex;flex-direction:column;align-items:center;text-align:center;padding:28px 12px;gap:10px"><h3 style="margin:0;font-size:15px;font-weight:650">${perLoc?'No locations yet':'No businesses yet'}</h3><p class="muted" style="margin:0">${perLoc?(admin?'Add the first location. New locations start with a free 3-day trial.':`Ask your owner, or call Proview on ${CFG.phone}.`):'Add the first business, or check the licence portal.'}</p></div></div>`;
+  const desc=!perLoc?'Every business on the platform with its locations. Open one to see it as its team does.':M?`Every location of ${esc(CTX.org.name)}. Open one to work in it.`:'Each location with its licence and today’s orders. Open a location to work in it.';
+  const multi=!M&&(CTX.who.memberships||[]).length>1;
+  const acts=`<button type="button" class="btn" data-action="pq-refresh-orgs" title="Refresh">${ic('refresh')} Refresh</button><a class="btn" href="${CFG.lic}" target="_blank" rel="noopener">Licences ↗</a>`+
+    (perLoc&&M?`<button type="button" class="btn" data-action="pq-close-org" title="Back to every business">All businesses</button>`:'')+
+    (multi?UI.select((CTX.who.memberships||[]).map(m=>({value:m.org_id,label:m.org_name})),CTX.org.id,'data-change="pq-switch-org" aria-label="Business" style="width:220px;height:38px"'):'')+
+    (!perLoc&&M?`<button type="button" class="btn primary" data-action="pq-add-org">${ic('plus')} Add business</button>`:'')+
+    (perLoc&&admin?`<button type="button" class="btn primary" data-action="pq-add-site">${ic('plus')} Add location</button>`:'');
+  return `<div class="pv-loc"><div class="pv-ph"><p class="muted">${desc}</p><div class="pv-acts">${acts}</div></div>
+   ${perLoc&&CTX.org.suspended?`<div class="pq-banner bad">${ic('lock','sm')}This business is paused.</div>`:''}
+   ${stats}
+   ${LOCS.err?`<div class="pq-banner bad" style="margin-bottom:12px">${esc(LOCS.err)}</div>`:''}
+   <div class="ov-tools"><input class="ov-search" id="pqLocQ" type="search" placeholder="Search businesses or locations" aria-label="Search businesses or locations" value="${esc(LOCS.q)}" data-input="pq-loc-q" autocomplete="off"></div>
+   <div class="ov-grid" id="pqLocGrid">${cards.length?cards.join(''):loading?'<p class="muted" style="grid-column:1/-1;margin:0">Loading…</p>':empty}</div><p class="muted" id="pqLocNone" hidden style="margin:12px 0 0">No businesses or locations match.</p>
+   ${perLoc?`<p class="muted small" style="margin:16px 0 0">Licences are managed per location in the <a href="${CFG.lic}" target="_blank" rel="noopener">Proview licence portal</a>. New locations start with a free 3-day trial.</p>`:''}</div>`});
+function locFilter(v){const t=String(v||'').trim().toLowerCase();let n=0;$$('#pqLocGrid > .ov-biz').forEach(c=>{const ok=!t||c.dataset.q.includes(t);c.hidden=!ok;if(ok)n++});
+  const e=$('#pqLocNone');if(e){e.hidden=n>0||!t;e.textContent=`No businesses or locations match “${String(v||'').trim()}”.`}}
+App.after('locations',()=>{if(LOCS.q)locFilter(LOCS.q);
+  if(CTX.master&&!CTX.org&&!CTX._orgsLoaded){CTX._orgsLoaded=true;loadMaster().then(()=>{LOCS.at=0;App.render()});return}
+  if(!LOCS.busy&&(!LOCS.st||Date.now()-LOCS.at>60e3))loadCounts()});
+A('pq-loc-q',el=>{LOCS.q=el.value;locFilter(el.value)});
+// the summary boxes: each opens the list behind its number (as Proview Signage)
+A('pq-loc-list',el=>{const k=el.dataset.list,perLoc=!!CTX.org;
+  const sites=(perLoc?CTX.sites.map(x=>({...x,org_id:CTX.org.id})):(CTX.allSites||[])).filter(x=>!x.archived).slice().sort((a,b)=>((orgOf(a.org_id)||{}).name+a.name).localeCompare((orgOf(b.org_id)||{}).name+b.name));
+  const pillOf=x=>{const L=siteLic(x);return `<span class="ov-pill ${tone(x)}">${esc(L.t)}</span>`};
+  const counts=x=>`<span class="muted small">${LOCS.st?`${plural(cnt(x.id,'m'),'menu')} live · ${plural(cnt(x.id,'o'),'order')}`:'…'}</span>`;
+  const li=(x,right)=>`<button type="button" class="ov-li" data-action="pq-open-loc" data-org="${x.org_id}" data-id="${x.id}" data-close><span class="ov-dot ${tone(x)}"></span><span class="grow"><b>${esc(x.name)}</b><span class="tiny" style="display:block">${esc((orgOf(x.org_id)||{}).name||'')}</span></span>${right}${chev}</button>`;
+  let title,items,none;
+  if(k==='biz'){title='Businesses';none='No businesses yet.';const orgs=perLoc?[CTX.org]:CTX.orgs;
+    items=orgs.map(o=>{const L=sites.filter(x=>x.org_id===o.id);return `<button type="button" class="ov-li" data-action="pq-open-org" data-id="${o.id}" data-close><span class="ov-dot ${!L.length?'':L.some(x=>tone(x)==='bad')?'bad':L.some(x=>tone(x)==='warn')?'warn':'ok'}"></span><span class="grow"><b>${esc(o.name)}</b><span class="tiny" style="display:block">${plural(L.length,'location')}${LOCS.st?' · '+plural(sumOf(L,'o'),'order')+' today':''}</span></span>${L.length?'':'<span class="muted small">No locations yet</span>'}${chev}</button>`})}
+  else if(k==='loc'){title='Locations';none='No locations yet.';items=sites.map(x=>li(x,counts(x)))}
+  else if(k==='lic'){title='Licensed locations';none='No location has a working licence.';items=sites.filter(works).map(x=>li(x,pillOf(x)))}
+  else if(k==='menus'){title='Menus live';none='No menus are live yet.';items=sites.filter(x=>works(x)&&cnt(x.id,'m')).sort((a,b)=>cnt(b.id,'m')-cnt(a.id,'m')).map(x=>li(x,counts(x)))}
+  else if(k==='orders'){title='Orders today';none='No orders today.';items=sites.filter(x=>cnt(x.id,'o')).sort((a,b)=>cnt(b.id,'o')-cnt(a.id,'o')).map(x=>li(x,counts(x)))}
+  else{title='Licences needing attention';none='Every licence is fine.';items=sites.filter(needs).map(x=>li(x,pillOf(x)))}
+  modal({title,body:items.length?`<div class="ov-list">${items.join('')}</div>`:`<p class="muted" style="margin:0">${none}</p>`})});
+A('pq-refresh-orgs',async()=>{if(CTX.master)await loadMaster();if(CTX.org){const {data}=await sb.rpc('pq_sites_of',{p_org:CTX.org.id});if(data)CTX.sites=data.filter(s=>!s.archived||isAdmin());fillLoc()}
+  LOCS.st=null;LOCS.at=0;App.render();toast('Up to date')});
+A('pq-open-loc',async el=>{const org=el.dataset.org,id=el.dataset.id;loader(true);if(!CTX.org||CTX.org.id!==org)await openOrg(org,id,true);else await openSite(id,true);loader(false);fillAcct();App.go('dashboard');App.render()});
+A('pq-open-org',async el=>{loader(true);await openOrg(el.dataset.id,null);loader(false);LOCS.st=null;App.go(CTX.siteId==='all'?'locations':'dashboard');App.render();fillAcct()});
+A('pq-close-org',async()=>{await flush();CTX.org=null;CTX.sites=[];CTX.siteId='all';CTX.role=null;CTX.member=null;remember();replaceState(window.PV_BLANK(''));LOCS.st=null;await loadMaster();fillLoc();fillAcct();if(App.current()!=='locations')App.go('locations');App.render()});
 A('pq-switch-org',async el=>{loader(true);await openOrg(el.value,null);loader(false);App.render();fillAcct()});
 A('pq-add-org',()=>modal({title:'Add business',body:`${UI.field({label:'Business name',required:true,control:UI.input({id:'pqNo'})})}${UI.field({label:'Owner email',help:'They sign in with this email (password or Proview account).',control:UI.input({id:'pqNe',type:'email'})})}${UI.field({label:'First location',control:UI.input({id:'pqNl',placeholder:'Main'})})}${UI.field({label:'Phone',control:UI.input({id:'pqNp2',type:'tel'})})}<p class="help">The first location starts on a free 3-day trial. Set its licence in the licence portal.</p>`,footer:`<button class="btn secondary" data-close>Cancel</button><button class="btn primary" data-action="pq-add-org-save">Add business</button>`}));
 A('pq-add-org-save',async()=>{const {data,error}=await sb.rpc('pq_create_org',{p_name:$('#pqNo').value,p_owner_email:$('#pqNe').value,p_location:$('#pqNl').value,p_phone:$('#pqNp2').value||null});if(error)return toast(error.message);closeModal();await loadOrgs();toast('Business added');await openOrg(data,null);App.render();fillAcct()});

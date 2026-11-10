@@ -135,8 +135,10 @@ function closeDrawer(){const d=$('#drawer');if(!d.classList.contains('show'))ret
 /* ---------- UI kit (all return HTML strings) ---------- */
 const UI={
   ic,esc,gbp,uid,initials,
-  pageHead({title,sub='',back='',actions='',learn=false,tutorial=false}){
-    return `<div class="page-head"><div style="display:flex;align-items:center;gap:12px">${back?`<a href="#${back}" class="iconbtn" aria-label="Back">${ic('back')}</a>`:''}<div><h1>${title}</h1>${sub?`<p class="sub">${sub}</p>`:''}</div></div>
+  /* page head (Proview standard, as Signage 1906cd5): the title is shown only in the top bar; the page opens with its
+     description and its buttons on one row */
+  pageHead({title,sub='',back='',actions='',learn=false,tutorial=false}){App.pageTitle=title;
+    return `<div class="page-head">${back||sub?`<div class="ph-l">${back?`<a href="#${back}" class="iconbtn" aria-label="Back" title="Back">${ic('back')}</a>`:''}${sub?`<p class="sub">${sub}</p>`:''}</div>`:''}
     <div class="actions">${tutorial?`<button class="btn ghost" data-action="tutorial">${ic('play','sm')}Watch Tutorial</button>`:''}${learn?`<button class="btn ghost" data-action="learn">${ic('book','sm')}Learn More</button>`:''}${actions}</div></div>`},
   /* tabs: items=[{key,label,badge,soon,disabled,href}] ; if href given acts as link, else local tabset switching panels data-panel="set:key" */
   tabs(items,active,set=''){return `<div class="tabs" ${set?`data-tabset="${set}"`:''} role="tablist">${items.map(t=>{const k=t.key??t.label;
@@ -196,7 +198,7 @@ const App={$,$$,UI,toast,modal,drawer,close,closeModal,closeDrawer,routes,action
   go(h){location.hash=h},
   current(){return location.hash.slice(1)||'dashboard'},
   render(){const h=App.current();const [key,param]=h.split('--');const r=routes[key]||routes.dashboard||{fn:()=>UI.empty('info','Page not found'),opts:{}};
-    const app=$('#app');app.classList.toggle('full',!!r.opts.full);
+    const app=$('#app');app.classList.toggle('full',!!r.opts.full);App.pageTitle=null;
     if(r.opts.collapse)app.classList.add('collapsed');else if(!App._userCollapsed)app.classList.remove('collapsed');
     $('#view').innerHTML=r.fn(param)||'';renderNav(r.opts.nav||key);
     (afters[key]||(()=>{}))(param);app.classList.remove('mobile-open')},
