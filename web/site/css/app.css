@@ -151,6 +151,3 @@ body.dark .phone{background:#fff}
 .app.collapsed .brand b{font-size:0}
 .app.collapsed .brand b::after{content:"P";font-size:22px}
 .app.iq-open .fab{display:none}
-/* Add business: the pop-up is js/pv-addbiz.js (shared by all six apps); these style its "added" pop-up */
-.pq-abz-card{display:grid;gap:8px;background:#edf2fd;border:1px solid #cbd8f6;border-radius:10px;padding:10px 14px}.pq-abz-card>div{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}.pq-abz-card b{font-family:ui-monospace,monospace;word-break:break-all}
-.pq-abz-ok{background:#ecf8f0;border:1px solid #bfe3cb;color:#17592f;border-radius:10px;padding:10px 12px;margin:12px 0 0}.pq-abz-warn{background:#fff8e8;border:1px solid #f0dfb5;color:#4d3a10;border-radius:10px;padding:10px 12px;margin:12px 0 0}
