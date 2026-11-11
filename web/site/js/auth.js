@@ -28,7 +28,7 @@ const fmtD=d=>new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short
 function lic(s){if(!s)return{k:'none',t:'No licence',c:'grey'};if(s.archived)return{k:'archived',t:'Archived',c:'grey'};if(!s.license_type)return{k:'none',t:'No licence',c:'bad'};
   if(s.license_type==='lifetime')return{k:'ok',t:'Lifetime',c:'ok'};const ms=new Date(s.expires_at)-Date.now(),days=Math.ceil(ms/864e5);
   if(ms<=0)return{k:'expired',t:(s.license_type.startsWith('trial')?'Trial ended ':'Expired ')+fmtD(s.expires_at),c:'bad'};
-  if(s.license_type.startsWith('trial'))return{k:'trial',t:`Free trial · ${days} day${days>1?'s':''} left`,c:'warn',days};
+  if(s.license_type.startsWith('trial'))return{k:'trial',t:`Trial · ${days} day${days>1?'s':''} left`,c:'warn',days};
   return{k:'ok',t:'Active until '+fmtD(s.expires_at),c:days<=14?'warn':'ok',days}}
 
 /* ---------- styles ---------- */
@@ -72,13 +72,13 @@ function signInScreen(note='',kind='err'){authShow(`<h1>Sign in</h1><p class="au
   <form id="pqSignIn" style="display:flex;flex-direction:column;gap:14px;margin:0;padding:0;border:0;box-shadow:none" novalidate>${inp('pqEmail','Email','email','required autocomplete="username" placeholder="you@company.com"')}${inp('pqPass','Password','password','required autocomplete="current-password" placeholder="Password"')}
   <button class="go" type="submit">Sign in</button></form>
   <div class="or">or</div><a class="ghost2" href="${CFG.dash}?app=qrmenu&return=${encodeURIComponent(location.origin+'/')}">Sign in with Proview account</a>
-  <div class="auth2-links"><a href="#" data-pq="signup">Start a free 3-day trial</a><a href="#" data-pq="forgot">Forgot password?</a></div>`);
+  <div class="auth2-links"><a href="#" data-pq="signup">New here? Create a login</a><a href="#" data-pq="forgot">Forgot password?</a></div>`);
   $('#pqSignIn').onsubmit=async e=>{e.preventDefault();const b=e.target.querySelector('button');b.disabled=true;b.textContent='Signing in…';
     const {error}=await sb.auth.signInWithPassword({email:$('#pqEmail').value.trim(),password:$('#pqPass').value});
     if(error){signInScreen(/confirm/i.test(error.message)?'Confirm your email address first (check your inbox).':'Wrong email or password.');return}
     afterSignIn()}}
 const FORM='style="display:flex;flex-direction:column;gap:14px;margin:0;padding:0;border:0;box-shadow:none" novalidate';
-function signUpScreen(note=''){authShow(`<h1>Create your login</h1><p class="auth2-mut">Start your free 3-day trial. No card needed.</p>${msg(note)}
+function signUpScreen(note=''){authShow(`<h1>Create your login</h1><p class="auth2-mut">Then set up your business and buy a licence to start using Proview QR Menu.</p>${msg(note)}
   <form id="pqSignUp" ${FORM}>${inp('pqEmail','Email','email','required autocomplete="email" placeholder="you@company.com"')}${inp('pqPass','Password','password','required minlength="8" autocomplete="new-password" placeholder="At least 8 characters"')}
   <button class="go" type="submit">Create login</button></form><div class="auth2-links"><a href="#" data-pq="signin">I already have a login</a></div>`);
   $('#pqSignUp').onsubmit=async e=>{e.preventDefault();const em=$('#pqEmail').value.trim();if($('#pqPass').value.length<8)return signUpScreen('Use at least 8 characters.');
@@ -93,14 +93,14 @@ function forgotScreen(note='',kind='err'){authShow(`<h1>Reset your password</h1>
     forgotScreen(error?error.message:'If that email has a login, a reset link is on its way.',error?'err':'ok')}}
 function newPasswordScreen(note=''){authShow(`<h1>Choose a new password</h1><p class="auth2-mut">At least 8 characters.</p>${msg(note)}<form id="pqNewPw" ${FORM}>${inp('pqPass','New password','password','required minlength="8" autocomplete="new-password"')}<button class="go" type="submit">Save password</button></form>`);
   $('#pqNewPw').onsubmit=async e=>{e.preventDefault();const {error}=await sb.auth.updateUser({password:$('#pqPass').value});if(error)return newPasswordScreen(error.message);toast('Password updated');afterSignIn()}}
-function trialSetupScreen(note=''){authShow(`<h1>Set up your business</h1><p class="auth2-mut">Start your free 3-day trial${CTX.email?' as '+esc(CTX.email):''}.</p>${msg(note)}
+function trialSetupScreen(note=''){authShow(`<h1>Set up your business</h1><p class="auth2-mut">Add your business and first location${CTX.email?' as '+esc(CTX.email):''}. Then buy a licence to start using Proview QR Menu.</p>${msg(note)}
   <form id="pqTrial" ${FORM}>${inp('pqBiz','Business name','text','required maxlength="120" autocomplete="organization" placeholder="e.g. Alici\'s"')}${inp('pqLocName','First location','text','maxlength="120" placeholder="Same as the business name"')}${inp('pqPhone','Phone (optional)','tel','')}
-  <button class="go" type="submit">Start free trial</button><button class="ghost2" type="button" data-pq="signout">Sign out</button>
-  <p class="hint">After 3 days the location locks until you buy a licence at <a href="${CFG.lic}" target="_blank" rel="noopener">license.proviewcrm.co.uk</a>. Joining an existing business? Ask its owner to add your email, then sign in again.</p></form>`);
+  <button class="go" type="submit">Set up my business</button><button class="ghost2" type="button" data-pq="signout">Sign out</button>
+  <p class="hint">The location stays locked until you buy a licence (online straight after this, at <a href="${CFG.lic}" target="_blank" rel="noopener">license.proviewcrm.co.uk</a> or on ${CFG.phone}). Joining an existing business? Ask its owner to add your email, then sign in again.</p></form>`);
   $('#pqTrial').onsubmit=async e=>{e.preventDefault();const b=$('#pqBiz').value.trim();if(!b)return trialSetupScreen('Enter your business name.');
     const go=e.target.querySelector('.go');go.disabled=true;go.textContent='Setting up…';
     const {error}=await sb.rpc('pq_self_trial',{p_business:b,p_location:$('#pqLocName').value||null,p_phone:$('#pqPhone').value||null});
-    if(error)return trialSetupScreen(error.message);toast('Your free trial has started');afterSignIn()}}
+    if(error)return trialSetupScreen(error.message);toast('Your business is set up. Buy a licence to start using Proview QR Menu.');afterSignIn()}}
 document.addEventListener('click',e=>{const a=e.target.closest('[data-pq]');if(!a)return;e.preventDefault();
   ({signin:()=>signInScreen(),signup:()=>signUpScreen(),forgot:()=>forgotScreen(),signout:()=>signOut()})[a.dataset.pq]?.()});
 
@@ -126,7 +126,7 @@ async function afterSignIn(){
   // device cache: forget businesses this person can no longer open
   const saved=ls.get('pq_last_'+who.email)||{};
   const mems=who.memberships||[];
-  if(!CTX.master&&!mems.length){if(!who.trial_used){CTX.email=who.email;return trialSetupScreen()}await sb.auth.signOut();purge();return signInScreen('Ask your owner or Proview to give you access.','info')}
+  if(!CTX.master&&!mems.length){CTX.email=who.email;return trialSetupScreen()}   // no free trials (007): anyone without a business can set one up; it starts with no licence
   let orgId=null;
   if(CTX.master)orgId=saved.org||null;else orgId=(mems.find(x=>x.org_id===saved.org)||mems[0]).org_id;
   if(orgId){const ok=await openOrg(orgId,saved.site,true);if(!ok&&!CTX.master){await sb.auth.signOut();purge();return signInScreen('Ask your owner or Proview to give you access to a location.','info')}}
@@ -287,7 +287,7 @@ App.render=function(){
   if(key!=='locations'&&key!=='users'&&CTX.siteId!=='all'){const s=site(),L=lic(s),v=$('#view');
     if(CTX.org?.suspended)v.innerHTML=lockHTML('This business is paused','Please contact Proview to reactivate it.');
     else if(L.k==='expired'||L.k==='none'){if(CTX.master)v.insertAdjacentHTML('afterbegin',`<div class="pq-banner bad">${ic('lock','sm')}${esc(s.name)}: ${L.t}. You can still edit as Proview master.<a class="btn secondary sm" href="${CFG.lic}" target="_blank" rel="noopener">Licence portal</a></div>`);
-      else v.innerHTML=lockHTML(L.k==='none'?'This location has no licence':'This location\'s licence has ended',`Renew to keep using ${esc(s.name)}. Your menus and data are safe.`)}
+      else v.innerHTML=L.k==='none'?lockHTML('No licence yet',`${esc(s.name)}: buy a licence to start using Proview QR Menu.`,true):lockHTML('This location\'s licence has ended',`Renew to keep using ${esc(s.name)}. Your menus and data are safe.`)}
     else if(L.k==='trial'||(L.k==='ok'&&L.days<=14))v.insertAdjacentHTML('afterbegin',`<div class="pq-banner warn">${ic('clock','sm')}${esc(s.name)}: ${L.t}<button class="btn primary sm" data-action="pq-renew">${L.k==='trial'?'Buy a licence':'Renew'}</button></div>`)}
   updateCounts()};
 function decorateNav(key){const nav=$('#nav');if(!nav)return;
@@ -312,11 +312,11 @@ function flattenNav(nav){let h='';
         :`<a href="#${k}" class="${a.classList.contains('on')?'active':''}" title="${esc(l)}" aria-label="${esc(l)}"${a.classList.contains('on')?' aria-current="page"':''}>${svg}<span class="lbl">${esc(l)}</span><span class="slbl">${esc(SHORT[k]||l)}</span>${isNew?'<span class="cnt">New</span>':''}</a>`})});
   nav.innerHTML=h}
 document.addEventListener('click',e=>{const a=e.target.closest('#nav a[data-grey]');if(a){e.preventDefault();e.stopPropagation();toast('Choose a location in the dropdown first');pulseLoc()}},true);
-function lockHTML(h,t){const plans=Object.entries(PLANS||{});return `<div class="pq-lock card pad"><span class="itile" style="margin:0 auto 14px;width:56px;height:56px;background:var(--bad-tint);color:var(--bad)">${ic('lock')}</span><h1 style="font-size:24px">${h}</h1><p class="muted">${t}</p>
-  ${plans.length?`<div class="pq-plans">${plans.map(([k,p])=>`<a class="select-card" style="text-decoration:none" href="${esc(p.link)}?client_reference_id=pvq__${CTX.siteId}__${k}&prefilled_email=${encodeURIComponent(CTX.email)}" target="_blank" rel="noopener"><strong style="color:var(--ink)">${esc(p.label)}</strong><div style="font-size:20px;font-weight:700;color:var(--ink);margin-top:4px">£${(p.amount/100).toFixed(2)}</div><small class="muted">Buy / renew online</small></a>`).join('')}</div>`:''}
-  <p style="margin:16px 0 0">Or renew through the <a href="${CFG.lic}" target="_blank" rel="noopener">licence portal</a>, or call <strong>${CFG.phone}</strong>.</p>
+function lockHTML(h,t,buy=false){const plans=Object.entries(PLANS||{});return `<div class="pq-lock card pad"><span class="itile" style="margin:0 auto 14px;width:56px;height:56px;background:var(--bad-tint);color:var(--bad)">${ic('lock')}</span><h1 style="font-size:24px">${h}</h1><p class="muted">${t}</p>
+  ${plans.length?`<div class="pq-plans">${plans.map(([k,p])=>`<a class="select-card" style="text-decoration:none" href="${esc(p.link)}?client_reference_id=pvq__${CTX.siteId}__${k}&prefilled_email=${encodeURIComponent(CTX.email)}" target="_blank" rel="noopener"><strong style="color:var(--ink)">${esc(p.label)}</strong><div style="font-size:20px;font-weight:700;color:var(--ink);margin-top:4px">£${(p.amount/100).toFixed(2)}</div><small class="muted">${buy?'Buy online':'Buy / renew online'}</small></a>`).join('')}</div>`:''}
+  <p style="margin:16px 0 0">${buy?`Or buy through the <a href="${CFG.lic}" target="_blank" rel="noopener">licence portal</a>, or call <strong>${CFG.phone}</strong>.`:`Or renew through the <a href="${CFG.lic}" target="_blank" rel="noopener">licence portal</a>, or call <strong>${CFG.phone}</strong>.`}</p>
   <div style="display:flex;gap:10px;justify-content:center;margin-top:18px"><button class="btn secondary" data-action="pq-recheck">${ic('refresh','sm')}Check again</button>${CTX.sites.filter(s=>!s.archived).length>1?`<a class="btn ghost" href="#locations">Other locations</a>`:''}</div></div>`}
-let PLANS={};function loadPlans(){sb.rpc('pq_plans').then(r=>{PLANS=r.data||{}}).catch(()=>{})}
+let PLANS={};function loadPlans(){sb.rpc('pq_plans').then(r=>{PLANS=r.data||{};if(Object.keys(PLANS).length&&document.querySelector('#view .pq-lock'))App.render()}).catch(()=>{})}   // the lock shows the buy buttons as soon as the plans arrive
 function updateCounts(){const w=(App.state.orders||[]).filter(o=>/Waiting/i.test(o.status||'')).length+(App.state.services||[]).filter(x=>!x.done).length;const b=$('#pqBellCnt');if(b){b.textContent=w>9?'9+':w||'';b.classList.toggle('hidden',!w)}
   const m=(App.state.feedbacks||[]).filter(f=>f.unread).length+(App.state.reviews||[]).filter(r=>r.status==='Waiting').length;const c=$('#pqMailCnt');if(c)c.textContent=m||''}
 
@@ -426,9 +426,9 @@ App.route('locations',()=>{
   const locCard=x=>{const cur=x.id===CTX.siteId;
     const more=admin?UI.more([{label:'Rename',icon:'edit',action:'pq-rename-site',data:`data-id="${x.id}"`},{label:x.archived?'Restore':'Archive',icon:'archive',action:'pq-archive-site',data:`data-id="${x.id}" data-v="${x.archived?0:1}"`},{label:'Licence portal',icon:'open',action:'pq-open-lic'}],'More actions for '+x.name):'';
     return `<article class="card ov-biz" data-q="${qOf(CTX.org.name,x.name)}"><div class="ov-bh"><div class="grow"><h3>${esc(x.name)}</h3><div class="muted small">${esc(x.archived?'Archived · added '+fmtD(x.created_at):locHealth([x]))}</div></div>${locPill(x)}</div>
-      <div class="ov-bf"><span class="muted small">${esc(x.archived?'Archived':licText([x]))}</span><span class="pv-acts">${M&&!x.archived?`<button type="button" class="btn sm" data-action="pq-trial" data-id="${x.id}" title="Extend, end or clear this location's free trial">Trial…</button>`:''}${more}${x.archived?'':openBtn('pq-pick-site',`data-id="${x.id}"`,cur?'Back to this location':'Open location')}</span></div></article>`};
+      <div class="ov-bf"><span class="muted small">${esc(x.archived?'Archived':licText([x]))}</span><span class="pv-acts">${M&&!x.archived?`<button type="button" class="btn sm" data-action="pq-trial" data-id="${x.id}" title="Set, extend or clear a trial licence by hand (Proview only)">Trial…</button>`:''}${more}${x.archived?'':openBtn('pq-pick-site',`data-id="${x.id}"`,cur?'Back to this location':'Open location')}</span></div></article>`};
   const cards=perLoc?sites.slice().sort((a,b)=>(a.archived-b.archived)||String(a.name).localeCompare(String(b.name))).map(locCard):orgs.map(bizCard);
-  const empty=`<div class="card ov-empty-card"><div style="display:flex;flex-direction:column;align-items:center;text-align:center;padding:28px 12px;gap:10px"><h3 style="margin:0;font-size:15px;font-weight:650">${perLoc?'No locations yet':'No businesses yet'}</h3><p class="muted" style="margin:0">${perLoc?(admin?'Add the first location. New locations start with a free 3-day trial.':`Ask your owner, or call Proview on ${CFG.phone}.`):'Add the first business, or check the licence portal.'}</p></div></div>`;
+  const empty=`<div class="card ov-empty-card"><div style="display:flex;flex-direction:column;align-items:center;text-align:center;padding:28px 12px;gap:10px"><h3 style="margin:0;font-size:15px;font-weight:650">${perLoc?'No locations yet':'No businesses yet'}</h3><p class="muted" style="margin:0">${perLoc?(admin?'Add the first location. New locations start with no licence: buy one online.':`Ask your owner, or call Proview on ${CFG.phone}.`):'Add the first business, or check the licence portal.'}</p></div></div>`;
   const desc=!perLoc?'Every business on the platform with its locations. Open one to see it as its team does.':M?`Every location of ${esc(CTX.org.name)}. Open one to work in it.`:'Each location with its licence and today’s orders. Open a location to work in it.';
   const multi=!M&&(CTX.who.memberships||[]).length>1;
   const acts=`<button type="button" class="btn" data-action="pq-refresh-orgs" title="Refresh">${ic('refresh')} Refresh</button><a class="btn" href="${CFG.lic}" target="_blank" rel="noopener">Licences ↗</a>`+
@@ -442,7 +442,7 @@ App.route('locations',()=>{
    ${LOCS.err?`<div class="pq-banner bad" style="margin-bottom:12px">${esc(LOCS.err)}</div>`:''}
    <div class="ov-tools"><input class="ov-search" id="pqLocQ" type="search" placeholder="Search businesses or locations" aria-label="Search businesses or locations" value="${esc(LOCS.q)}" data-input="pq-loc-q" autocomplete="off"></div>
    <div class="ov-grid" id="pqLocGrid">${cards.length?cards.join(''):loading?'<p class="muted" style="grid-column:1/-1;margin:0">Loading…</p>':empty}</div><p class="muted" id="pqLocNone" hidden style="margin:12px 0 0">No businesses or locations match.</p>
-   ${perLoc?`<p class="muted small" style="margin:16px 0 0">Licences are managed per location in the <a href="${CFG.lic}" target="_blank" rel="noopener">Proview licence portal</a>. New locations start with a free 3-day trial.</p>`:''}</div>`});
+   ${perLoc?`<p class="muted small" style="margin:16px 0 0">Licences are managed per location in the <a href="${CFG.lic}" target="_blank" rel="noopener">Proview licence portal</a>. New locations start with no licence until one is bought.</p>`:''}</div>`});
 function locFilter(v){const t=String(v||'').trim().toLowerCase();let n=0;$$('#pqLocGrid > .ov-biz').forEach(c=>{const ok=!t||c.dataset.q.includes(t);c.hidden=!ok;if(ok)n++});
   const e=$('#pqLocNone');if(e){e.hidden=n>0||!t;e.textContent=`No businesses or locations match “${String(v||'').trim()}”.`}}
 App.after('locations',()=>{if(LOCS.q)locFilter(LOCS.q);
@@ -504,7 +504,7 @@ A('pq-add-org-save',async()=>{if(!CTX.master)return;
 A('pq-suspend-org',async el=>{const {error}=await sb.rpc('pq_update_org',{p_org:el.dataset.id,p_name:null,p_suspended:el.dataset.v==='1'});if(error)return toast(error.message);await loadOrgs();App.render();toast(el.dataset.v==='1'?'Business paused':'Business unpaused')});
 A('pq-del-org',el=>modal({title:'Delete '+esc(el.dataset.name)+'?',body:`<p style="margin-top:0">This permanently deletes the business, all its locations, menus, orders and users. It can't be undone.</p>${UI.field({label:'Type the business name to confirm',control:UI.input({id:'pqDelName'})})}`,footer:`<button class="btn secondary" data-close>Cancel</button><button class="btn danger" data-action="pq-del-org-yes" data-id="${el.dataset.id}" data-name="${esc(el.dataset.name)}">Delete permanently</button>`}));
 A('pq-del-org-yes',async el=>{if($('#pqDelName').value.trim()!==el.dataset.name)return toast('Type the exact business name');const {error}=await sb.rpc('pq_delete_org',{p_org:el.dataset.id});if(error)return toast(error.message);closeModal();await loadOrgs();App.render();toast('Business deleted')});
-A('pq-add-site',()=>modal({title:'Add location',body:UI.field({label:'Location name',required:true,control:UI.input({id:'pqSn',placeholder:'e.g. Soho'})})+'<p class="help">New locations start with a free 3-day trial.</p>',footer:`<button class="btn secondary" data-close>Cancel</button><button class="btn primary" data-action="pq-add-site-save">Add location</button>`}));
+A('pq-add-site',()=>modal({title:'Add location',body:UI.field({label:'Location name',required:true,control:UI.input({id:'pqSn',placeholder:'e.g. Soho'})})+'<p class="help">New locations start with no licence: buy one online, in the licence portal or on '+CFG.phone+'.</p>',footer:`<button class="btn secondary" data-close>Cancel</button><button class="btn primary" data-action="pq-add-site-save">Add location</button>`}));
 A('pq-add-site-save',async()=>{const {data,error}=await sb.rpc('pq_add_site',{p_org:CTX.org.id,p_name:$('#pqSn').value});if(error)return toast(error.message);closeModal();await openOrg(CTX.org.id,data,true);App.render();toast('Location added')});
 A('pq-rename-site',el=>{const s=CTX.sites.find(x=>x.id===el.dataset.id);modal({title:'Rename location',body:UI.field({label:'Location name',control:UI.input({id:'pqRn',value:s.name})}),footer:`<button class="btn secondary" data-close>Cancel</button><button class="btn primary" data-action="pq-rename-save" data-id="${s.id}">Save</button>`})});
 A('pq-rename-save',async el=>{const {error}=await sb.rpc('pq_update_site',{p_site:el.dataset.id,p_name:$('#pqRn').value,p_archived:null});if(error)return toast(error.message);closeModal();await openOrg(CTX.org.id,CTX.siteId,true);App.render();toast('Location renamed')});
@@ -524,7 +524,7 @@ App.route('users',()=>`${UI.pageHead({title:'Users',sub:`Who can use Proview QR 
     return [`<div style="display:flex;gap:10px;align-items:center"><span class="avatar">${initials(m.name||m.email)}</span><div><strong style="color:var(--ink)">${esc(m.name||m.email.split('@')[0])}</strong>${self?' <span class="pill">You</span>':''}<div class="help" style="margin:0">${esc(m.email)}</div></div></div>`,
       UI.pill({owner:'Owner',admin:'Admin',manager:'Manager',staff:'Staff'}[m.role],m.role==='owner'?'':'grey'),locs,ov.length?`${ov.length} custom`:'Role default',
       self?'<span class="help">You can\'t change your own access</span>':`<div style="display:flex;gap:6px;justify-content:flex-end"><button class="btn secondary sm" data-action="pq-user" data-email="${esc(m.email)}">Edit</button><button class="btn ghost sm" data-action="pq-user-del" data-email="${esc(m.email)}" style="color:var(--bad)">Remove</button></div>`]}),empty:'No users yet'})}</div>
-  <p class="help" style="margin-top:12px">People sign in at this address with the email you add here, using their own password (“Start your free trial” creates one) or their Proview account. Owners and Admins always see every location. Managers and Staff see only the locations you tick.</p>`,{nav:'users'});
+  <p class="help" style="margin-top:12px">People sign in at this address with the email you add here, using their own password (“Create a login” on the sign-in page creates one) or their Proview account. Owners and Admins always see every location. Managers and Staff see only the locations you tick.</p>`,{nav:'users'});
 App.after('users',()=>{if(!CTX._mLoaded){CTX._mLoaded=true;loadMembers()}});
 async function loadMembers(){const {data,error}=await sb.from('pq_members').select('*').eq('org_id',CTX.org.id).order('created_at');if(error)return toast(error.message);members=data||[];App.render();CTX._mLoaded=false}
 A('pq-user',el=>{const m=members.find(x=>x.email===el.dataset.email)||{email:'',role:'staff',site_ids:[],features:{}};const canOwner=CTX.master||CTX.role==='owner';
