@@ -6,6 +6,9 @@ const CFG={url:'https://yblafwttmqaqvfvedaoc.supabase.co',key:'sb_publishable_mc
   dash:'https://dashboard.proviewcrm.co.uk/',lic:'https://license.proviewcrm.co.uk/',phone:'020 8935 5495',app:'Proview QR Menu'};
 const {$,$$,UI,modal,drawer,closeModal,closeDrawer}=App;
 const pending=[];const toast=m=>{if(document.getElementById('toast'))App.toast(m);else pending.push(m)};const {ic,esc,initials}=UI;
+// a password-reset / Add business invite link (#...type=recovery): read before the client clears the URL, so start()
+// shows "Choose a new password" instead of opening the app with the recovery session
+let pqRecovery=/(^|[#&])type=recovery(&|$)/.test(location.hash);
 const sb=window.supabase.createClient(CFG.url,CFG.key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 const ls={get(k){try{return JSON.parse(localStorage.getItem(k)||'null')}catch(e){return null}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
 const CTX={email:'',master:false,who:null,org:null,role:null,member:null,sites:[],siteId:'all',orgs:[]};
@@ -92,7 +95,7 @@ function forgotScreen(note='',kind='err'){authShow(`<h1>Reset your password</h1>
   $('#pqForgot').onsubmit=async e=>{e.preventDefault();const {error}=await sb.auth.resetPasswordForEmail($('#pqEmail').value.trim(),{redirectTo:location.origin+location.pathname});
     forgotScreen(error?error.message:'If that email has a login, a reset link is on its way.',error?'err':'ok')}}
 function newPasswordScreen(note=''){authShow(`<h1>Choose a new password</h1><p class="auth2-mut">At least 8 characters.</p>${msg(note)}<form id="pqNewPw" ${FORM}>${inp('pqPass','New password','password','required minlength="8" autocomplete="new-password"')}<button class="go" type="submit">Save password</button></form>`);
-  $('#pqNewPw').onsubmit=async e=>{e.preventDefault();const {error}=await sb.auth.updateUser({password:$('#pqPass').value});if(error)return newPasswordScreen(error.message);toast('Password updated');afterSignIn()}}
+  $('#pqNewPw').onsubmit=async e=>{e.preventDefault();const {error}=await sb.auth.updateUser({password:$('#pqPass').value});if(error)return newPasswordScreen(error.message);pqRecovery=false;toast('Password updated');afterSignIn()}}
 function trialSetupScreen(note=''){authShow(`<h1>Set up your business</h1><p class="auth2-mut">Add your business and first location${CTX.email?' as '+esc(CTX.email):''}. Then buy a licence to start using Proview QR Menu.</p>${msg(note)}
   <form id="pqTrial" ${FORM}>${inp('pqBiz','Business name','text','required maxlength="120" autocomplete="organization" placeholder="e.g. Alici\'s"')}${inp('pqLocName','First location','text','maxlength="120" placeholder="Same as the business name"')}${inp('pqPhone','Phone (optional)','tel','')}
   <button class="go" type="submit">Set up my business</button><button class="ghost2" type="button" data-pq="signout">Sign out</button>
@@ -114,9 +117,10 @@ async function start(){
       const j=await r.json();if(!r.ok)throw new Error(j.error||'Sign-in failed');
       const {error}=await sb.auth.verifyOtp({token_hash:j.token_hash,type:'magiclink'});if(error)throw error}
     catch(err){clearTimeout(fallback);return signInScreen(err.message)}}
-  sb.auth.onAuthStateChange((ev)=>{if(ev==='PASSWORD_RECOVERY'){clearTimeout(fallback);newPasswordScreen()}});
+  sb.auth.onAuthStateChange((ev)=>{if(ev==='PASSWORD_RECOVERY'){pqRecovery=true;clearTimeout(fallback);newPasswordScreen()}});
   const {data:{session}}=await sb.auth.getSession();
   if(!session){clearTimeout(fallback);return signInScreen()}
+  if(pqRecovery){clearTimeout(fallback);return newPasswordScreen()}   // signed in by the link: choose a password first
   afterSignIn()}
 async function afterSignIn(){
   loader(true);const {data:who,error}=await sb.rpc('pq_whoami');clearTimeout(fallback);
@@ -470,36 +474,68 @@ A('pq-open-loc',async el=>{const org=el.dataset.org,id=el.dataset.id;loader(true
 A('pq-open-org',async el=>{loader(true);await openOrg(el.dataset.id,null);loader(false);LOCS.st=null;App.go(CTX.siteId==='all'?'locations':'dashboard');App.render();fillAcct()});
 A('pq-close-org',async()=>{await flush();CTX.org=null;CTX.sites=[];CTX.siteId='all';CTX.role=null;CTX.member=null;remember();replaceState(window.PV_BLANK(''));LOCS.st=null;await loadMaster();fillLoc();fillAcct();if(App.current()!=='locations')App.go('locations');App.render()});
 A('pq-switch-org',async el=>{loader(true);await openOrg(el.value,null);loader(false);App.render();fillAcct()});
-/* "+ Add business" (master only): the business, a location with the same name and its Owner login, in one go, with no email
-   sent (ADD_BUSINESS_SPEC; as Proview Signage). pq_add_business (supabase/migrations/006) does it all-or-nothing on the server. */
+/* "+ Add business" (master only), design D (ADD_BUSINESS_D_SPEC, 11 Nov 2026): business + owner in one grid, then two choices.
+     How will they sign in?  invite (email link, they choose the password) | set a password now (no email)
+     Licence                 none yet | 3-day trial (pq_master_trial, migration 009) | set it now (licence portal)
+   pq_add_business (supabase/migrations/006/007) adds the business, a same-name location (no licence) and the Owner login
+   all-or-nothing. For an invite the login gets a random password nobody sees and Supabase emails a set-your-password link
+   (the PASSWORD_RECOVERY flow in start() asks them to choose one). */
 const abF=(id,label,req,control)=>`<div class="field"><label for="${id}">${label}${req?' <span class="req">*</span>':''}</label>${control}</div>`;
-A('pq-add-org',()=>{if(!CTX.master)return;modal({title:'Add business',wide:true,body:`${abF('pqAbBiz','Business name',1,UI.input({id:'pqAbBiz',placeholder:'e.g. Tolians',attrs:'autocomplete="off"'}))}
-  <div class="eyebrow pq-abz-cap">Owner login</div>
-  <div class="pq-abz-grid">${abF('pqAbName','Name',1,UI.input({id:'pqAbName',placeholder:'e.g. Sam Taylor',attrs:'autocomplete="off"'}))}${abF('pqAbMob','Mobile',0,UI.input({id:'pqAbMob',type:'tel',placeholder:'Optional',attrs:'autocomplete="off"'}))}
-  ${abF('pqAbEmail','Email (they sign in with this)',1,UI.input({id:'pqAbEmail',type:'email',placeholder:'name@company.com',attrs:'autocomplete="off"'}))}
-  ${abF('pqAbPw','Password',1,`<div class="pq-abz-pw"><div class="pq-pw"><input class="input" id="pqAbPw" type="password" placeholder="At least 6 characters" autocomplete="new-password"><button type="button" class="pq-pw-eye" data-action="pq-ab-eye" tabindex="-1" aria-label="Show password" title="Show password">${ic('eye')}</button></div><button type="button" class="btn secondary sm" data-action="pq-ab-suggest">Suggest</button></div>`)}</div>
-  <p class="help" style="margin:0">The business gets a location with the same name. This person becomes its Owner / Admin. No email is sent.</p>`,
-  footer:`<button class="btn secondary" data-close>Cancel</button><button class="btn primary" id="pqAbGo" data-action="pq-add-org-save">Add business</button>`});$('#pqAbBiz').focus()});
+const abRand=n=>{const a='abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789',r=crypto.getRandomValues(new Uint32Array(n));return [...r].map(x=>a[x%a.length]).join('')};
+const abOpt=(name,val,title,sub,on,badge)=>`<label class="pq-abz-opt${on?' on':''}"><input type="radio" name="${name}" value="${val}"${on?' checked':''}><span class="t"><b>${title}</b><span>${sub}</span></span>${badge?`<span class="pq-abz-badge">${badge}</span>`:''}</label>`;
+A('pq-add-org',()=>{if(!CTX.master)return;const m=modal({title:'Add business',wide:true,id:'pq-abz',body:`<div class="pq-abz">
+  <div class="pq-abz-grid">${abF('pqAbBiz','Business name',1,UI.input({id:'pqAbBiz',placeholder:'e.g. Tolians',attrs:'autocomplete="off"'}))}${abF('pqAbName','Owner’s name',1,UI.input({id:'pqAbName',placeholder:'e.g. Sam Taylor',attrs:'autocomplete="off"'}))}
+  ${abF('pqAbEmail','Owner’s email',1,UI.input({id:'pqAbEmail',type:'email',placeholder:'name@company.com',attrs:'autocomplete="off"'}))}${abF('pqAbMob','Mobile <span class="muted" style="font-weight:400">(optional)</span>',0,UI.input({id:'pqAbMob',type:'tel',placeholder:'07…',attrs:'autocomplete="off"'}))}</div>
+  <fieldset class="pq-abz-set"><legend>How will they sign in?</legend>
+    ${abOpt('pqAbSi','invite','Email them an invite','They get an email link and choose their own password.',true,'Recommended')}
+    ${abOpt('pqAbSi','pw','Set a password now','No email is sent. You pass the password on yourself.',false)}
+    <div class="pq-abz-pwrow" id="pqAbPwRow" hidden>${abF('pqAbPw','Password',1,`<div class="pq-abz-pw"><div class="pq-pw"><input class="input" id="pqAbPw" type="password" placeholder="At least 6 characters" autocomplete="new-password"><button type="button" class="pq-pw-eye" data-action="pq-ab-eye" tabindex="-1" aria-label="Show password" title="Show password">${ic('eye')}</button></div><button type="button" class="btn secondary sm" data-action="pq-ab-suggest">Suggest</button></div>`)}</div>
+  </fieldset>
+  <fieldset class="pq-abz-set"><legend>Licence</legend><div class="pq-abz-lic">
+    ${abOpt('pqAbLic','none','None yet','They buy one when they sign in.',true)}
+    ${abOpt('pqAbLic','trial','3-day trial','Full access for 3 days, then it locks.',false)}
+    ${abOpt('pqAbLic','set','Set it now','Then set it in the licence portal.',false)}</div>
+  </fieldset></div>`,
+  footer:`<span class="pq-abz-note muted small">Adds the business and a location with the same name.</span><button class="btn secondary" data-close>Cancel</button><button class="btn primary" id="pqAbGo" data-action="pq-add-org-save">Add and send invite</button>`});
+  m.querySelector('.pq-abz').addEventListener('change',ev=>{const t=ev.target;if(!t||t.type!=='radio')return;
+    m.querySelectorAll(`input[name="${t.name}"]`).forEach(r=>r.closest('.pq-abz-opt').classList.toggle('on',r.checked));
+    if(t.name==='pqAbSi'){const pw=t.value==='pw';$('#pqAbPwRow').hidden=!pw;$('#pqAbGo').textContent=pw?'Add business':'Add and send invite';if(pw)$('#pqAbPw').focus()}});
+  $('#pqAbBiz').focus()});
 const abShow=show=>{const i=$('#pqAbPw'),b=$('#modal [data-action=pq-ab-eye]');if(!i)return;i.type=show?'text':'password';if(b){b.innerHTML=ic(show?'eyeoff':'eye');b.title=show?'Hide password':'Show password';b.setAttribute('aria-label',b.title)}};
 A('pq-ab-eye',()=>{const i=$('#pqAbPw');if(!i)return;abShow(i.type==='password');i.focus()});
-A('pq-ab-suggest',()=>{const a='abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789',r=crypto.getRandomValues(new Uint32Array(10)),i=$('#pqAbPw');if(!i)return;i.value=[...r].map(n=>a[n%a.length]).join('');abShow(true)});
+A('pq-ab-suggest',()=>{const i=$('#pqAbPw');if(!i)return;i.value=abRand(10);abShow(true)});
 A('pq-add-org-save',async()=>{if(!CTX.master)return;
-  const v=id=>($('#'+id)?.value||'').trim(),need=(id,m)=>{toast(m);$('#'+id)?.focus()};
-  const biz=v('pqAbBiz'),name=v('pqAbName'),e=v('pqAbEmail').toLowerCase(),mob=v('pqAbMob'),pw=$('#pqAbPw')?.value||'';
+  const v=id=>($('#'+id)?.value||'').trim(),need=(id,m)=>{toast(m);$('#'+id)?.focus()},pick=n=>$(`#modal input[name="${n}"]:checked`)?.value;
+  const biz=v('pqAbBiz'),name=v('pqAbName'),e=v('pqAbEmail').toLowerCase(),mob=v('pqAbMob');
+  const invite=pick('pqAbSi')!=='pw',licC=pick('pqAbLic')||'none',pw=invite?abRand(24):($('#pqAbPw')?.value||'');
   if(biz.length<2)return need('pqAbBiz','Enter the business name');
   if(name.length<2)return need('pqAbName','Enter the owner’s name');
   if(!/^\S+@\S+\.\S+$/.test(e))return need('pqAbEmail','Enter a valid email address');
-  if(pw.length<6)return need('pqAbPw','The password needs at least 6 characters');
+  if(!invite&&pw.length<6)return need('pqAbPw','The password needs at least 6 characters');
   const go=$('#pqAbGo');if(go)go.disabled=true;
   const {data:r,error}=await sb.rpc('pq_add_business',{p_business:biz,p_name:name,p_email:e,p_mobile:mob,p_password:pw});
   if(error||!r){if(go)go.disabled=false;return toast(error?.message||'Couldn’t add the business')}
+  // licence: a 3-day trial on the new location (pq_master_trial never replaces a licence already set)
+  let licLine;
+  if(licC==='trial'){const {data:t,error:te}=await sb.rpc('pq_master_trial',{p_site:r.site_id});
+    licLine=te?`<p class="pq-abz-warn">The business was added, but the trial couldn’t be started: ${esc(te.message)}. Set a licence in the licence portal.</p>`
+      :t&&t.applied?`<p class="pq-abz-ok">On a 3-day trial until ${esc(new Date(t.expires_at).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}))}.</p>`
+      :`<p class="muted" style="margin:12px 0 0">It already had a licence, so no trial was added.</p>`}
+  else if(licC==='none')licLine=`<p class="muted" style="margin:12px 0 0">No licence yet: they buy one when they sign in.</p>`;
+  else licLine=`<p class="muted" style="margin:12px 0 0">Next, set its licence in the licence portal.</p>`;
+  // sign-in: email the invite (new logins only; an existing login keeps its password)
+  let signIn='';
+  if(r.existing)signIn=`<p style="margin:0">${esc(e)} already had a PROVIEW QR MENU login, so they were made Owner / Admin of this business and keep the password they already use.${invite?' No invite was needed.':' The password you typed was not applied.'}</p>`;
+  else if(invite){const {error:me}=await sb.auth.resetPasswordForEmail(e,{redirectTo:location.origin+location.pathname});
+    signIn=me?`<p class="pq-abz-warn" style="margin-top:0">The business was added, but the invite email couldn’t be sent (${esc(me.message)}). They can use “Forgot password?” on the sign-in page with ${esc(e)}.</p>`
+      :`<p class="pq-abz-ok" style="margin-top:0">Invite sent to <b>${esc(e)}</b>. They open the email link and choose their own password.</p>`}
   closeModal();await loadOrgs();LOCS.st=null;LOCS.at=0;App.render();
   const site=location.origin+location.pathname,details=`PROVIEW QR MENU login\n${site}\nEmail: ${e}\nPassword: ${pw}`;
-  modal({title:`${esc(biz)} added`,body:r.existing?`<p style="margin:0">${esc(e)} already had a PROVIEW QR MENU login, so they were made Owner / Admin of this business and keep the password they already use. The password you typed was not applied.</p>`
-    :`<p class="muted" style="margin:0 0 12px">The owner can sign in now. No email was sent, so pass these on yourself:</p>
+  const pwCard=!r.existing&&!invite?`<p class="muted" style="margin:0 0 12px">The owner can sign in now. No email was sent, so pass these on yourself:</p>
     <div class="pq-abz-card"><div><span class="muted">Sign in at</span><b>${esc(site.replace(/^https?:\/\//,''))}</b></div><div><span class="muted">Email</span><b>${esc(e)}</b></div><div><span class="muted">Password</span><b>${esc(pw)}</b></div></div>
-    <button type="button" class="btn secondary" id="pqAbCopy" style="margin-top:12px">${ic('copy','sm')} Copy login details</button>`,
-    footer:`<button class="btn secondary" data-close>Stay here</button><button class="btn primary" data-close data-action="pq-open-loc" data-org="${esc(r.org_id)}" data-id="${esc(r.site_id)}">Open business</button>`});
+    <button type="button" class="btn secondary" id="pqAbCopy" style="margin-top:12px">${ic('copy','sm')} Copy login details</button>`:'';
+  modal({title:`${esc(biz)} added`,body:`${signIn}${pwCard}${licLine}`,
+    footer:`${licC==='set'?`<a class="btn secondary" href="${CFG.lic}" target="_blank" rel="noopener" style="margin-right:auto">Set licence ${ic('open','sm')}</a>`:''}<button class="btn secondary" data-close>Stay here</button><button class="btn primary" data-close data-action="pq-open-loc" data-org="${esc(r.org_id)}" data-id="${esc(r.site_id)}">Open business</button>`});
   const c=$('#pqAbCopy');if(c)c.onclick=()=>App.copy(details,'Copied')});
 A('pq-suspend-org',async el=>{const {error}=await sb.rpc('pq_update_org',{p_org:el.dataset.id,p_name:null,p_suspended:el.dataset.v==='1'});if(error)return toast(error.message);await loadOrgs();App.render();toast(el.dataset.v==='1'?'Business paused':'Business unpaused')});
 A('pq-del-org',el=>modal({title:'Delete '+esc(el.dataset.name)+'?',body:`<p style="margin-top:0">This permanently deletes the business, all its locations, menus, orders and users. It can't be undone.</p>${UI.field({label:'Type the business name to confirm',control:UI.input({id:'pqDelName'})})}`,footer:`<button class="btn secondary" data-close>Cancel</button><button class="btn danger" data-action="pq-del-org-yes" data-id="${el.dataset.id}" data-name="${esc(el.dataset.name)}">Delete permanently</button>`}));
