@@ -9,7 +9,11 @@ const pending=[];const toast=m=>{if(document.getElementById('toast'))App.toast(m
 // a password-reset / Add business invite link (#...type=recovery): read before the client clears the URL, so start()
 // shows "Choose a new password" instead of opening the app with the recovery session
 let pqRecovery=/(^|[#&])type=recovery(&|$)/.test(location.hash);
-const sb=window.supabase.createClient(CFG.url,CFG.key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+// The master's database requests name the business this tab opened from the licence portal (x-pq-org header, read by
+// pq_master_in, migration 011): the database gives the master that business only. Nobody else has it set.
+const pqFetch=(url,init)=>{let o=null;try{o=sessionStorage.getItem('pv_master_open')}catch(e){}
+  if(!o||!/\/rest\/v1\//.test(String(url)))return fetch(url,init);const h=new Headers((init&&init.headers)||{});h.set('x-pq-org',o);return fetch(url,{...(init||{}),headers:h})};
+const sb=window.supabase.createClient(CFG.url,CFG.key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true},global:{fetch:pqFetch}});
 const ls={get(k){try{return JSON.parse(localStorage.getItem(k)||'null')}catch(e){return null}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
 const CTX={email:'',master:false,who:null,org:null,role:null,member:null,sites:[],siteId:'all',orgs:[]};
 // The master has no view of their own (MASTER_OPEN_SPEC.md / MASTER_OPEN_PROTOCOL.md): they open ONE customer from the

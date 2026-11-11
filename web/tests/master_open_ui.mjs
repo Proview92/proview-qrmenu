@@ -18,12 +18,16 @@ const SITES = [{ id: 'aaaaaaaa-0000-4000-8000-000000000001', org_id: A, name: 'C
   .map((s) => ({ ...s, archived: false, created_at: iso(-60), license_type: 'lifetime', starts_at: iso(-60), expires_at: null, last_seen: iso(0) }));
 const b = await chromium.launch({ executablePath: '/usr/bin/google-chrome', args: ['--no-sandbox'] });
 async function boot(o) {
-  const EM = o.email, s = sess(EM); const seen = []; const st = { sso: null, reply: o.reply };
+  const EM = o.email, s = sess(EM); const seen = []; const st = { sso: null, reply: o.reply, hdrs: [] };
   const ctx = await b.newContext({ viewport: { width: 1366, height: 900 } });
   await ctx.route(/supabase\.co|jsdelivr|cdnjs/, (r) => { const u = new URL(r.request().url()), p = u.pathname;
     if (!/supabase\.co/.test(u.host)) return r.continue();
     if (r.request().method() === 'OPTIONS') return json(r, {});
     const body = JSON.parse(r.request().postData() || '{}'); seen.push(r.request().method() + ' ' + p + u.search + ' ' + JSON.stringify(body));
+    // migration 011: the master only gets the business named in x-pq-org
+    const hdr = r.request().headers()['x-pq-org'] || ''; if (/\/rest\/v1\//.test(p)) st.hdrs.push(hdr);
+    const deny = o.master && /\/rest\/v1\/(rpc\/pq_sites_of|pq_orgs)$/.test(p) && (body.p_org || (u.searchParams.get('id') || '').replace('eq.', '')) !== hdr;
+    if (deny) return json(r, p.includes('rpc') ? [] : null);
     if (p === '/functions/v1/sso-login') { st.sso = body; return json(r, st.reply.body, st.reply.status || 200); }
     if (p === '/auth/v1/verify') return json(r, s);
     if (p === '/rest/v1/rpc/pq_whoami') return json(r, o.master ? { email: EM, master: true, trial_used: false, memberships: [] }
@@ -74,6 +78,7 @@ const master = (seen) => seen.filter((x) => /pq_orgs_list|\/rest\/v1\/pq_sites |
   const opts = await p.$$eval('#hdr-site option', (o) => o.map((x) => x.textContent));
   ok('master biz: dropdown = the business\'s locations as its owner sees them', JSON.stringify(opts) === JSON.stringify(['All my locations (2)', 'Camden', 'Soho']), JSON.stringify(opts));
   ok('master biz: no every-business list requested (pq_orgs_list / all pq_sites)', !master(seen).length, master(seen).join('\n'));
+  ok('master biz: every database request names Burger Barn (x-pq-org)', st.hdrs.length > 0 && st.hdrs.every((h) => h === A), JSON.stringify([...new Set(st.hdrs)]));
   ok('master biz: only Burger Barn asked for', seen.some((x) => x.includes(A)) && !seen.some((x) => x.includes(B) || x.includes('bbbbbbbb')), seen.join('\n'));
   ok('master biz: no Add business, no All businesses', !/Add business|All businesses/.test(t));
   ok('master biz: Trial… (master tool) on each location', await p.locator('[data-action=pq-trial]').count() === 2);
@@ -109,7 +114,8 @@ const master = (seen) => seen.filter((x) => /pq_orgs_list|\/rest\/v1\/pq_sites |
   ok('sso refused: no page errors', !errs.length, errs.join(' | ')); await ctx.close(); }
 
 // 5. owner unchanged
-{ const { ctx, p, errs, seen } = await boot({ email: 'own@bb.test', role: 'owner', url: '#locations' });
+{ const { ctx, p, errs, seen, st } = await boot({ email: 'own@bb.test', role: 'owner', url: '#locations' });
+  ok('owner: no x-pq-org header sent', st.hdrs.length > 0 && st.hdrs.every((h) => h === ''));
   const t = await text(p);
   ok('owner: Locations of their business, no banner', /Each location with its licence/.test(t) && await p.locator('.pq-master-bar').count() === 0, t.slice(0, 300));
   ok('owner: dropdown All my locations (2)', JSON.stringify(await p.$$eval('#hdr-site option', (o) => o.map((x) => x.textContent))) === JSON.stringify(['All my locations (2)', 'Camden', 'Soho']));
