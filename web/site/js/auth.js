@@ -1,4 +1,4 @@
-/* Proview QR Menu – sign-in, master login, businesses & locations, licences, users, per-location saving.
+/* Proview QR Menu – sign-in, master login, the business dropdown, licences, users, per-location saving.
    Follows the Proview access model used by Bookings, Employee, Signage, Label and WiFi. */
 (function(){
 'use strict';
@@ -66,6 +66,8 @@ document.head.insertAdjacentHTML('beforeend',`<style>
 .pq-master-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:9px 14px;margin-bottom:16px;border-radius:var(--r-md);background:var(--brand-tint);color:var(--ink);font-size:14px}
 .pq-master-bar>span{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap}.pq-master-bar svg{width:16px;height:16px;color:var(--brand-700);flex:none}
 .pq-portal{max-width:560px;margin:48px auto;text-align:center}
+.pq-locpick{display:flex;align-items:center;gap:10px;margin:0 0 16px;font-weight:600}.pq-locpick select{width:auto;min-width:200px;height:38px}
+.pq-thisloc .row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 0;border-top:1px solid var(--border)}.pq-thisloc .row:first-of-type{border-top:0}.pq-thisloc .row .grow{flex:1;min-width:200px}
 </style>`);
 const APPICON=ic('qr');
 // the splash (#pqLoad) is in index.html, so it shows before any script runs
@@ -151,30 +153,43 @@ async function afterSignIn(){
   const saved=ls.get('pq_last_'+who.email)||{};
   const mems=who.memberships||[];
   if(!CTX.master&&!mems.length){CTX.email=who.email;return trialSetupScreen()}   // no free trials (007): anyone without a business can set one up; it starts with no licence
-  let orgId=null;
-  if(CTX.master)orgId=openGet();else orgId=(mems.find(x=>x.org_id===saved.org)||mems[0]).org_id;
-  if(orgId){const ok=await openOrg(orgId,CTX.master?(ls.get(lastKey())||{}).site:saved.site,true);if(!ok&&!CTX.master){await sb.auth.signOut();purge();return signInScreen('Ask your owner or Proview to give you access to a location.','info')}
-    if(!ok){CTX.org=null;CTX.sites=[];CTX.siteId='all';pending.push('That business is no longer in Proview QR Menu. Open a location from the licence portal.')}}
+  CTX.biz=[];
+  if(CTX.master){const orgId=openGet();
+    if(orgId){const ok=await openOrg(orgId,(ls.get(lastKey())||{}).site,true);
+      if(!ok){CTX.org=null;CTX.sites=[];CTX.siteId='all';pending.push('That business is no longer in Proview QR Menu. Open a location from the licence portal.')}}}
+  else{
+    // MULTI_BUSINESS_PICKER_STANDARD.md: the business used last (per email); if it is paused, has no working licence or no
+    // location for this person, the next usable one by name. No "choose a business" page. Signed out only when none can be opened.
+    const infos=await Promise.all(mems.map(m=>bizInfo(m.org_id)));
+    CTX.biz=mems.map((m,i)=>({id:m.org_id,name:m.org_name||infos[i].org?.name||'',live:infos[i].sites.filter(x=>!x.archived).length,usable:usable(infos[i])})).filter(x=>x.live).sort(byName);
+    if(!CTX.biz.length){await sb.auth.signOut();purge();return signInScreen('Ask your owner or Proview to give you access to a location.','info')}
+    const i=Math.max(-1,CTX.biz.findIndex(x=>x.id===saved.org)),order=[...CTX.biz.slice(i<0?0:i),...CTX.biz.slice(0,i<0?0:i)];
+    const pick=order.find(x=>x.usable)||(CTX.biz.find(x=>x.id===saved.org)||CTX.biz[0]);   // none usable: the last used (its lock and Buy online show)
+    const ok=await openOrg(pick.id,ls.get(siteKey(pick.id))||(pick.id===saved.org?saved.site:null),true);
+    if(!ok){await sb.auth.signOut();purge();return signInScreen('Ask your owner or Proview to give you access to a location.','info')}
+    if(saved.org&&pick.id!==saved.org&&CTX.biz.some(x=>x.id===saved.org))ls.set(lastKey(),saved);   // a fallback is not saved over the last used
+    fillLoc()}
   CTX.orgs=CTX.org?[CTX.org]:[];   // never a list of every business
   $('#pqAuth').classList.remove('show');
   if(!booted){booted=true;App.boot();decorateShell();loadPlans();if(pending.length)setTimeout(()=>App.toast(pending.splice(0).pop()),300)}
   if(CTX.master&&!CTX.org){App.go('portal');App.render()}
-  else if(CTX.siteId==='all'){if(App.current()!=='locations')App.go('locations');else App.render()}
-  else{if(['portal','locations'].includes(App.current())&&CTX.master)App.go('dashboard');App.render()}
+  else if(CTX.siteId==='all'){App.go('noloc');App.render()}
+  else{if(['portal','locations','noloc',''].includes(App.current().split('--')[0]))App.go('dashboard');App.render()}
   loader(false)}
 function purge(){Object.keys(localStorage).filter(k=>k.startsWith('pq_')).forEach(k=>ls.del(k))}
 async function signOut(){await flush();await sb.auth.signOut();purge();openSet(null);location.hash='';location.reload()}
 
 /* ---------- business / location switching ---------- */
 async function openOrg(orgId,siteId,quiet){
-  await flush();LOCS.st=null;
+  await flush();
   const mem=(CTX.who.memberships||[]).find(m=>m.org_id===orgId);
   const {data:sites,error}=await sb.rpc('pq_sites_of',{p_org:orgId});if(error){toast(error.message);return false}
   const {data:org}=await sb.from('pq_orgs').select('*').eq('id',orgId).maybeSingle();if(!org)return false;
   CTX.org=org;CTX.member=mem||null;CTX.role=CTX.master?(mem?.role||'master'):mem.role;CTX.sites=(sites||[]).filter(s=>!s.archived||isAdmin());
   const live=CTX.sites.filter(s=>!s.archived);
   if(!CTX.master&&!live.length)return false;
-  let target=siteId&&live.find(s=>s.id===siteId)?siteId:(live.length===1?live[0].id:'all');
+  const first=live.slice().sort(byName)[0];
+  let target=siteId&&live.find(s=>s.id===siteId)?siteId:(first?first.id:'all');   // no "All locations" view: every page is one location
   await openSite(target,true);
   if(!quiet){toast('Opened '+org.name)}
   return true}
@@ -189,7 +204,13 @@ async function openSite(id,quiet){
 function replaceState(d){const S=App.state;Object.keys(S).forEach(k=>delete S[k]);Object.assign(S,d);const n=$('#venueName');if(n)n.textContent=CTX.siteId==='all'?(CTX.org?.name||'Proview'):site()?.name||''}
 // the last location, per person (the master: per business opened, so the open business never changes)
 const lastKey=()=>'pq_last_'+CTX.email+(CTX.master?':'+(CTX.org?.id||openGet()||''):'');
-function remember(){if(CTX.email)ls.set(lastKey(),{org:CTX.org?.id||null,site:CTX.siteId})}
+function remember(){if(!CTX.email)return;ls.set(lastKey(),{org:CTX.org?.id||null,site:CTX.siteId});if(CTX.org&&CTX.siteId!=='all')ls.set(siteKey(CTX.org.id),CTX.siteId)}
+// the location used last in each business (the header picks businesses; a page's location select picks the location)
+const siteKey=org=>'pq_site_'+CTX.email+':'+org;
+const byName=(a,b)=>String(a.name).localeCompare(String(b.name),undefined,{sensitivity:'base'});
+async function bizInfo(orgId){const [a,b]=await Promise.all([sb.rpc('pq_sites_of',{p_org:orgId}),sb.from('pq_orgs').select('*').eq('id',orgId).maybeSingle()]);return {org:b.data||null,sites:Array.isArray(a.data)?a.data:[]}}
+// usable = not paused, and at least one location this person can open with a working licence
+const usable=i=>!!i.org&&!i.org.suspended&&i.sites.some(x=>!x.archived&&['ok','trial'].includes(lic(x).k));
 
 /* ---------- saving ---------- */
 let lastSaved=null,saveT=null,saving=null;
@@ -207,7 +228,7 @@ addEventListener('beforeunload',e=>{if(CTX.siteId!=='all'&&lastSaved!==null&&sna
 setInterval(queueSave,15000);
 
 /* ---------- header (Proview standard) ---------- */
-const TITLES={dashboard:'Dashboard',locations:'Locations',users:'Users','menu-management':'Menus','menu-editor':'Menu editor','menu-create':'Create a Menu','menu-builder':'Menu Builder','menu-modifiers':'Modifiers','translation-center':'Translation Center','in-app-promotions':'In-App Promotions','website-builder':'AI Website Builder','website-builder-build':'AI Website Builder','website-editor':'Website editor','brand-kit':'AI Brand Kit','brand-kit-scratch':'AI Brand Kit','ai-media-studio':'AI Media Studio','ai-marketing':'AI Marketing Hub','ai-marketing-create':'Create Post','ai-reports':'AI Reports','ai-media-library':'AI Media Library',orders:'Orders','orders-all':'All Orders','orders-settings':'Ordering Settings','orders-archived':'Archived Orders',reservations:'Reservations','reservations-list':'Reservations',engagement:'Guests & Engagement','engagement-customers':'Customers','engagement-customer':'Customer','engagement-promo-codes':'Promo Codes','engagement-settings':'Engagement Settings','engagement-reviews':'Reviews',feedbacks:'Feedbacks','feedback-form':'Feedback form',reports:'Reports',marketplace:'Marketplace',settings:'Settings'};
+const TITLES={dashboard:'Dashboard',noloc:'Proview QR Menu',users:'Users','menu-management':'Menus','menu-editor':'Menu editor','menu-create':'Create a Menu','menu-builder':'Menu Builder','menu-modifiers':'Modifiers','translation-center':'Translation Center','in-app-promotions':'In-App Promotions','website-builder':'AI Website Builder','website-builder-build':'AI Website Builder','website-editor':'Website editor','brand-kit':'AI Brand Kit','brand-kit-scratch':'AI Brand Kit','ai-media-studio':'AI Media Studio','ai-marketing':'AI Marketing Hub','ai-marketing-create':'Create Post','ai-reports':'AI Reports','ai-media-library':'AI Media Library',orders:'Orders','orders-all':'All Orders','orders-settings':'Ordering Settings','orders-archived':'Archived Orders',reservations:'Reservations','reservations-list':'Reservations',engagement:'Guests & Engagement','engagement-customers':'Customers','engagement-customer':'Customer','engagement-promo-codes':'Promo Codes','engagement-settings':'Engagement Settings','engagement-reviews':'Reviews',feedbacks:'Feedbacks','feedback-form':'Feedback form',reports:'Reports',marketplace:'Marketplace',settings:'Settings'};
 function title(key){if(TITLES[key])return TITLES[key];const k=Object.keys(TITLES).filter(t=>key.startsWith(t)).sort((a,b)=>b.length-a.length)[0];return TITLES[k]||'Proview QR Menu'}
 // Signage's header icons (24px line icons, 1.8 stroke): HEADER_REFERENCE.md §4
 const SV=(d,cls='')=>`<svg ${cls?`class="${cls}" `:''}viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
@@ -220,9 +241,9 @@ const HI={search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',cha
 App.SV=SV;App.HI=HI;
 function decorateShell(){
   const top=$('.top');
-  // the Proview header, exactly as Signage's shell(): title, location picker, grey tray, Dashboard, avatar, red sign-out
+  // the Proview header, exactly as Signage's shell(): title, business picker, grey tray, Dashboard, avatar, red sign-out
   top.innerHTML=`<h2 id="pqTitle">Dashboard</h2>
-   <div class="hdr-pick"><label class="sr" for="hdr-site">Location</label><select id="hdr-site" aria-label="Choose location"></select></div>
+   <div class="hdr-pick"><label class="sr" for="hdr-site">Business</label><select id="hdr-site" aria-label="Business"></select></div>
    <div class="sp"></div>
    <div class="hdr-cap"><span class="hdr-dot" id="pqDot" role="img" aria-label="Online" title="Online"></span>
      <button type="button" class="hub-search" data-action="pq-search" title="Search (Ctrl+K)" aria-label="Search (Ctrl+K)">${SV(HI.search)}</button>
@@ -232,9 +253,9 @@ function decorateShell(){
    <a class="pv-dash" id="pqDash" href="${CFG.dash}" title="Proview dashboard: all your Proview apps" aria-label="Proview dashboard">${SV(HI.grid)}<span>Dashboard</span></a>
    <div class="top-me"><button type="button" class="top-av" id="pqAv" aria-label="My account" aria-haspopup="menu" aria-expanded="false">?</button>
      <button type="button" class="icon-btn top-out" data-action="pq-signout" title="Sign out" aria-label="Sign out">${SV(HI.logout)}</button></div>`;
-  $('#hdr-site').addEventListener('change',e=>chooseLoc(e.target.value));
+  $('#hdr-site').addEventListener('change',e=>chooseBiz(e.target.value));
   $('#pqAv').addEventListener('click',e=>{e.stopPropagation();acctMenu(e.detail===0)});
-  // Proview shell: the location picker lives in the header only; the menu ends with COLLAPSE (as Label, Signage, Bookings)
+  // Proview shell: the business picker lives in the header only; the menu ends with COLLAPSE (as Label, Signage, Bookings)
   const vb=$('.side .venue');if(vb)vb.closest('.dd').remove();
   const cr=$('.side .credits');if(cr)cr.remove();
   const col=localStorage.getItem('pq.sideCollapsed')==='1';App._userCollapsed=col;$('#app').classList.toggle('collapsed',col);
@@ -267,22 +288,29 @@ document.addEventListener('click',e=>{if(!e.target.closest('#pqAcct')&&!e.target
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('#pqAcct'))closeAcct(true)});
 addEventListener('hashchange',()=>closeAcct());
 App.action('pq-users',()=>App.go('users'));
-// the header dropdown: PICKER_STANDARD.md (18:07 update)
-// master: "All locations (N)" (every location on the platform), then each location's name (" · Business" when two share a name);
-// a business opened from Locations reads "<Business> (all locations)". Others: "All my locations (N)" + theirs; one location: disabled box.
+// the header dropdown (MULTI_BUSINESS_PICKER_STANDARD.md, OWNER UPDATE 07:47): business names only, by name. Picking one
+// opens it (the location used last there). One business, and the master inside the business opened from the licence
+// portal: its name in a disabled box. Locations are picked with the select at the top of each page (locPickHTML).
 function fillLoc(){const sel=$('#hdr-site');if(!sel)return;
-  const o=(v,t,on,extra='')=>`<option value="${esc(v)}" title="${esc(t)}"${on?' selected':''}${extra}>${esc(t)}</option>`;
-  const byName=(a,b)=>String(a.name).localeCompare(String(b.name));
-  const w=sel.closest('.hdr-pick');if(w)w.hidden=CTX.master&&!CTX.org;   // the master before a location is opened: no dropdown
-  if(!CTX.org){sel.innerHTML=o('__all','All my locations (0)',true);sel.disabled=true}
-  else{const live=CTX.sites.filter(s=>!s.archived);
-    if(live.length===1){sel.innerHTML=o(live[0].id,live[0].name,true);sel.disabled=true}
-    else{sel.disabled=false;sel.innerHTML=o('all',`All my locations (${live.length})`,CTX.siteId==='all')+live.slice().sort(byName).map(s=>o(s.id,s.name,CTX.siteId===s.id)).join('')}}
-  const cur=sel.options[sel.selectedIndex];sel.title=cur?cur.textContent:'Choose location'}
+  const o=(v,t,on)=>`<option value="${esc(v)}" title="${esc(t)}"${on?' selected':''}>${esc(t)}</option>`;
+  const w=sel.closest('.hdr-pick');if(w)w.hidden=!CTX.org;   // the master before a business is opened: no dropdown
+  if(!CTX.org){sel.innerHTML='';sel.disabled=true;return}
+  const list=CTX.master?[]:(CTX.biz||[]);
+  if(list.length<2){sel.innerHTML=o(CTX.org.id,CTX.org.name,true);sel.disabled=true}
+  else{sel.disabled=false;sel.innerHTML=list.map(x=>o(x.id,x.name,x.id===CTX.org.id)).join('')}
+  sel.title=CTX.org.name}
+async function chooseBiz(v){
+  if(CTX.master||!CTX.org||v===CTX.org.id||!(CTX.biz||[]).some(x=>x.id===v))return;   // only this person's own businesses
+  loader(true);const ok=await openOrg(v,ls.get(siteKey(v)),true);loader(false);
+  if(!ok){toast('There is no location for you in that business.');fillLoc();return}
+  CTX.orgs=[CTX.org];fillAcct();toast('Opened '+CTX.org.name);
+  if(CTX.siteId==='all')App.go('noloc');else if(['noloc','users'].includes(App.current().split('--')[0])||CTX.role==='staff')App.go('dashboard');App.render()}
+// the location select at the top of a page, only when the open business has more than one location
+function locPickHTML(){const live=CTX.org?CTX.sites.filter(s=>!s.archived).slice().sort(byName):[];if(live.length<2)return '';
+  return `<div class="pq-locpick"><label for="pqLoc">Location</label><select id="pqLoc" class="input" data-change="pq-loc">${live.map(s=>`<option value="${esc(s.id)}"${s.id===CTX.siteId?' selected':''}>${esc(s.name)}</option>`).join('')}</select></div>`}
 async function chooseLoc(v){
-  if(!CTX.org||(v!=='all'&&!CTX.sites.some(s=>s.id===v)))return;   // only the open business's locations
-  await openSite(v);if(v==='all'){App.go('locations')}App.render()}
-function pulseLoc(){const w=$('.top .hdr-pick'),s=$('#hdr-site');if(!w||!s)return;w.classList.remove('pulse');void w.offsetWidth;w.classList.add('pulse');setTimeout(()=>w.classList.remove('pulse'),1100);s.focus()}
+  if(!CTX.org||v===CTX.siteId||!CTX.sites.some(s=>s.id===v&&!s.archived))return;   // only the open business's locations
+  await openSite(v);App.render()}
 
 /* ---------- wrap the app's render: guard, nav, title, licence ---------- */
 const baseRender=App.render;
@@ -291,8 +319,9 @@ App.render=function(){
   let key=App.current().split('--')[0];
   const f=featureOf(key);
   if(CTX.master&&!CTX.org){if(key!=='portal'){location.hash='portal';return}}
-  else if(key==='portal'){location.hash=CTX.siteId==='all'?'locations':'dashboard';return}
-  else if(key!=='locations'&&(!CTX.org||CTX.siteId==='all')){if(App.current()!=='locations'){location.hash='locations';return}}
+  else if(key==='portal'||key==='locations'){location.hash=CTX.siteId==='all'?'noloc':'dashboard';return}   // no Locations page (owner, 12 Nov): old links go home
+  else if(key!=='noloc'&&key!=='users'&&(!CTX.org||CTX.siteId==='all')){location.hash='noloc';return}
+  else if(key==='noloc'&&CTX.siteId!=='all'){location.hash='dashboard';return}
   if(f&&!can(f)){toast("You don't have access to that page");location.hash='dashboard';return}
   baseRender();
   // title
@@ -302,20 +331,23 @@ App.render=function(){
   const t=$('#pqTitle');if(t){t.textContent=T;t.title=T}document.title=T+' · Proview QR Menu';
   decorateNav(key);
   // Proview IQ answers questions about one location's data: not on the Locations page
-  const fab=$('.fab');if(fab)fab.style.display=key==='locations'||key==='portal'?'none':'';
+  const fab=$('.fab');if(fab)fab.style.display=key==='noloc'||key==='portal'?'none':'';
   // the master inside a location's business: a small, clear bar on every page, with the way back to the portal
   if(CTX.master&&CTX.org){const v=$('#view');if(v)v.insertAdjacentHTML('afterbegin',`<div class="pq-master-bar" role="status"><span>${SV('<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>')}<b>Viewing ${esc(CTX.org.name)} as Proview</b><span class="muted"> · you’re acting as its Owner</span></span><a class="btn secondary sm" href="${CFG.lic}" rel="noopener">Back to licence portal</a></div>`)}
   // licence banner / lock
-  if(key!=='locations'&&key!=='users'&&key!=='portal'&&CTX.org&&CTX.siteId!=='all'){const s=site(),L=lic(s),v=$('#view');
+  if(key!=='noloc'&&key!=='users'&&key!=='portal'&&CTX.org&&CTX.siteId!=='all'){const s=site(),L=lic(s),v=$('#view');
     if(CTX.org?.suspended)v.innerHTML=lockHTML('This business is paused','Please contact Proview to reactivate it.');
     else if(L.k==='expired'||L.k==='none'){if(CTX.master)v.insertAdjacentHTML('afterbegin',`<div class="pq-banner bad">${ic('lock','sm')}${esc(s.name)}: ${L.t}. You can still edit as Proview master.<a class="btn secondary sm" href="${CFG.lic}" target="_blank" rel="noopener">Licence portal</a></div>`);
-      else v.innerHTML=L.k==='none'?lockHTML('No licence yet',`${esc(s.name)}: buy a licence to start using Proview QR Menu.`,true):lockHTML('This location\'s licence has ended',`Renew to keep using ${esc(s.name)}. Your menus and data are safe.`)}
+      else v.innerHTML=L.k==='none'?lockHTML('No licence yet',`${esc(s.name)}: buy a licence to start using Proview QR Menu.`,true):lockHTML('This business’s licence has ended',`Renew to keep using ${esc(s.name)}. Your menus and data are safe.`)}
     else if(L.k==='trial'||(L.k==='ok'&&L.days<=14))v.insertAdjacentHTML('afterbegin',`<div class="pq-banner warn">${ic('clock','sm')}${esc(s.name)}: ${L.t}<button class="btn primary sm" data-action="pq-renew">${L.k==='trial'?'Buy a licence':'Renew'}</button></div>`)}
+  // Settings → This location (it replaces the Locations page)
+  if(key==='settings'&&App.current()==='settings'&&CTX.org&&CTX.siteId!=='all'){const v=$('#view');if(v&&!v.querySelector('.pq-lock'))v.insertAdjacentHTML('beforeend',thisLocHTML())}
+  // a page about one location: its location select at the top when the business has several (also above a lock)
+  if(key!=='users'&&key!=='portal'&&key!=='noloc'&&CTX.org&&CTX.siteId!=='all'){const v=$('#view'),lp=locPickHTML();if(v&&lp)v.insertAdjacentHTML('afterbegin',lp)}
   updateCounts()};
 function decorateNav(key){const nav=$('#nav');if(!nav)return;
   const allMode=!CTX.org||CTX.siteId==='all';
-  // Locations first, Users under Setup (the master before a location is opened: every page greyed, no Locations)
-  if(CTX.org)nav.insertAdjacentHTML('afterbegin',`<div class="nav-group"><a href="#locations" class="${key==='locations'?'on':''}" title="Locations"><span class="tile">${ic('pin')}</span><span class="lbl">Locations</span></a></div>`);
+  // Users under Setup (no Locations page; the master before a business is opened: every page greyed)
   if(CTX.org&&(isAdmin()&&can('users'))){const setup=[...nav.querySelectorAll('.nav-group')].find(g=>g.querySelector('.eyebrow')?.textContent==='Setup');
     setup&&setup.insertAdjacentHTML('beforeend',`<a href="#users" class="${key==='users'?'on':''}" title="Users"><span class="tile">${ic('users')}</span><span class="lbl">Users</span></a>`)}
   nav.querySelectorAll('a[href^="#"]').forEach(a=>{const k=a.getAttribute('href').slice(1);if(k==='locations')return;
@@ -325,20 +357,20 @@ function decorateNav(key){const nav=$('#nav');if(!nav)return;
   nav.querySelectorAll('.nav-group').forEach(g=>{if(![...g.querySelectorAll('a')].some(a=>a.style.display!=='none'))g.style.display='none'});
   flattenNav(nav)}
 // same markup as the other Proview back offices: section labels, then links (icon, label, short rail label, badge)
-const SHORT={'locations':'Locations','dashboard':'Home','menu-management':'Menus','website-builder':'Website','brand-kit':'Brand','ai-media-studio':'Media','ai-marketing':'Marketing','ai-reports':'AI Reports','orders':'Orders','reservations':'Bookings','engagement':'Guests','reports':'Reports','marketplace':'Market','settings':'Settings','ai-media-library':'Library','users':'Users'};
+const SHORT={'dashboard':'Home','menu-management':'Menus','website-builder':'Website','brand-kit':'Brand','ai-media-studio':'Media','ai-marketing':'Marketing','ai-reports':'AI Reports','orders':'Orders','reservations':'Bookings','engagement':'Guests','reports':'Reports','marketplace':'Market','settings':'Settings','ai-media-library':'Library','users':'Users'};
 function flattenNav(nav){let h='';
   nav.querySelectorAll('.nav-group').forEach(g=>{if(g.style.display==='none')return;const vis=[...g.querySelectorAll('a')].filter(a=>a.style.display!=='none');if(!vis.length)return;
     const sep=g.querySelector('.eyebrow');if(sep)h+=`<div class="nav-sep">${esc(sep.textContent)}</div>`;
-    vis.forEach(a=>{const k=a.getAttribute('href').slice(1),l=a.title||a.textContent.trim(),svg=SV(k==='locations'?HI.building:(a.querySelector('svg')?.innerHTML||'')),isNew=!!a.querySelector('.new'),grey=a.dataset.grey;
-      const why=CTX.org?'choose a location first':'open a location from the licence portal first';
+    vis.forEach(a=>{const k=a.getAttribute('href').slice(1),l=a.title||a.textContent.trim(),svg=SV(a.querySelector('svg')?.innerHTML||''),isNew=!!a.querySelector('.new'),grey=a.dataset.grey;
+      const why=CTX.org?'this business has no locations yet':'open a location from the licence portal first';
       h+=grey?`<a href="#${k}" class="off" data-grey="1" role="link" aria-disabled="true" title="${esc(l)} – ${why}" aria-label="${esc(l)} – ${why}">${svg}<span class="lbl">${esc(l)}</span><span class="slbl">${esc(SHORT[k]||l)}</span>${isNew?'<span class="cnt">New</span>':''}</a>`
         :`<a href="#${k}" class="${a.classList.contains('on')?'active':''}" title="${esc(l)}" aria-label="${esc(l)}"${a.classList.contains('on')?' aria-current="page"':''}>${svg}<span class="lbl">${esc(l)}</span><span class="slbl">${esc(SHORT[k]||l)}</span>${isNew?'<span class="cnt">New</span>':''}</a>`})});
   nav.innerHTML=h}
-document.addEventListener('click',e=>{const a=e.target.closest('#nav a[data-grey]');if(a){e.preventDefault();e.stopPropagation();if(!CTX.org)return toast('Open a location from the licence portal first');toast('Choose a location in the dropdown first');pulseLoc()}},true);
+document.addEventListener('click',e=>{const a=e.target.closest('#nav a[data-grey]');if(a){e.preventDefault();e.stopPropagation();if(!CTX.org)return toast('Open a location from the licence portal first');toast('This business has no locations yet. Locations are set up by Proview.')}},true);
 function lockHTML(h,t,buy=false,sid=CTX.siteId){const plans=Object.entries(PLANS||{});return `<div class="pq-lock card pad"><span class="itile" style="margin:0 auto 14px;width:56px;height:56px;background:var(--bad-tint);color:var(--bad)">${ic('lock')}</span><h1 style="font-size:24px">${h}</h1><p class="muted">${t}</p>
   ${plans.length?`<div class="pq-plans">${plans.map(([k,p])=>`<a class="select-card" style="text-decoration:none" href="${esc(p.link)}?client_reference_id=pvq__${sid}__${k}&prefilled_email=${encodeURIComponent(CTX.email)}" target="_blank" rel="noopener"><strong style="color:var(--ink)">${esc(p.label)}</strong><div style="font-size:20px;font-weight:700;color:var(--ink);margin-top:4px">£${(p.amount/100).toFixed(2)}</div><small class="muted">${buy?'Buy online':'Buy / renew online'}</small></a>`).join('')}</div>`:''}
   <p style="margin:16px 0 0">${CTX.master?`Or ${buy?'buy':'renew'} through the <a href="${CFG.lic}" target="_blank" rel="noopener">licence portal</a>, or call <strong>${CFG.phone}</strong>.`:plans.length?`Or call Proview on <strong>${CFG.phone}</strong>.`:`Online payment isn’t available yet. Call Proview on <strong>${CFG.phone}</strong>.`}</p>
-  <div style="display:flex;gap:10px;justify-content:center;margin-top:18px"><button class="btn secondary" data-action="pq-recheck">${ic('refresh','sm')}Check again</button>${CTX.sites.filter(s=>!s.archived).length>1?`<a class="btn ghost" href="#locations">Other locations</a>`:''}</div></div>`}
+  <div style="display:flex;gap:10px;justify-content:center;margin-top:18px"><button class="btn secondary" data-action="pq-recheck">${ic('refresh','sm')}Check again</button></div></div>`}
 let PLANS={};function loadPlans(){sb.rpc('pq_plans').then(r=>{PLANS=r.data||{};if(Object.keys(PLANS).length&&document.querySelector('#view .pq-lock'))App.render()}).catch(()=>{})}   // the lock shows the buy buttons as soon as the plans arrive
 function updateCounts(){const w=(App.state.orders||[]).filter(o=>/Waiting/i.test(o.status||'')).length+(App.state.services||[]).filter(x=>!x.done).length;const b=$('#pqBellCnt');if(b){b.textContent=w>9?'9+':w||'';b.classList.toggle('hidden',!w)}
   const m=(App.state.feedbacks||[]).filter(f=>f.unread).length+(App.state.reviews||[]).filter(r=>r.status==='Waiting').length;const c=$('#pqMailCnt');if(c)c.textContent=m||''}
@@ -348,8 +380,7 @@ const A=App.action;
 A('pq-signout',()=>App.modal({title:'Sign out?',body:'<p style="margin:0">Changes are saved automatically.</p>',footer:`<button class="btn secondary" data-close>Cancel</button><button class="btn primary" data-action="pq-signout-yes">Sign out</button>`}));
 A('sign-out',()=>App.actions['pq-signout']());
 A('pq-signout-yes',()=>signOut());
-A('pq-pick-site',el=>chooseLoc(el.dataset.id));
-A('switch-venue',el=>chooseLoc(el.dataset.id||'all'));
+A('pq-loc',el=>chooseLoc(el.value));
 A('pq-recheck',async()=>{if(CTX.org){await openOrg(CTX.org.id,CTX.siteId,true);App.render();toast('Licence checked')}});
 A('pq-renew',()=>App.modal({title:'Buy or renew a licence',wide:true,body:lockHTML(site()?.name||'Licence',`Choose a plan for ${esc(site()?.name||'this location')}.`).replace('pq-lock card pad','').replace(/<span class="itile"[^>]*>.*?<\/span>/,'')}));
 A('pq-change-pw',()=>App.modal({title:'Change password',body:UI.field({label:'New password',help:'At least 8 characters.',control:UI.input({id:'pqNp',type:'password',attrs:'minlength="8" autocomplete="new-password"'})}),footer:`<button class="btn secondary" data-close>Cancel</button><button class="btn primary" data-action="pq-change-pw-save">Save</button>`}));
@@ -369,12 +400,11 @@ A('pq-search',openPalette);
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'&&booted){e.preventDefault();openPalette()}});
 function openPalette(){App.modal({title:'Search',body:`<label class="search" style="max-width:none">${ic('search','sm')}<input id="pqQ" placeholder="Pages, menu items, orders, guests…" autocomplete="off"></label><div id="pqRes" style="margin-top:10px;max-height:50vh;overflow:auto"></div>`});
   const q=$('#pqQ'),box=$('#pqRes');const run=()=>{const v=q.value.trim().toLowerCase();if(!v){box.innerHTML='<p class="muted">Type to search.</p>';return}
-    const pages=Object.entries(TITLES).filter(([k,t])=>t.toLowerCase().includes(v)&&(k==='locations'||can(featureOf(k)??'menus'))).slice(0,8).map(([k,t])=>row('#'+k,'chev',t,'Page'));
+    const pages=Object.entries(TITLES).filter(([k,t])=>k!=='locations'&&t.toLowerCase().includes(v)&&can(featureOf(k)??'menus')).slice(0,8).map(([k,t])=>row('#'+k,'chev',t,'Page'));
     const items=[];(App.state.menus||[]).forEach(m=>m.sections.forEach(s=>s.items.forEach(i=>{if(i.name.toLowerCase().includes(v)&&items.length<8)items.push(row('#menu-editor--'+m.id,'menu',i.name,m.name))})));
     const ords=(App.state.orders||[]).filter(o=>String(o.id).toLowerCase().includes(v)||String(o.customer||o.table||'').toLowerCase().includes(v)).slice(0,5).map(o=>row('#orders-all--live','orders',o.id,o.status));
     const gs=(App.state.customers||[]).filter(c=>c.name.toLowerCase().includes(v)).slice(0,5).map(c=>row('#engagement-customer--'+c.id,'user',c.name,'Guest'));
-    const locs=CTX.sites.filter(s=>s.name.toLowerCase().includes(v)).map(s=>`<button class="dd-row" data-action="pq-pick-site" data-id="${s.id}" data-close style="display:flex;gap:10px;width:100%;padding:9px;border:0;background:none;cursor:pointer;border-radius:8px">${ic('pin','sm')}${esc(s.name)}<small class="muted" style="margin-left:auto">Location</small></button>`);
-    box.innerHTML=[...locs,...pages,...items,...ords,...gs].join('')||'<p class="muted">No results.</p>'};
+    box.innerHTML=[...pages,...items,...ords,...gs].join('')||'<p class="muted">No results.</p>'};
   function row(h,i,t,s){return `<a href="${h}" data-close style="display:flex;gap:10px;align-items:center;padding:9px;border-radius:8px;color:var(--ink-2);text-decoration:none">${ic(i,'sm')}${esc(t)}<small class="muted" style="margin-left:auto">${esc(s||'')}</small></a>`}
   q.addEventListener('input',run);run()}
 
@@ -384,114 +414,28 @@ App.route('portal',()=>`<div class="card pad pq-portal"><span class="itile" styl
   <p class="muted" style="max-width:440px;margin:0 auto 20px">As Proview master you work inside one location at a time (or a group of linked locations). Open the location in the licence portal and press <b>Open in Proview QR Menu</b>. New locations are added and linked there too (New location, Link with another location).</p>
   <a class="btn primary" id="pqToPortal" href="${CFG.lic}" rel="noopener">Open licence portal</a></div>`);
 
-/* ---------- Locations page: Proview Signage's (LOCATIONS_PAGE_STANDARD.md): description + buttons, six clickable summary
-   boxes, search, one card per location of the open business (its owner, or the master inside it). ---------- */
-// counts come only from data the app already has: pq_sites_of (licences) and each location's saved pq_state
-// (menus switched on; orders sent today, from the orders the back office has already taken in from the QR menu)
-const LOCS={st:null,at:0,busy:false,err:'',q:''};
-const shortD=d=>{const x=new Date(d);return x.toLocaleDateString('en-GB',x.getFullYear()===new Date().getFullYear()?{day:'numeric',month:'short'}:{day:'numeric',month:'short',year:'numeric'})};
-const plural=(n,w,ws)=>`${n} ${n===1?w:(ws||w+'s')}`;
-const todayStr=()=>{const d=new Date(),p=n=>String(n).padStart(2,'0');return `${p(d.getDate())}/${p(d.getMonth()+1)}/${d.getFullYear()}`};
+/* ---------- No Locations page (owner, 12 Nov 2026: "Remove locations, we are not using that anymore") ----------
+   What it had moves to Settings → This location (thisLocHTML): the location's name (Rename), its licence with Buy / renew
+   online (owners) or the licence portal and Trial… (the master), and the master's Pause / Delete business. Address, hours and
+   the other per-location settings were already in Settings (Venue Information, Operating Hours…). */
 const orgOf=id=>CTX.orgs.find(o=>o.id===id)||(CTX.org&&CTX.org.id===id?CTX.org:null);
-function siteLic(s){const o=orgOf(s.org_id||CTX.org?.id);if(o&&o.suspended)return{k:'paused',t:'Paused',c:'bad'};return lic(s)}
-const works=s=>!s.archived&&['ok','trial'].includes(siteLic(s).k);
-const needs=s=>{if(s.archived)return false;const L=siteLic(s);return ['none','expired','paused'].includes(L.k)||(L.days!=null&&L.days<=14)};
-const tone=s=>{const L=siteLic(s);return s.archived?'':['none','expired','paused'].includes(L.k)?'bad':(L.k==='trial'||(L.days!=null&&L.days<=14))?'warn':'ok'};
-const cnt=(id,k)=>LOCS.st&&LOCS.st[id]?LOCS.st[id][k]:0;
-const sumOf=(list,k)=>list.reduce((t,x)=>t+cnt(x.id,k),0);
-async function loadCounts(){if(LOCS.busy)return;LOCS.busy=true;const errs=[];
-  const ids=(CTX.org?CTX.sites:[]).map(x=>x.id);const st={};
-  if(ids.length){try{const q=sb.from('pq_state').select('site_id,updated_at,menus:data->menus,orders:data->orders,arch:data->archived').in('site_id',ids);
-    const {data,error}=await q;if(error)throw error;const t=todayStr();
-    (data||[]).forEach(r=>{const A=x=>Array.isArray(x)?x:[];const ord=A(r.orders).concat(A(r.arch)).filter(o=>o&&String(o.sent||'').startsWith(t));
-      st[r.site_id]={m:A(r.menus).filter(m=>m&&m.on===true).length,mt:A(r.menus).length,o:ord.length,at:r.updated_at}})}
-    catch(e){errs.push('Couldn’t load menus and orders: '+(e.message||e))}}
-  ids.forEach(id=>{if(!st[id])st[id]={m:0,mt:0,o:0,at:null}});
-  LOCS.st=st;LOCS.at=Date.now();LOCS.err=errs.join(' · ');LOCS.busy=false;
-  if(App.current().split('--')[0]==='locations')App.render()}
-function locHealth(list){if(!LOCS.st)return 'Loading menus and orders…';return `${plural(sumOf(list,'m'),'menu')} live · ${plural(sumOf(list,'o'),'order')} today`}
-// status pill: green all good · grey nothing set up yet · amber trial / ending soon · red expired, no licence or paused
-function bizPill(o,list){const live=list.filter(x=>!x.archived);
-  if(o&&o.suspended)return `<span class="ov-pill bad">Paused</span>`;
-  if(!live.length)return `<span class="ov-pill">No locations yet</span>`;
-  const bad=live.filter(x=>['none','expired'].includes(siteLic(x).k));
-  if(bad.length)return live.length===1?`<span class="ov-pill bad">${siteLic(bad[0]).k==='none'?'No licence':/^Trial/.test(siteLic(bad[0]).t)?'Trial ended':'Expired'}</span>`:`<span class="ov-pill bad">${bad.length} licence${bad.length===1?' needs':'s need'} attention</span>`;
-  const tr=live.find(x=>siteLic(x).k==='trial');if(tr)return `<span class="ov-pill warn">Trial – ends ${esc(shortD(tr.expires_at))}</span>`;
-  const ex=live.filter(x=>siteLic(x).days!=null&&siteLic(x).days<=14).sort((a,b)=>siteLic(a).days-siteLic(b).days)[0];
-  if(ex)return `<span class="ov-pill warn">Licence ends in ${plural(siteLic(ex).days,'day')}</span>`;
-  if(LOCS.st&&!sumOf(live,'m'))return `<span class="ov-pill">No menus live yet</span>`;
-  return `<span class="ov-pill ok">All good</span>`}
-function locPill(x){if(x.archived)return `<span class="ov-pill">Archived</span>`;return bizPill(orgOf(x.org_id||CTX.org?.id),[x])}
-// footer licence text, as Signage: "Licences: lifetime", "2 licences", "Trial ends 12 Nov", "Expired"
-function licText(list){const live=list.filter(x=>!x.archived);if(!live.length)return 'No locations yet';
-  if(live.every(x=>x.license_type==='lifetime'))return live.length===1?'Licence: lifetime':'Licences: lifetime';
-  const tr=live.find(x=>(x.license_type||'').startsWith('trial')&&x.expires_at);if(tr)return siteLic(tr).k==='trial'?`Trial ends ${shortD(tr.expires_at)}`:'Trial expired';
-  if(live.every(x=>siteLic(x).k==='expired'))return 'Expired';if(live.every(x=>siteLic(x).k==='none'))return 'No licence';
-  const ok=live.filter(works).length;if(live.length===1)return ok?(live[0].expires_at?'Licence until '+shortD(live[0].expires_at):'Licensed'):'Not licensed';
-  return ok===live.length?plural(live.length,'licence'):`${ok} of ${live.length} licensed`}
-const chev=`<span class="ov-chev" aria-hidden="true">›</span>`,dotH=t=>`<span class="ov-dot ${t}"></span>`;
-const qOf=(...a)=>esc(a.filter(Boolean).join(' ').toLowerCase());
-App.route('locations',()=>{
-  const M=CTX.master,perLoc=true,admin=isAdmin();if(!CTX.org)return '';
-  const sites=CTX.sites.filter(x=>!x.archived||admin).map(x=>({...x,org_id:CTX.org.id}));
-  const live=sites.filter(x=>!x.archived);
-  const orgs=[CTX.org];
-  const loading=false;
-  const stat=(k,v,list,t)=>`<button type="button" class="card ov-stat${t?' '+t:''}" data-action="pq-loc-list" data-list="${list}" title="Show the list"><div class="tiny">${k}</div><div class="ov-v">${v}</div></button>`;
-  const nLic=live.filter(works).length,nAtt=live.filter(needs).length,nMenus=LOCS.st?sumOf(live.filter(works),'m'):'…',nOrd=LOCS.st?sumOf(live,'o'):'…';
-  const stats=`<div class="ov-stats">${stat('Businesses',loading?'…':orgs.length,'biz')}${stat('Locations',live.length,'loc')}${stat('Licensed',nLic,'lic',nLic?'ok':'')}${stat('Menus live',nMenus,'menus')}${stat('Orders today',nOrd,'orders')}${stat('Licences need attention',nAtt,'attn',nAtt?'bad':'')}</div>`;
-  const openBtn=(act,attrs,label)=>`<button type="button" class="btn sm primary" data-action="${act}" ${attrs}>${label}</button>`;
-  const locCard=x=>{const cur=x.id===CTX.siteId;
-    const more=admin?UI.more([{label:'Rename',icon:'edit',action:'pq-rename-site',data:`data-id="${x.id}"`},M?{label:'Licence portal',icon:'open',action:'pq-open-lic'}:{label:'Buy / renew licence',icon:'card',action:'pq-buy-loc',data:`data-id="${x.id}"`}].filter(i=>!x.archived||i.action!=='pq-buy-loc'),'More actions for '+x.name):'';
-    return `<article class="card ov-biz" data-q="${qOf(CTX.org.name,x.name)}"><div class="ov-bh"><div class="grow"><h3>${esc(x.name)}</h3><div class="muted small">${esc(x.archived?'Archived · added '+fmtD(x.created_at):locHealth([x]))}</div></div>${locPill(x)}</div>
-      <div class="ov-bf"><span class="muted small">${esc(x.archived?'Archived':licText([x]))}</span><span class="pv-acts">${M&&!x.archived?`<button type="button" class="btn sm" data-action="pq-trial" data-id="${x.id}" title="Set, extend or clear a trial licence by hand (Proview only)">Trial…</button>`:''}${more}${x.archived?'':openBtn('pq-pick-site',`data-id="${x.id}"`,cur?'Back to this location':'Open location')}</span></div></article>`};
-  const cards=sites.slice().sort((a,b)=>(a.archived-b.archived)||String(a.name).localeCompare(String(b.name))).map(locCard);
-  const empty=`<div class="card ov-empty-card"><div style="display:flex;flex-direction:column;align-items:center;text-align:center;padding:28px 12px;gap:10px"><h3 style="margin:0;font-size:15px;font-weight:650">No locations yet</h3><p class="muted" style="margin:0">${M?'New locations are added in the licence portal (New location).':`Locations are set up by Proview. Call Proview on ${CFG.phone}.`}</p></div></div>`;
-  const desc=M?`Every location of ${esc(CTX.org.name)}. Open one to work in it.`:'Each location with its licence and today’s orders. Open a location to work in it.';
-  const multi=!M&&(CTX.who.memberships||[]).length>1;
-  // the master inside the business keeps its business tools: pause / delete it (Proview only)
-  const bizMore=M?UI.more([{label:CTX.org.suspended?'Unpause business':'Pause business',icon:'power',action:'pq-suspend-org',data:`data-id="${CTX.org.id}" data-v="${CTX.org.suspended?0:1}"`},{label:'Delete business',icon:'trash',action:'pq-del-org',danger:1,data:`data-id="${CTX.org.id}" data-name="${esc(CTX.org.name)}"`}],'More actions for '+CTX.org.name):'';
-  const acts=`<button type="button" class="btn" data-action="pq-refresh-orgs" title="Refresh">${ic('refresh')} Refresh</button>${bizMore}`+
-    (multi?UI.select((CTX.who.memberships||[]).map(m=>({value:m.org_id,label:m.org_name})),CTX.org.id,'data-change="pq-switch-org" aria-label="Business" style="width:220px;height:38px"'):'');
-  return `<div class="pv-loc"><div class="pv-ph"><p class="muted">${desc}</p><div class="pv-acts">${acts}</div></div>
-   ${perLoc&&CTX.org.suspended?`<div class="pq-banner bad">${ic('lock','sm')}This business is paused.</div>`:''}
-   ${stats}
-   ${LOCS.err?`<div class="pq-banner bad" style="margin-bottom:12px">${esc(LOCS.err)}</div>`:''}
-   <div class="ov-tools"><input class="ov-search" id="pqLocQ" type="search" placeholder="Search locations" aria-label="Search locations" value="${esc(LOCS.q)}" data-input="pq-loc-q" autocomplete="off"></div>
-   <div class="ov-grid" id="pqLocGrid">${cards.length?cards.join(''):empty}</div><p class="muted" id="pqLocNone" hidden style="margin:12px 0 0">No locations match.</p>
-   ${perLoc?`<p class="muted small" style="margin:16px 0 0">${M?`Licences are managed per location in the <a href="${CFG.lic}" target="_blank" rel="noopener">Proview licence portal</a>.`:admin?`Each location needs its own licence: buy or renew it online (Buy / renew licence in the location’s ⋯ menu), or call Proview on ${CFG.phone}.`:`Each location needs its own licence. Ask your owner, or call Proview on ${CFG.phone}.`} ${M?'New locations are added, linked and unlinked in the licence portal.':`Linked locations switch from the location dropdown. To add a location or link it with another, call Proview on ${CFG.phone}.`}</p>`:''}</div>`});
-function locFilter(v){const t=String(v||'').trim().toLowerCase();let n=0;$$('#pqLocGrid > .ov-biz').forEach(c=>{const ok=!t||c.dataset.q.includes(t);c.hidden=!ok;if(ok)n++});
-  const e=$('#pqLocNone');if(e){e.hidden=n>0||!t;e.textContent=`No locations match “${String(v||'').trim()}”.`}}
-App.after('locations',()=>{if(LOCS.q)locFilter(LOCS.q);
-  if(!CTX.org)return;
-  if(!LOCS.busy&&(!LOCS.st||Date.now()-LOCS.at>60e3))loadCounts()});
-A('pq-loc-q',el=>{LOCS.q=el.value;locFilter(el.value)});
-// the summary boxes: each opens the list behind its number (as Proview Signage)
-A('pq-loc-list',el=>{const k=el.dataset.list;if(!CTX.org)return;
-  const sites=CTX.sites.map(x=>({...x,org_id:CTX.org.id})).filter(x=>!x.archived).slice().sort((a,b)=>((orgOf(a.org_id)||{}).name+a.name).localeCompare((orgOf(b.org_id)||{}).name+b.name));
-  const pillOf=x=>{const L=siteLic(x);return `<span class="ov-pill ${tone(x)}">${esc(L.t)}</span>`};
-  const counts=x=>`<span class="muted small">${LOCS.st?`${plural(cnt(x.id,'m'),'menu')} live · ${plural(cnt(x.id,'o'),'order')}`:'…'}</span>`;
-  const li=(x,right)=>`<button type="button" class="ov-li" data-action="pq-open-loc" data-org="${x.org_id}" data-id="${x.id}" data-close><span class="ov-dot ${tone(x)}"></span><span class="grow"><b>${esc(x.name)}</b><span class="tiny" style="display:block">${esc((orgOf(x.org_id)||{}).name||'')}</span></span>${right}${chev}</button>`;
-  let title,items,none;
-  if(k==='biz'){title='Businesses';none='No businesses yet.';const orgs=[CTX.org];
-    items=orgs.map(o=>{const L=sites.filter(x=>x.org_id===o.id);return `<button type="button" class="ov-li" data-action="pq-pick-site" data-id="all" data-close><span class="ov-dot ${!L.length?'':L.some(x=>tone(x)==='bad')?'bad':L.some(x=>tone(x)==='warn')?'warn':'ok'}"></span><span class="grow"><b>${esc(o.name)}</b><span class="tiny" style="display:block">${plural(L.length,'location')}${LOCS.st?' · '+plural(sumOf(L,'o'),'order')+' today':''}</span></span>${L.length?'':'<span class="muted small">No locations yet</span>'}${chev}</button>`})}
-  else if(k==='loc'){title='Locations';none='No locations yet.';items=sites.map(x=>li(x,counts(x)))}
-  else if(k==='lic'){title='Licensed locations';none='No location has a working licence.';items=sites.filter(works).map(x=>li(x,pillOf(x)))}
-  else if(k==='menus'){title='Menus live';none='No menus are live yet.';items=sites.filter(x=>works(x)&&cnt(x.id,'m')).sort((a,b)=>cnt(b.id,'m')-cnt(a.id,'m')).map(x=>li(x,counts(x)))}
-  else if(k==='orders'){title='Orders today';none='No orders today.';items=sites.filter(x=>cnt(x.id,'o')).sort((a,b)=>cnt(b.id,'o')-cnt(a.id,'o')).map(x=>li(x,counts(x)))}
-  else{title='Licences needing attention';none='Every licence is fine.';items=sites.filter(needs).map(x=>li(x,pillOf(x)))}
-  modal({title,body:items.length?`<div class="ov-list">${items.join('')}</div>`:`<p class="muted" style="margin:0">${none}</p>`})});
-A('pq-refresh-orgs',async()=>{if(CTX.org){const {data}=await sb.rpc('pq_sites_of',{p_org:CTX.org.id});if(data)CTX.sites=data.filter(s=>!s.archived||isAdmin());fillLoc()}
-  LOCS.st=null;LOCS.at=0;App.render();toast('Up to date')});
-A('pq-open-loc',async el=>{const id=el.dataset.id;if(!CTX.org||el.dataset.org!==CTX.org.id||!CTX.sites.some(s=>s.id===id))return;loader(true);await openSite(id,true);loader(false);fillAcct();App.go('dashboard');App.render()});
-A('pq-switch-org',async el=>{loader(true);await openOrg(el.value,null);loader(false);App.render();fillAcct()});
-A('pq-suspend-org',async el=>{if(!CTX.master||!CTX.org||el.dataset.id!==CTX.org.id)return;const {error}=await sb.rpc('pq_update_org',{p_org:el.dataset.id,p_name:null,p_suspended:el.dataset.v==='1'});if(error)return toast(error.message);await openOrg(CTX.org.id,CTX.siteId,true);CTX.orgs=[CTX.org];App.render();toast(el.dataset.v==='1'?'Business paused':'Business unpaused')});
+App.route('noloc',()=>CTX.org?`<div class="card pad pq-portal"><h1 style="font-size:22px;margin:0 0 8px">No locations yet</h1><p class="muted" style="margin:0 auto 16px;max-width:440px">${esc(CTX.org.name)} has no locations yet. Locations are set up by Proview${CTX.master?' in the licence portal (New location, Link with another location)':`. Call Proview on ${CFG.phone}`}.</p>${CTX.master?masterBizHTML():''}</div>`:'');
+function masterBizHTML(){return `<div class="row"><div class="grow"><b>Business</b><div class="help" style="margin:0">${esc(CTX.org.name)}${CTX.org.suspended?' · paused':''} · Proview only</div></div><button type="button" class="btn secondary sm" data-action="pq-suspend-org" data-id="${CTX.org.id}" data-v="${CTX.org.suspended?0:1}">${CTX.org.suspended?'Unpause business':'Pause business'}</button><button type="button" class="btn ghost sm" style="color:var(--bad)" data-action="pq-del-org" data-id="${CTX.org.id}" data-name="${esc(CTX.org.name)}">Delete business</button></div>`}
+function thisLocHTML(){const s=site();if(!s)return '';const L=lic(s),M=CTX.master,admin=isAdmin();
+  const licBtn=M?`<button type="button" class="btn secondary sm" data-action="pq-trial" data-id="${s.id}" title="Set, extend or clear a trial licence by hand (Proview only)">Trial…</button><a class="btn secondary sm" href="${CFG.lic}" target="_blank" rel="noopener">Licence portal</a>`
+    :admin?`<button type="button" class="btn ${['none','expired'].includes(L.k)?'primary':'secondary'} sm" data-action="pq-buy-loc" data-id="${s.id}">${L.k==='none'?'Buy licence online':'Renew online'}</button>`:'';
+  return `<section class="card pad pq-thisloc" id="pqThisLoc" style="margin-top:20px"><h3 style="margin:0 0 4px">This location · ${esc(s.name)}</h3><p class="help" style="margin:0 0 8px">Locations are set up and linked by Proview. Address, opening hours and the rest are in Venue Information and Operating Hours above.</p>
+    <div class="row"><div class="grow"><label for="pqLocName"><b>Location name</b></label><div class="help" style="margin:0">The name in the location select and your menu links.</div></div>${admin?`<input class="input" id="pqLocName" value="${esc(s.name)}" style="max-width:260px"><button type="button" class="btn primary sm" data-action="pq-loc-name-save" data-id="${s.id}">Save</button>`:`<span>${esc(s.name)}</span>`}</div>
+    <div class="row" id="pqThisLic"><div class="grow"><b>Business licence</b><div class="help" style="margin:0">${UI.pill(L.t,L.c)} Each business needs its own licence.${M?'':admin?'':' Ask your owner, or call Proview on '+CFG.phone+'.'}</div></div>${licBtn}</div>
+    ${M?masterBizHTML():''}</section>`}
+A('pq-loc-name-save',async el=>{const n=($('#pqLocName')?.value||'').trim();if(!n)return toast('Enter a name');if(!CTX.org||!CTX.sites.some(x=>x.id===el.dataset.id))return;
+  const {error}=await sb.rpc('pq_update_site',{p_site:el.dataset.id,p_name:n,p_archived:null});if(error)return toast(error.message);
+  await openOrg(CTX.org.id,CTX.siteId,true);App.render();toast('Location saved')});
+A('pq-suspend-org',async el=>{if(!CTX.master||!CTX.org||el.dataset.id!==CTX.org.id)return;const {error}=await sb.rpc('pq_update_org',{p_org:el.dataset.id,p_name:null,p_suspended:el.dataset.v==='1'});if(error)return toast(error.message);await openOrg(CTX.org.id,CTX.siteId,true);CTX.orgs=[CTX.org];fillLoc();App.render();toast(el.dataset.v==='1'?'Business paused':'Business unpaused')});
 A('pq-del-org',el=>modal({title:'Delete '+esc(el.dataset.name)+'?',body:`<p style="margin-top:0">This permanently deletes the business, all its locations, menus, orders and users. It can't be undone.</p>${UI.field({label:'Type the business name to confirm',control:UI.input({id:'pqDelName'})})}`,footer:`<button class="btn secondary" data-close>Cancel</button><button class="btn danger" data-action="pq-del-org-yes" data-id="${el.dataset.id}" data-name="${esc(el.dataset.name)}">Delete permanently</button>`}));
 A('pq-del-org-yes',async el=>{if(!CTX.master||!CTX.org||el.dataset.id!==CTX.org.id)return;if($('#pqDelName').value.trim()!==el.dataset.name)return toast('Type the exact business name');const {error}=await sb.rpc('pq_delete_org',{p_org:el.dataset.id});if(error)return toast(error.message);
   closeModal();openSet(null);CTX.org=null;CTX.orgs=[];CTX.sites=[];CTX.siteId='all';CTX.role=null;CTX.member=null;replaceState(window.PV_BLANK(''));fillLoc();fillAcct();App.go('portal');App.render();toast('Business deleted')});   // nothing open any more: the portal page
 // No Add location / Archive location (LOCATIONS_LINK_SPEC.md): locations are added, linked and unlinked by Proview in the licence portal.
-A('pq-rename-site',el=>{const s=CTX.sites.find(x=>x.id===el.dataset.id);modal({title:'Rename location',body:UI.field({label:'Location name',control:UI.input({id:'pqRn',value:s.name})}),footer:`<button class="btn secondary" data-close>Cancel</button><button class="btn primary" data-action="pq-rename-save" data-id="${s.id}">Save</button>`})});
-A('pq-rename-save',async el=>{const {error}=await sb.rpc('pq_update_site',{p_site:el.dataset.id,p_name:$('#pqRn').value,p_archived:null});if(error)return toast(error.message);closeModal();await openOrg(CTX.org.id,CTX.siteId,true);App.render();toast('Location renamed')});
 A('pq-open-lic',()=>window.open(CFG.lic,'_blank','noopener'));   // master only
 A('pq-buy-loc',async el=>{const s=CTX.sites.find(x=>x.id===el.dataset.id);if(!s)return;try{const r=await sb.rpc('pq_plans');if(r.data)PLANS=r.data}catch(e){}
   App.modal({title:'Buy or renew a licence',wide:true,body:lockHTML(s.name,`Choose a plan for ${esc(s.name)}.`,false,s.id).replace('pq-lock card pad','').replace(/<span class="itile"[^>]*>.*?<\/span>/,'')})});

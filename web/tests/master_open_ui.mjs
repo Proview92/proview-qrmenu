@@ -74,27 +74,28 @@ const master = (seen) => seen.filter((x) => /pq_orgs_list|\/rest\/v1\/pq_sites |
   ok('master biz: address cleaned', !/open=|pv_sso/.test(p.url()), p.url());
   const t = await text(p);
   ok('master biz: banner "Viewing Burger Barn as Proview" + Back to licence portal', /Viewing Burger Barn as Proview/.test(t) && (await p.getAttribute('.pq-master-bar a', 'href')) === 'https://license.proviewcrm.co.uk/', t.slice(0, 300));
-  ok('master biz: lands on the business\'s Locations (All my locations)', /#locations$/.test(p.url()) && /Every location of Burger Barn/.test(t));
-  ok('master biz: no Add location / Archive inside the business', await p.locator('[data-action=pq-add-site],[data-action=pq-archive-site]').count() === 0 && /added, linked and unlinked in the licence portal/.test(t));
-  const opts = await p.$$eval('#hdr-site option', (o) => o.map((x) => x.textContent));
-  ok('master biz: dropdown = the business\'s locations as its owner sees them', JSON.stringify(opts) === JSON.stringify(['All my locations (2)', 'Camden', 'Soho']), JSON.stringify(opts));
+  ok('master biz: lands on the Dashboard of the business (no Locations page)', await p.evaluate(() => window.App.current()) === 'dashboard' && await p.locator('#nav a[href="#locations"]').count() === 0, p.url());
+  ok('master biz: no Add location / Archive inside the business', await p.locator('[data-action=pq-add-site],[data-action=pq-archive-site]').count() === 0);
+  ok('master biz: header = the business name in a disabled box (OWNER UPDATE 07:47)', await p.$eval('#hdr-site', (s) => s.disabled && s.textContent.trim() === 'Burger Barn'));
+  ok('master biz: its locations in the page\'s location select', JSON.stringify(await p.$$eval('#pqLoc option', (o) => o.map((x) => x.textContent))) === JSON.stringify(['Camden', 'Soho']));
   ok('master biz: no every-business list requested (pq_orgs_list / all pq_sites)', !master(seen).length, master(seen).join('\n'));
   ok('master biz: every database request names Burger Barn (x-pq-org)', st.hdrs.length > 0 && st.hdrs.every((h) => h === A), JSON.stringify([...new Set(st.hdrs)]));
   ok('master biz: only Burger Barn asked for', seen.some((x) => x.includes(A)) && !seen.some((x) => x.includes(B) || x.includes('bbbbbbbb')), seen.join('\n'));
   ok('master biz: no Add business, no All businesses', !/Add business|All businesses/.test(t));
-  ok('master biz: Trial… (master tool) on each location', await p.locator('[data-action=pq-trial]').count() === 2);
-  ok('master biz: pause / delete this business kept in ⋯', await p.evaluate(() => !!document.querySelector('.pv-ph [data-action=pq-suspend-org]') && !!document.querySelector('.pv-ph [data-action=pq-del-org]')));
+  await p.evaluate(() => { location.hash = 'settings'; }); await p.waitForTimeout(600);
+  ok('master biz: Trial… (master tool) in Settings → This location', await p.locator('#pqThisLoc [data-action=pq-trial]').count() === 1 && /added and linked there too|Locations are set up and linked by Proview/.test(await text(p)));
+  ok('master biz: pause / delete this business kept (Settings → This location)', await p.locator('#pqThisLoc [data-action=pq-suspend-org]').count() === 1 && await p.locator('#pqThisLoc [data-action=pq-del-org]').count() === 1);
   await p.screenshot({ path: SHOTS + '/qr-master-biz.png' });
-  await p.selectOption('#hdr-site', SITES[0].id); await p.waitForTimeout(600); await p.evaluate(() => { location.hash = 'dashboard'; }); await p.waitForTimeout(500);
+  await p.selectOption('#pqLoc', SITES[0].id); await p.waitForTimeout(600); await p.evaluate(() => { location.hash = 'dashboard'; }); await p.waitForTimeout(500);
   ok('master biz: a location opens as for the owner', /Viewing Burger Barn as Proview/.test(await text(p)) && /#dashboard$/.test(p.url()));
   ok('master biz: Users page available (acts as Owner)', await p.locator('#nav a[href="#users"]').count() === 1);
   seen.length = 0; await p.reload(); await p.waitForTimeout(2200);
-  ok('master biz: reload stays in Burger Barn, same location', /Viewing Burger Barn as Proview/.test(await text(p)) && (await p.$eval('#hdr-site', (s) => s.options[s.selectedIndex].textContent)) === 'Camden' && !seen.some((x) => x.includes(B)));
+  ok('master biz: reload stays in Burger Barn, same location', /Viewing Burger Barn as Proview/.test(await text(p)) && (await p.$eval('#pqLoc', (s) => s.options[s.selectedIndex].textContent)) === 'Camden' && !seen.some((x) => x.includes(B)));
   // the portal opens another customer in the same tab
   st.reply = { body: { token_hash: 'h2', email: MASTER, open: B } }; seen.length = 0;
   await p.goto(base + 'index.html#pv_sso=TOKEN2'); await p.waitForTimeout(2200);
   const t2 = await text(p), h2 = await html(p);
-  ok('master switch: now inside Pizza Palace', /Viewing Pizza Palace as Proview/.test(t2) && /Leeds/.test(t2), t2.slice(0, 200));
+  ok('master switch: now inside Pizza Palace', /Viewing Pizza Palace as Proview/.test(t2) && await p.$eval('#hdr-site', (s) => s.disabled && s.textContent.trim() === 'Pizza Palace') && /Pizza/.test(await p.evaluate(() => JSON.stringify(window.App.state.menus))), t2.slice(0, 200));
   ok('master switch: nothing of Burger Barn on the page', !/Burger Barn|Camden|Soho/.test(await p.evaluate(() => document.documentElement.outerHTML)));
   ok('master switch: Burger Barn not requested', !seen.some((x) => x.includes(A) || x.includes('aaaaaaaa')));
   // old link: a hand-off without a business
@@ -118,21 +119,22 @@ const master = (seen) => seen.filter((x) => /pq_orgs_list|\/rest\/v1\/pq_sites |
 { const { ctx, p, errs, seen, st } = await boot({ email: 'own@bb.test', role: 'owner', url: '#locations' });
   ok('owner: no x-pq-org header sent', st.hdrs.length > 0 && st.hdrs.every((h) => h === ''));
   const t = await text(p);
-  ok('owner: Locations of their business, no banner', /Each location with its licence/.test(t) && await p.locator('.pq-master-bar').count() === 0, t.slice(0, 300));
-  ok('owner: dropdown All my locations (2)', JSON.stringify(await p.$$eval('#hdr-site option', (o) => o.map((x) => x.textContent))) === JSON.stringify(['All my locations (2)', 'Camden', 'Soho']));
+  ok('owner: old #locations goes to the Dashboard of their business, no banner', /#dashboard$/.test(p.url()) && await p.locator('.pq-master-bar').count() === 0, p.url());
+  ok('owner: header = the business name (disabled), locations in the page select', await p.$eval('#hdr-site', (s) => s.disabled && s.textContent.trim() === 'Burger Barn') && JSON.stringify(await p.$$eval('#pqLoc option', (o) => o.map((x) => x.textContent))) === JSON.stringify(['Camden', 'Soho']));
+  await p.evaluate(() => { location.hash = 'settings'; }); await p.waitForTimeout(600);
   ok('owner: no Trial… / pause / delete', await p.locator('[data-action=pq-trial],[data-action=pq-suspend-org],[data-action=pq-del-org]').count() === 0);
-  ok('owner: buy / renew in each location\'s ⋯', await p.locator('[data-action=pq-buy-loc]').count() === 2);
+  ok('owner: buy / renew in Settings → This location', await p.locator('#pqThisLoc [data-action=pq-buy-loc]').count() === 1);
   ok('owner: no Add location, no Archive (LOCATIONS_LINK_SPEC)', await p.locator('[data-action=pq-add-site],[data-action=pq-archive-site]').count() === 0 && !/Add location/.test(await text(p)));
-  ok('owner: Rename stays', await p.locator('[data-action=pq-rename-site]').count() === 2);
+  ok('owner: Rename stays (This location name)', await p.locator('#pqLocName').count() === 1);
   await p.screenshot({ path: SHOTS + '/qr-owner.png' });
   ok('owner: no page errors', !errs.length, errs.join(' | ')); await ctx.close(); }
 // 6. owner arriving with Sign in with Proview account: no open in the reply, nothing changes
 { const { ctx, p, errs } = await boot({ email: 'own@bb.test', role: 'owner', url: '#pv_sso=T', reply: { body: { token_hash: 'h', email: 'own@bb.test' } } });
-  ok('owner sso: their business, no banner', /Each location with its licence/.test(await text(p)) && await p.locator('.pq-master-bar').count() === 0);
+  ok('owner sso: their business, no banner', await p.$eval('#hdr-site', (s) => s.textContent.trim() === 'Burger Barn') && await p.locator('.pq-master-bar').count() === 0);
   ok('owner sso: no page errors', !errs.length, errs.join(' | ')); await ctx.close(); }
 // 7. manager unchanged: one location, dashboard
 { const { ctx, p, errs } = await boot({ email: 'mgr@bb.test', role: 'manager', url: '' });
-  ok('manager: their one location (disabled box)', await p.$eval('#hdr-site', (s) => s.disabled && s.textContent.trim() === 'Camden'));
+  ok('manager: their business (disabled box), one location so no page select', await p.$eval('#hdr-site', (s) => s.disabled && s.textContent.trim() === 'Burger Barn') && await p.locator('#pqLoc').count() === 0);
   ok('manager: no Users, no banner', await p.locator('#nav a[href="#users"]').count() === 0 && await p.locator('.pq-master-bar').count() === 0);
   ok('manager: no page errors', !errs.length, errs.join(' | ')); await ctx.close(); }
 
