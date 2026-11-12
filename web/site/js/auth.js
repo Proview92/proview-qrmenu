@@ -16,10 +16,10 @@ const pqFetch=(url,init)=>{let o=null;try{o=sessionStorage.getItem('pv_master_op
 const sb=window.supabase.createClient(CFG.url,CFG.key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true},global:{fetch:pqFetch}});
 const ls={get(k){try{return JSON.parse(localStorage.getItem(k)||'null')}catch(e){return null}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
 const CTX={email:'',master:false,who:null,org:null,role:null,member:null,sites:[],siteId:'all',orgs:[]};
-// The master has no view of their own (MASTER_OPEN_SPEC.md / MASTER_OPEN_PROTOCOL.md): they open ONE customer from the
+// The master has no view of their own (MASTER_OPEN_SPEC.md / MASTER_OPEN_PROTOCOL.md): they open ONE location from the
 // licence portal (Open in Proview QR Menu). sso-login checks the signed biz claim and replies open=<business id>; it is kept
 // for this tab only (sessionStorage pv_master_open), so a reload stays in that business. Signed in any other way the master
-// only sees "Open a customer from the licence portal". An open= in the address is never trusted, only removed.
+// only sees "Open a location from the licence portal". An open= in the address is never trusted, only removed.
 const OPEN_KEY='pv_master_open';
 const openGet=()=>{try{return sessionStorage.getItem(OPEN_KEY)||null}catch(e){return null}};
 const openSet=v=>{try{if(v)sessionStorage.setItem(OPEN_KEY,v);else sessionStorage.removeItem(OPEN_KEY)}catch(e){}};
@@ -154,7 +154,7 @@ async function afterSignIn(){
   let orgId=null;
   if(CTX.master)orgId=openGet();else orgId=(mems.find(x=>x.org_id===saved.org)||mems[0]).org_id;
   if(orgId){const ok=await openOrg(orgId,CTX.master?(ls.get(lastKey())||{}).site:saved.site,true);if(!ok&&!CTX.master){await sb.auth.signOut();purge();return signInScreen('Ask your owner or Proview to give you access to a location.','info')}
-    if(!ok){CTX.org=null;CTX.sites=[];CTX.siteId='all';pending.push('That business is no longer in Proview QR Menu. Open a customer from the licence portal.')}}
+    if(!ok){CTX.org=null;CTX.sites=[];CTX.siteId='all';pending.push('That business is no longer in Proview QR Menu. Open a location from the licence portal.')}}
   CTX.orgs=CTX.org?[CTX.org]:[];   // never a list of every business
   $('#pqAuth').classList.remove('show');
   if(!booted){booted=true;App.boot();decorateShell();loadPlans();if(pending.length)setTimeout(()=>App.toast(pending.splice(0).pop()),300)}
@@ -273,7 +273,7 @@ App.action('pq-users',()=>App.go('users'));
 function fillLoc(){const sel=$('#hdr-site');if(!sel)return;
   const o=(v,t,on,extra='')=>`<option value="${esc(v)}" title="${esc(t)}"${on?' selected':''}${extra}>${esc(t)}</option>`;
   const byName=(a,b)=>String(a.name).localeCompare(String(b.name));
-  const w=sel.closest('.hdr-pick');if(w)w.hidden=CTX.master&&!CTX.org;   // the master before a customer is opened: no dropdown
+  const w=sel.closest('.hdr-pick');if(w)w.hidden=CTX.master&&!CTX.org;   // the master before a location is opened: no dropdown
   if(!CTX.org){sel.innerHTML=o('__all','All my locations (0)',true);sel.disabled=true}
   else{const live=CTX.sites.filter(s=>!s.archived);
     if(live.length===1){sel.innerHTML=o(live[0].id,live[0].name,true);sel.disabled=true}
@@ -303,7 +303,7 @@ App.render=function(){
   decorateNav(key);
   // Proview IQ answers questions about one location's data: not on the Locations page
   const fab=$('.fab');if(fab)fab.style.display=key==='locations'||key==='portal'?'none':'';
-  // the master inside a customer's business: a small, clear bar on every page, with the way back to the portal
+  // the master inside a location's business: a small, clear bar on every page, with the way back to the portal
   if(CTX.master&&CTX.org){const v=$('#view');if(v)v.insertAdjacentHTML('afterbegin',`<div class="pq-master-bar" role="status"><span>${SV('<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>')}<b>Viewing ${esc(CTX.org.name)} as Proview</b><span class="muted"> · you’re acting as its Owner</span></span><a class="btn secondary sm" href="${CFG.lic}" rel="noopener">Back to licence portal</a></div>`)}
   // licence banner / lock
   if(key!=='locations'&&key!=='users'&&key!=='portal'&&CTX.org&&CTX.siteId!=='all'){const s=site(),L=lic(s),v=$('#view');
@@ -314,7 +314,7 @@ App.render=function(){
   updateCounts()};
 function decorateNav(key){const nav=$('#nav');if(!nav)return;
   const allMode=!CTX.org||CTX.siteId==='all';
-  // Locations first, Users under Setup (the master before a customer is opened: every page greyed, no Locations)
+  // Locations first, Users under Setup (the master before a location is opened: every page greyed, no Locations)
   if(CTX.org)nav.insertAdjacentHTML('afterbegin',`<div class="nav-group"><a href="#locations" class="${key==='locations'?'on':''}" title="Locations"><span class="tile">${ic('pin')}</span><span class="lbl">Locations</span></a></div>`);
   if(CTX.org&&(isAdmin()&&can('users'))){const setup=[...nav.querySelectorAll('.nav-group')].find(g=>g.querySelector('.eyebrow')?.textContent==='Setup');
     setup&&setup.insertAdjacentHTML('beforeend',`<a href="#users" class="${key==='users'?'on':''}" title="Users"><span class="tile">${ic('users')}</span><span class="lbl">Users</span></a>`)}
@@ -330,11 +330,11 @@ function flattenNav(nav){let h='';
   nav.querySelectorAll('.nav-group').forEach(g=>{if(g.style.display==='none')return;const vis=[...g.querySelectorAll('a')].filter(a=>a.style.display!=='none');if(!vis.length)return;
     const sep=g.querySelector('.eyebrow');if(sep)h+=`<div class="nav-sep">${esc(sep.textContent)}</div>`;
     vis.forEach(a=>{const k=a.getAttribute('href').slice(1),l=a.title||a.textContent.trim(),svg=SV(k==='locations'?HI.building:(a.querySelector('svg')?.innerHTML||'')),isNew=!!a.querySelector('.new'),grey=a.dataset.grey;
-      const why=CTX.org?'choose a location first':'open a customer from the licence portal first';
+      const why=CTX.org?'choose a location first':'open a location from the licence portal first';
       h+=grey?`<a href="#${k}" class="off" data-grey="1" role="link" aria-disabled="true" title="${esc(l)} – ${why}" aria-label="${esc(l)} – ${why}">${svg}<span class="lbl">${esc(l)}</span><span class="slbl">${esc(SHORT[k]||l)}</span>${isNew?'<span class="cnt">New</span>':''}</a>`
         :`<a href="#${k}" class="${a.classList.contains('on')?'active':''}" title="${esc(l)}" aria-label="${esc(l)}"${a.classList.contains('on')?' aria-current="page"':''}>${svg}<span class="lbl">${esc(l)}</span><span class="slbl">${esc(SHORT[k]||l)}</span>${isNew?'<span class="cnt">New</span>':''}</a>`})});
   nav.innerHTML=h}
-document.addEventListener('click',e=>{const a=e.target.closest('#nav a[data-grey]');if(a){e.preventDefault();e.stopPropagation();if(!CTX.org)return toast('Open a customer from the licence portal first');toast('Choose a location in the dropdown first');pulseLoc()}},true);
+document.addEventListener('click',e=>{const a=e.target.closest('#nav a[data-grey]');if(a){e.preventDefault();e.stopPropagation();if(!CTX.org)return toast('Open a location from the licence portal first');toast('Choose a location in the dropdown first');pulseLoc()}},true);
 function lockHTML(h,t,buy=false,sid=CTX.siteId){const plans=Object.entries(PLANS||{});return `<div class="pq-lock card pad"><span class="itile" style="margin:0 auto 14px;width:56px;height:56px;background:var(--bad-tint);color:var(--bad)">${ic('lock')}</span><h1 style="font-size:24px">${h}</h1><p class="muted">${t}</p>
   ${plans.length?`<div class="pq-plans">${plans.map(([k,p])=>`<a class="select-card" style="text-decoration:none" href="${esc(p.link)}?client_reference_id=pvq__${sid}__${k}&prefilled_email=${encodeURIComponent(CTX.email)}" target="_blank" rel="noopener"><strong style="color:var(--ink)">${esc(p.label)}</strong><div style="font-size:20px;font-weight:700;color:var(--ink);margin-top:4px">£${(p.amount/100).toFixed(2)}</div><small class="muted">${buy?'Buy online':'Buy / renew online'}</small></a>`).join('')}</div>`:''}
   <p style="margin:16px 0 0">${CTX.master?`Or ${buy?'buy':'renew'} through the <a href="${CFG.lic}" target="_blank" rel="noopener">licence portal</a>, or call <strong>${CFG.phone}</strong>.`:plans.length?`Or call Proview on <strong>${CFG.phone}</strong>.`:`Online payment isn’t available yet. Call Proview on <strong>${CFG.phone}</strong>.`}</p>
@@ -378,10 +378,10 @@ function openPalette(){App.modal({title:'Search',body:`<label class="search" sty
   function row(h,i,t,s){return `<a href="${h}" data-close style="display:flex;gap:10px;align-items:center;padding:9px;border-radius:8px;color:var(--ink-2);text-decoration:none">${ic(i,'sm')}${esc(t)}<small class="muted" style="margin-left:auto">${esc(s||'')}</small></a>`}
   q.addEventListener('input',run);run()}
 
-/* ---------- the master, signed in without a customer from the licence portal: nothing of any business is loaded ---------- */
+/* ---------- the master, signed in without a location from the licence portal: nothing of any business is loaded ---------- */
 App.route('portal',()=>`<div class="card pad pq-portal"><span class="itile" style="margin:0 auto 14px;width:56px;height:56px;background:var(--brand-tint);color:var(--brand-700)">${SV(HI.building)}</span>
-  <h1 style="font-size:22px;margin:0 0 8px">Open a customer from the licence portal</h1>
-  <p class="muted" style="max-width:440px;margin:0 auto 20px">As Proview master you work inside one customer’s business at a time. Open the customer in the licence portal and press <b>Open in Proview QR Menu</b>. New businesses are added there too (New customer).</p>
+  <h1 style="font-size:22px;margin:0 0 8px">Open a location from the licence portal</h1>
+  <p class="muted" style="max-width:440px;margin:0 auto 20px">As Proview master you work inside one location at a time (or a group of linked locations). Open the location in the licence portal and press <b>Open in Proview QR Menu</b>. New locations are added and linked there too (New location, Link with another location).</p>
   <a class="btn primary" id="pqToPortal" href="${CFG.lic}" rel="noopener">Open licence portal</a></div>`);
 
 /* ---------- Locations page: Proview Signage's (LOCATIONS_PAGE_STANDARD.md): description + buttons, six clickable summary
@@ -442,25 +442,24 @@ App.route('locations',()=>{
   const stats=`<div class="ov-stats">${stat('Businesses',loading?'…':orgs.length,'biz')}${stat('Locations',live.length,'loc')}${stat('Licensed',nLic,'lic',nLic?'ok':'')}${stat('Menus live',nMenus,'menus')}${stat('Orders today',nOrd,'orders')}${stat('Licences need attention',nAtt,'attn',nAtt?'bad':'')}</div>`;
   const openBtn=(act,attrs,label)=>`<button type="button" class="btn sm primary" data-action="${act}" ${attrs}>${label}</button>`;
   const locCard=x=>{const cur=x.id===CTX.siteId;
-    const more=admin?UI.more([{label:'Rename',icon:'edit',action:'pq-rename-site',data:`data-id="${x.id}"`},{label:x.archived?'Restore':'Archive',icon:'archive',action:'pq-archive-site',data:`data-id="${x.id}" data-v="${x.archived?0:1}"`},M?{label:'Licence portal',icon:'open',action:'pq-open-lic'}:{label:'Buy / renew licence',icon:'card',action:'pq-buy-loc',data:`data-id="${x.id}"`}].filter(i=>!x.archived||i.action!=='pq-buy-loc'),'More actions for '+x.name):'';
+    const more=admin?UI.more([{label:'Rename',icon:'edit',action:'pq-rename-site',data:`data-id="${x.id}"`},M?{label:'Licence portal',icon:'open',action:'pq-open-lic'}:{label:'Buy / renew licence',icon:'card',action:'pq-buy-loc',data:`data-id="${x.id}"`}].filter(i=>!x.archived||i.action!=='pq-buy-loc'),'More actions for '+x.name):'';
     return `<article class="card ov-biz" data-q="${qOf(CTX.org.name,x.name)}"><div class="ov-bh"><div class="grow"><h3>${esc(x.name)}</h3><div class="muted small">${esc(x.archived?'Archived · added '+fmtD(x.created_at):locHealth([x]))}</div></div>${locPill(x)}</div>
       <div class="ov-bf"><span class="muted small">${esc(x.archived?'Archived':licText([x]))}</span><span class="pv-acts">${M&&!x.archived?`<button type="button" class="btn sm" data-action="pq-trial" data-id="${x.id}" title="Set, extend or clear a trial licence by hand (Proview only)">Trial…</button>`:''}${more}${x.archived?'':openBtn('pq-pick-site',`data-id="${x.id}"`,cur?'Back to this location':'Open location')}</span></div></article>`};
   const cards=sites.slice().sort((a,b)=>(a.archived-b.archived)||String(a.name).localeCompare(String(b.name))).map(locCard);
-  const empty=`<div class="card ov-empty-card"><div style="display:flex;flex-direction:column;align-items:center;text-align:center;padding:28px 12px;gap:10px"><h3 style="margin:0;font-size:15px;font-weight:650">No locations yet</h3><p class="muted" style="margin:0">${admin?'Add the first location. New locations start with no licence: buy one online.':`Ask your owner, or call Proview on ${CFG.phone}.`}</p></div></div>`;
+  const empty=`<div class="card ov-empty-card"><div style="display:flex;flex-direction:column;align-items:center;text-align:center;padding:28px 12px;gap:10px"><h3 style="margin:0;font-size:15px;font-weight:650">No locations yet</h3><p class="muted" style="margin:0">${M?'New locations are added in the licence portal (New location).':`Locations are set up by Proview. Call Proview on ${CFG.phone}.`}</p></div></div>`;
   const desc=M?`Every location of ${esc(CTX.org.name)}. Open one to work in it.`:'Each location with its licence and today’s orders. Open a location to work in it.';
   const multi=!M&&(CTX.who.memberships||[]).length>1;
   // the master inside the business keeps its business tools: pause / delete it (Proview only)
   const bizMore=M?UI.more([{label:CTX.org.suspended?'Unpause business':'Pause business',icon:'power',action:'pq-suspend-org',data:`data-id="${CTX.org.id}" data-v="${CTX.org.suspended?0:1}"`},{label:'Delete business',icon:'trash',action:'pq-del-org',danger:1,data:`data-id="${CTX.org.id}" data-name="${esc(CTX.org.name)}"`}],'More actions for '+CTX.org.name):'';
   const acts=`<button type="button" class="btn" data-action="pq-refresh-orgs" title="Refresh">${ic('refresh')} Refresh</button>${bizMore}`+
-    (multi?UI.select((CTX.who.memberships||[]).map(m=>({value:m.org_id,label:m.org_name})),CTX.org.id,'data-change="pq-switch-org" aria-label="Business" style="width:220px;height:38px"'):'')+
-    (admin?`<button type="button" class="btn primary" data-action="pq-add-site">${ic('plus')} Add location</button>`:'');
+    (multi?UI.select((CTX.who.memberships||[]).map(m=>({value:m.org_id,label:m.org_name})),CTX.org.id,'data-change="pq-switch-org" aria-label="Business" style="width:220px;height:38px"'):'');
   return `<div class="pv-loc"><div class="pv-ph"><p class="muted">${desc}</p><div class="pv-acts">${acts}</div></div>
    ${perLoc&&CTX.org.suspended?`<div class="pq-banner bad">${ic('lock','sm')}This business is paused.</div>`:''}
    ${stats}
    ${LOCS.err?`<div class="pq-banner bad" style="margin-bottom:12px">${esc(LOCS.err)}</div>`:''}
    <div class="ov-tools"><input class="ov-search" id="pqLocQ" type="search" placeholder="Search locations" aria-label="Search locations" value="${esc(LOCS.q)}" data-input="pq-loc-q" autocomplete="off"></div>
    <div class="ov-grid" id="pqLocGrid">${cards.length?cards.join(''):empty}</div><p class="muted" id="pqLocNone" hidden style="margin:12px 0 0">No locations match.</p>
-   ${perLoc?`<p class="muted small" style="margin:16px 0 0">${M?`Licences are managed per location in the <a href="${CFG.lic}" target="_blank" rel="noopener">Proview licence portal</a>.`:admin?`Each location needs its own licence: buy or renew it online (Buy / renew licence in the location’s ⋯ menu), or call Proview on ${CFG.phone}.`:`Each location needs its own licence. Ask your owner, or call Proview on ${CFG.phone}.`} New locations start with no licence until one is bought.</p>`:''}</div>`});
+   ${perLoc?`<p class="muted small" style="margin:16px 0 0">${M?`Licences are managed per location in the <a href="${CFG.lic}" target="_blank" rel="noopener">Proview licence portal</a>.`:admin?`Each location needs its own licence: buy or renew it online (Buy / renew licence in the location’s ⋯ menu), or call Proview on ${CFG.phone}.`:`Each location needs its own licence. Ask your owner, or call Proview on ${CFG.phone}.`} ${M?'New locations are added, linked and unlinked in the licence portal.':`Linked locations switch from the location dropdown. To add a location or link it with another, call Proview on ${CFG.phone}.`}</p>`:''}</div>`});
 function locFilter(v){const t=String(v||'').trim().toLowerCase();let n=0;$$('#pqLocGrid > .ov-biz').forEach(c=>{const ok=!t||c.dataset.q.includes(t);c.hidden=!ok;if(ok)n++});
   const e=$('#pqLocNone');if(e){e.hidden=n>0||!t;e.textContent=`No locations match “${String(v||'').trim()}”.`}}
 App.after('locations',()=>{if(LOCS.q)locFilter(LOCS.q);
@@ -490,11 +489,9 @@ A('pq-suspend-org',async el=>{if(!CTX.master||!CTX.org||el.dataset.id!==CTX.org.
 A('pq-del-org',el=>modal({title:'Delete '+esc(el.dataset.name)+'?',body:`<p style="margin-top:0">This permanently deletes the business, all its locations, menus, orders and users. It can't be undone.</p>${UI.field({label:'Type the business name to confirm',control:UI.input({id:'pqDelName'})})}`,footer:`<button class="btn secondary" data-close>Cancel</button><button class="btn danger" data-action="pq-del-org-yes" data-id="${el.dataset.id}" data-name="${esc(el.dataset.name)}">Delete permanently</button>`}));
 A('pq-del-org-yes',async el=>{if(!CTX.master||!CTX.org||el.dataset.id!==CTX.org.id)return;if($('#pqDelName').value.trim()!==el.dataset.name)return toast('Type the exact business name');const {error}=await sb.rpc('pq_delete_org',{p_org:el.dataset.id});if(error)return toast(error.message);
   closeModal();openSet(null);CTX.org=null;CTX.orgs=[];CTX.sites=[];CTX.siteId='all';CTX.role=null;CTX.member=null;replaceState(window.PV_BLANK(''));fillLoc();fillAcct();App.go('portal');App.render();toast('Business deleted')});   // nothing open any more: the portal page
-A('pq-add-site',()=>modal({title:'Add location',body:UI.field({label:'Location name',required:true,control:UI.input({id:'pqSn',placeholder:'e.g. Soho'})})+'<p class="help">New locations start with no licence: buy one online'+(CTX.master?', in the licence portal':'')+' or call Proview on '+CFG.phone+'.</p>',footer:`<button class="btn secondary" data-close>Cancel</button><button class="btn primary" data-action="pq-add-site-save">Add location</button>`}));
-A('pq-add-site-save',async()=>{const {data,error}=await sb.rpc('pq_add_site',{p_org:CTX.org.id,p_name:$('#pqSn').value});if(error)return toast(error.message);closeModal();await openOrg(CTX.org.id,data,true);App.render();toast('Location added')});
+// No Add location / Archive location (LOCATIONS_LINK_SPEC.md): locations are added, linked and unlinked by Proview in the licence portal.
 A('pq-rename-site',el=>{const s=CTX.sites.find(x=>x.id===el.dataset.id);modal({title:'Rename location',body:UI.field({label:'Location name',control:UI.input({id:'pqRn',value:s.name})}),footer:`<button class="btn secondary" data-close>Cancel</button><button class="btn primary" data-action="pq-rename-save" data-id="${s.id}">Save</button>`})});
 A('pq-rename-save',async el=>{const {error}=await sb.rpc('pq_update_site',{p_site:el.dataset.id,p_name:$('#pqRn').value,p_archived:null});if(error)return toast(error.message);closeModal();await openOrg(CTX.org.id,CTX.siteId,true);App.render();toast('Location renamed')});
-A('pq-archive-site',async el=>{const {error}=await sb.rpc('pq_update_site',{p_site:el.dataset.id,p_name:null,p_archived:el.dataset.v==='1'});if(error)return toast(error.message);await openOrg(CTX.org.id,CTX.siteId===el.dataset.id?'all':CTX.siteId,true);App.render();toast(el.dataset.v==='1'?'Location archived':'Location restored')});
 A('pq-open-lic',()=>window.open(CFG.lic,'_blank','noopener'));   // master only
 A('pq-buy-loc',async el=>{const s=CTX.sites.find(x=>x.id===el.dataset.id);if(!s)return;try{const r=await sb.rpc('pq_plans');if(r.data)PLANS=r.data}catch(e){}
   App.modal({title:'Buy or renew a licence',wide:true,body:lockHTML(s.name,`Choose a plan for ${esc(s.name)}.`,false,s.id).replace('pq-lock card pad','').replace(/<span class="itile"[^>]*>.*?<\/span>/,'')})});
