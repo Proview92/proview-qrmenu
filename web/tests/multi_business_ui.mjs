@@ -182,5 +182,14 @@ const noLoc = async (p, who) => {
   ok('master: This location has Trial…, Licence portal, Pause and Delete business', await p.locator('#pqThisLoc [data-action=pq-trial]').count() === 1 && await p.locator('#pqThisLoc a[href="https://license.proviewcrm.co.uk/"]').count() === 1 && await p.locator('#pqThisLoc [data-action=pq-suspend-org]').count() === 1 && await p.locator('#pqThisLoc [data-action=pq-del-org]').count() === 1);
   await done('no Locations master', x); }
 
+// business wording (owner, 12 Nov 2026: the licence portal says Businesses)
+{ const x = await boot({ email: MASTER, master: true });
+  const t = await text(x.p);
+  ok('master direct: "Open a business from the licence portal", businesses added and linked there', /Open a business from the licence portal/.test(t) && /Businesses are added and linked there too \(New business, Link with another business\)/.test(t) && !/Open a location/.test(t), t.slice(0, 300));
+  await done('wording master', x); }
+{ const x = await boot({ email: ONE, mems: [{ org: A, role: 'owner' }] }); await go(x.p, 'settings');
+  ok('owner: This location says businesses are set up by Proview', /Businesses are set up and linked by Proview/.test(await view(x.p)));
+  await done('wording owner', x); }
+
 await b.close();
 console.log(res.join('\n')); const f = res.filter((x) => x.startsWith('FAIL')).length; console.log(`\n${res.length - f} passed, ${f} failed`); process.exit(f ? 1 : 0);

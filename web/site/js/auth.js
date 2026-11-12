@@ -19,7 +19,7 @@ const CTX={email:'',master:false,who:null,org:null,role:null,member:null,sites:[
 // The master has no view of their own (MASTER_OPEN_SPEC.md / MASTER_OPEN_PROTOCOL.md): they open ONE location from the
 // licence portal (Open in Proview QR Menu). sso-login checks the signed biz claim and replies open=<business id>; it is kept
 // for this tab only (sessionStorage pv_master_open), so a reload stays in that business. Signed in any other way the master
-// only sees "Open a location from the licence portal". An open= in the address is never trusted, only removed.
+// only sees "Open a business from the licence portal". An open= in the address is never trusted, only removed.
 const OPEN_KEY='pv_master_open';
 const openGet=()=>{try{return sessionStorage.getItem(OPEN_KEY)||null}catch(e){return null}};
 const openSet=v=>{try{if(v)sessionStorage.setItem(OPEN_KEY,v);else sessionStorage.removeItem(OPEN_KEY)}catch(e){}};
@@ -156,7 +156,7 @@ async function afterSignIn(){
   CTX.biz=[];
   if(CTX.master){const orgId=openGet();
     if(orgId){const ok=await openOrg(orgId,(ls.get(lastKey())||{}).site,true);
-      if(!ok){CTX.org=null;CTX.sites=[];CTX.siteId='all';pending.push('That business is no longer in Proview QR Menu. Open a location from the licence portal.')}}}
+      if(!ok){CTX.org=null;CTX.sites=[];CTX.siteId='all';pending.push('That business is no longer in Proview QR Menu. Open a business from the licence portal.')}}}
   else{
     // MULTI_BUSINESS_PICKER_STANDARD.md: the business used last (per email); if it is paused, has no working licence or no
     // location for this person, the next usable one by name. No "choose a business" page. Signed out only when none can be opened.
@@ -362,11 +362,11 @@ function flattenNav(nav){let h='';
   nav.querySelectorAll('.nav-group').forEach(g=>{if(g.style.display==='none')return;const vis=[...g.querySelectorAll('a')].filter(a=>a.style.display!=='none');if(!vis.length)return;
     const sep=g.querySelector('.eyebrow');if(sep)h+=`<div class="nav-sep">${esc(sep.textContent)}</div>`;
     vis.forEach(a=>{const k=a.getAttribute('href').slice(1),l=a.title||a.textContent.trim(),svg=SV(a.querySelector('svg')?.innerHTML||''),isNew=!!a.querySelector('.new'),grey=a.dataset.grey;
-      const why=CTX.org?'this business has no locations yet':'open a location from the licence portal first';
+      const why=CTX.org?'this business has no locations yet':'open a business from the licence portal first';
       h+=grey?`<a href="#${k}" class="off" data-grey="1" role="link" aria-disabled="true" title="${esc(l)} – ${why}" aria-label="${esc(l)} – ${why}">${svg}<span class="lbl">${esc(l)}</span><span class="slbl">${esc(SHORT[k]||l)}</span>${isNew?'<span class="cnt">New</span>':''}</a>`
         :`<a href="#${k}" class="${a.classList.contains('on')?'active':''}" title="${esc(l)}" aria-label="${esc(l)}"${a.classList.contains('on')?' aria-current="page"':''}>${svg}<span class="lbl">${esc(l)}</span><span class="slbl">${esc(SHORT[k]||l)}</span>${isNew?'<span class="cnt">New</span>':''}</a>`})});
   nav.innerHTML=h}
-document.addEventListener('click',e=>{const a=e.target.closest('#nav a[data-grey]');if(a){e.preventDefault();e.stopPropagation();if(!CTX.org)return toast('Open a location from the licence portal first');toast('This business has no locations yet. Locations are set up by Proview.')}},true);
+document.addEventListener('click',e=>{const a=e.target.closest('#nav a[data-grey]');if(a){e.preventDefault();e.stopPropagation();if(!CTX.org)return toast('Open a business from the licence portal first');toast('This business has no locations yet. Businesses are set up by Proview.')}},true);
 function lockHTML(h,t,buy=false,sid=CTX.siteId){const plans=Object.entries(PLANS||{});return `<div class="pq-lock card pad"><span class="itile" style="margin:0 auto 14px;width:56px;height:56px;background:var(--bad-tint);color:var(--bad)">${ic('lock')}</span><h1 style="font-size:24px">${h}</h1><p class="muted">${t}</p>
   ${plans.length?`<div class="pq-plans">${plans.map(([k,p])=>`<a class="select-card" style="text-decoration:none" href="${esc(p.link)}?client_reference_id=pvq__${sid}__${k}&prefilled_email=${encodeURIComponent(CTX.email)}" target="_blank" rel="noopener"><strong style="color:var(--ink)">${esc(p.label)}</strong><div style="font-size:20px;font-weight:700;color:var(--ink);margin-top:4px">£${(p.amount/100).toFixed(2)}</div><small class="muted">${buy?'Buy online':'Buy / renew online'}</small></a>`).join('')}</div>`:''}
   <p style="margin:16px 0 0">${CTX.master?`Or ${buy?'buy':'renew'} through the <a href="${CFG.lic}" target="_blank" rel="noopener">licence portal</a>, or call <strong>${CFG.phone}</strong>.`:plans.length?`Or call Proview on <strong>${CFG.phone}</strong>.`:`Online payment isn’t available yet. Call Proview on <strong>${CFG.phone}</strong>.`}</p>
@@ -408,10 +408,10 @@ function openPalette(){App.modal({title:'Search',body:`<label class="search" sty
   function row(h,i,t,s){return `<a href="${h}" data-close style="display:flex;gap:10px;align-items:center;padding:9px;border-radius:8px;color:var(--ink-2);text-decoration:none">${ic(i,'sm')}${esc(t)}<small class="muted" style="margin-left:auto">${esc(s||'')}</small></a>`}
   q.addEventListener('input',run);run()}
 
-/* ---------- the master, signed in without a location from the licence portal: nothing of any business is loaded ---------- */
+/* ---------- the master, signed in without a business from the licence portal: nothing of any business is loaded ---------- */
 App.route('portal',()=>`<div class="card pad pq-portal"><span class="itile" style="margin:0 auto 14px;width:56px;height:56px;background:var(--brand-tint);color:var(--brand-700)">${SV(HI.building)}</span>
-  <h1 style="font-size:22px;margin:0 0 8px">Open a location from the licence portal</h1>
-  <p class="muted" style="max-width:440px;margin:0 auto 20px">As Proview master you work inside one location at a time (or a group of linked locations). Open the location in the licence portal and press <b>Open in Proview QR Menu</b>. New locations are added and linked there too (New location, Link with another location).</p>
+  <h1 style="font-size:22px;margin:0 0 8px">Open a business from the licence portal</h1>
+  <p class="muted" style="max-width:440px;margin:0 auto 20px">As Proview master you work inside one business at a time. Open the business in the licence portal and press <b>Open in Proview QR Menu</b>. Businesses are added and linked there too (New business, Link with another business).</p>
   <a class="btn primary" id="pqToPortal" href="${CFG.lic}" rel="noopener">Open licence portal</a></div>`);
 
 /* ---------- No Locations page (owner, 12 Nov 2026: "Remove locations, we are not using that anymore") ----------
@@ -419,12 +419,12 @@ App.route('portal',()=>`<div class="card pad pq-portal"><span class="itile" styl
    online (owners) or the licence portal and Trial… (the master), and the master's Pause / Delete business. Address, hours and
    the other per-location settings were already in Settings (Venue Information, Operating Hours…). */
 const orgOf=id=>CTX.orgs.find(o=>o.id===id)||(CTX.org&&CTX.org.id===id?CTX.org:null);
-App.route('noloc',()=>CTX.org?`<div class="card pad pq-portal"><h1 style="font-size:22px;margin:0 0 8px">No locations yet</h1><p class="muted" style="margin:0 auto 16px;max-width:440px">${esc(CTX.org.name)} has no locations yet. Locations are set up by Proview${CTX.master?' in the licence portal (New location, Link with another location)':`. Call Proview on ${CFG.phone}`}.</p>${CTX.master?masterBizHTML():''}</div>`:'');
+App.route('noloc',()=>CTX.org?`<div class="card pad pq-portal"><h1 style="font-size:22px;margin:0 0 8px">No locations yet</h1><p class="muted" style="margin:0 auto 16px;max-width:440px">${esc(CTX.org.name)} has no locations yet. Businesses are set up by Proview${CTX.master?' in the licence portal (New business, Link with another business)':`. Call Proview on ${CFG.phone}`}.</p>${CTX.master?masterBizHTML():''}</div>`:'');
 function masterBizHTML(){return `<div class="row"><div class="grow"><b>Business</b><div class="help" style="margin:0">${esc(CTX.org.name)}${CTX.org.suspended?' · paused':''} · Proview only</div></div><button type="button" class="btn secondary sm" data-action="pq-suspend-org" data-id="${CTX.org.id}" data-v="${CTX.org.suspended?0:1}">${CTX.org.suspended?'Unpause business':'Pause business'}</button><button type="button" class="btn ghost sm" style="color:var(--bad)" data-action="pq-del-org" data-id="${CTX.org.id}" data-name="${esc(CTX.org.name)}">Delete business</button></div>`}
 function thisLocHTML(){const s=site();if(!s)return '';const L=lic(s),M=CTX.master,admin=isAdmin();
   const licBtn=M?`<button type="button" class="btn secondary sm" data-action="pq-trial" data-id="${s.id}" title="Set, extend or clear a trial licence by hand (Proview only)">Trial…</button><a class="btn secondary sm" href="${CFG.lic}" target="_blank" rel="noopener">Licence portal</a>`
     :admin?`<button type="button" class="btn ${['none','expired'].includes(L.k)?'primary':'secondary'} sm" data-action="pq-buy-loc" data-id="${s.id}">${L.k==='none'?'Buy licence online':'Renew online'}</button>`:'';
-  return `<section class="card pad pq-thisloc" id="pqThisLoc" style="margin-top:20px"><h3 style="margin:0 0 4px">This location · ${esc(s.name)}</h3><p class="help" style="margin:0 0 8px">Locations are set up and linked by Proview. Address, opening hours and the rest are in Venue Information and Operating Hours above.</p>
+  return `<section class="card pad pq-thisloc" id="pqThisLoc" style="margin-top:20px"><h3 style="margin:0 0 4px">This location · ${esc(s.name)}</h3><p class="help" style="margin:0 0 8px">Businesses are set up and linked by Proview. Address, opening hours and the rest are in Venue Information and Operating Hours above.</p>
     <div class="row"><div class="grow"><label for="pqLocName"><b>Location name</b></label><div class="help" style="margin:0">The name in the location select and your menu links.</div></div>${admin?`<input class="input" id="pqLocName" value="${esc(s.name)}" style="max-width:260px"><button type="button" class="btn primary sm" data-action="pq-loc-name-save" data-id="${s.id}">Save</button>`:`<span>${esc(s.name)}</span>`}</div>
     <div class="row" id="pqThisLic"><div class="grow"><b>Business licence</b><div class="help" style="margin:0">${UI.pill(L.t,L.c)} Each business needs its own licence.${M?'':admin?'':' Ask your owner, or call Proview on '+CFG.phone+'.'}</div></div>${licBtn}</div>
     ${M?masterBizHTML():''}</section>`}

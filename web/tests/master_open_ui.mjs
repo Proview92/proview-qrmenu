@@ -56,13 +56,13 @@ const master = (seen) => seen.filter((x) => /pq_orgs_list|\/rest\/v1\/pq_sites |
 // 1. master signed in directly
 { const { ctx, p, errs, seen } = await boot({ email: MASTER, master: true, url: '#locations' });
   const t = await text(p);
-  ok('master direct: "Open a location from the licence portal" page', /Open a location from the licence portal/.test(t), t.slice(0, 300));
+  ok('master direct: "Open a business from the licence portal" page', /Open a business from the licence portal/.test(t), t.slice(0, 300));
   ok('master direct: button to the licence portal', (await p.getAttribute('#pqToPortal', 'href')) === 'https://license.proviewcrm.co.uk/');
   ok('master direct: no business list or location data requested', !seen.some((x) => /pq_orgs_list|pq_sites|pq_orgs|pq_state|pq_sites_of/.test(x)), seen.join('\n'));
   ok('master direct: no business on the page', !/Burger Barn|Pizza Palace|Camden|Leeds/.test(await html(p)));
   ok('master direct: no Locations item, every page greyed, no dropdown', await p.locator('#nav a[href="#locations"]').count() === 0 && await p.evaluate(() => [...document.querySelectorAll('#nav a')].every((a) => a.dataset.grey)) && await p.evaluate(() => document.querySelector('.hdr-pick').hidden));
   await p.click('#nav a[data-grey]', { force: true }); await p.waitForTimeout(150);
-  ok('master direct: greyed page says open from the portal', /Open a location from the licence portal first/.test(await p.evaluate(() => document.querySelector('#toast').textContent)));
+  ok('master direct: greyed page says open from the portal', /Open a business from the licence portal first/.test(await p.evaluate(() => document.querySelector('#toast').textContent)));
   await p.evaluate(() => { location.hash = 'orders'; }); await p.waitForTimeout(300);
   ok('master direct: other pages go back to the portal page', /#portal$/.test(p.url()));
   await p.screenshot({ path: SHOTS + '/qr-master-direct.png' });
@@ -83,7 +83,7 @@ const master = (seen) => seen.filter((x) => /pq_orgs_list|\/rest\/v1\/pq_sites |
   ok('master biz: only Burger Barn asked for', seen.some((x) => x.includes(A)) && !seen.some((x) => x.includes(B) || x.includes('bbbbbbbb')), seen.join('\n'));
   ok('master biz: no Add business, no All businesses', !/Add business|All businesses/.test(t));
   await p.evaluate(() => { location.hash = 'settings'; }); await p.waitForTimeout(600);
-  ok('master biz: Trial… (master tool) in Settings → This location', await p.locator('#pqThisLoc [data-action=pq-trial]').count() === 1 && /added and linked there too|Locations are set up and linked by Proview/.test(await text(p)));
+  ok('master biz: Trial… (master tool) in Settings → This location', await p.locator('#pqThisLoc [data-action=pq-trial]').count() === 1 && /Businesses are set up and linked by Proview/.test(await text(p)));
   ok('master biz: pause / delete this business kept (Settings → This location)', await p.locator('#pqThisLoc [data-action=pq-suspend-org]').count() === 1 && await p.locator('#pqThisLoc [data-action=pq-del-org]').count() === 1);
   await p.screenshot({ path: SHOTS + '/qr-master-biz.png' });
   await p.selectOption('#pqLoc', SITES[0].id); await p.waitForTimeout(600); await p.evaluate(() => { location.hash = 'dashboard'; }); await p.waitForTimeout(500);
@@ -101,13 +101,13 @@ const master = (seen) => seen.filter((x) => /pq_orgs_list|\/rest\/v1\/pq_sites |
   // old link: a hand-off without a business
   st.reply = { body: { token_hash: 'h3', email: MASTER } };
   await p.goto(base + 'index.html#pv_sso=TOKEN3'); await p.waitForTimeout(2200);
-  ok('master old link: portal page, no business', /Open a location from the licence portal/.test(await text(p)) && !/Pizza Palace|Leeds|Burger Barn/.test(await p.evaluate(() => document.documentElement.outerHTML)));
+  ok('master old link: portal page, no business', /Open a business from the licence portal/.test(await text(p)) && !/Pizza Palace|Leeds|Burger Barn/.test(await p.evaluate(() => document.documentElement.outerHTML)));
   ok('master biz: no page errors', !errs.length, errs.join(' | ')); await ctx.close(); }
 
 // 3. a business that is gone (sso-login said open, the business isn't there): portal page and a message
 { const { ctx, p, errs } = await boot({ email: MASTER, master: true, url: '#pv_sso=T', reply: { body: { token_hash: 'h', email: MASTER, open: '33333333-2222-4333-8444-555555555555' } } });
   await p.waitForTimeout(400);
-  ok('gone business: portal page', /Open a location from the licence portal/.test(await text(p)));
+  ok('gone business: portal page', /Open a business from the licence portal/.test(await text(p)));
   ok('gone business: no page errors', !errs.length, errs.join(' | ')); await ctx.close(); }
 
 // 4. sso-login refuses: the reason on the sign-in page
