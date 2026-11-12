@@ -74,8 +74,11 @@ const done = async (n, x) => { ok(n + ': no page errors', !x.errs.length, x.errs
 { const x = await boot({ email: TWO, mems: two(), ls: LAST(B, S3) }); const { p } = x;
   ok('two: header lists business names only, by name', JSON.stringify(await hdrOpts(p)) === HDR, JSON.stringify(await hdrOpts(p)));
   await plain(p, 'two');
+  ok('two: select aria-label "Business", hidden label "Business"', await p.$eval('#hdr-site', (s) => s.getAttribute('aria-label') === 'Business') && await p.$eval('label[for=hdr-site]', (l) => l.textContent.trim() === 'Business'));
   ok('two: lands in the last-used business (Pizza Palace)', await picked(p) === 'Pizza Palace' && /Leeds Pizza Menu/.test(await p.evaluate(() => JSON.stringify(window.App.state.menus))), await picked(p));
   ok('two: no "choose a business" page, lands on the Dashboard', await p.evaluate(() => window.App.current()) === 'dashboard', p.url());
+  await p.evaluate(() => { window.App.actions['pq-signout-yes'](); }); await p.waitForTimeout(2000);
+  { const kept = await p.evaluate((k) => localStorage.getItem(k), 'pq_last_' + TWO); ok('two: the business used last is kept through sign-out', kept && JSON.parse(kept).org === B && /Sign in/.test(await text(p)), String(kept) + ' ' + (await text(p)).slice(0, 80)); }
   await p.screenshot({ path: SHOTS + '/qr-two.png' });
   await done('two last used B', x); }
 { const x = await boot({ email: TWO, mems: two() });
@@ -89,6 +92,7 @@ const done = async (n, x) => { ok(n + ': no page errors', !x.errs.length, x.errs
 { const x = await boot({ email: TWO, mems: two(), ls: LAST(A, S2) }); const { p } = x;
   ok('A: opens the last-used location (Soho)', await locNow(p) === 'Soho', await locNow(p));
   ok('A: in-page location select lists A\'s locations only, by name', JSON.stringify(await locOpts(p)) === JSON.stringify(['Camden', 'Soho']), JSON.stringify(await locOpts(p)));
+  ok('A: in-page select has aria-label "Location", no "All" entry', await p.$eval('#pqLoc', (s) => s.getAttribute('aria-label') === 'Location' && ![...s.options].some((o) => /All/.test(o.textContent))));
   await p.selectOption('#hdr-site', B); await p.waitForTimeout(1200);
   ok('switch to B: header shows Pizza Palace', await picked(p) === 'Pizza Palace');
   const mB = await p.evaluate(() => JSON.stringify(window.App.state.menus));
@@ -111,7 +115,7 @@ const done = async (n, x) => { ok(n + ': no page errors', !x.errs.length, x.errs
   await done('fallback paused', x); }
 { const x = await boot({ email: TWO, mems: two(), lic: { [S1]: { license_type: null }, [S2]: { license_type: 'm12', expires_at: iso(-3) } }, ls: LAST(A, S1) });
   ok('A no working licence: lands in Pizza Palace', await picked(x.p) === 'Pizza Palace', await picked(x.p));
-  ok('A no working licence: A still in the header', JSON.stringify(await hdrOpts(x.p)) === HDR);
+  ok('A no working licence: only usable businesses listed, one left = disabled box (07:55)', await box(x.p) === 'Pizza Palace', JSON.stringify(await hdrOpts(x.p)));
   await done('fallback licence', x); }
 { const x = await boot({ email: TWO, mems: two('manager', 'owner', { a: { site_ids: [] } }), ls: LAST(A, S1) });
   ok('A has no location for them: lands in Pizza Palace (one business left: disabled box)', await box(x.p) === 'Pizza Palace', JSON.stringify(await hdrOpts(x.p)));
@@ -149,6 +153,10 @@ const noLoc = async (p, who) => {
 };
 { const x = await boot({ email: TWO, mems: two(), ls: LAST(A, S2) }); const { p, st } = x;
   await noLoc(p, 'owner');
+  await go(p, 'orders');
+  await p.selectOption('#hdr-site', B); await p.waitForTimeout(1200);
+  ok('switching business keeps the same page when it exists there (Orders)', await p.evaluate(() => window.App.current()) === 'orders', await p.evaluate(() => window.App.current()));
+  await p.selectOption('#hdr-site', A); await p.waitForTimeout(1200);
   await go(p, 'settings');
   ok('owner: Settings has This location for the selected location (Soho)', /This location · Soho/.test(await view(p)) && await p.$eval('#pqLocName', (i) => i.value) === 'Soho');
   ok('owner: This location shows the licence in business wording', /Business licence/.test(await p.$eval('#pqThisLic', (e) => e.innerText)) && /Each business needs its own licence/.test(await p.$eval('#pqThisLic', (e) => e.innerText)) && /Lifetime/.test(await p.$eval('#pqThisLic', (e) => e.innerText)));

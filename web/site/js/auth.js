@@ -165,7 +165,7 @@ async function afterSignIn(){
     if(!CTX.biz.length){await sb.auth.signOut();purge();return signInScreen('Ask your owner or Proview to give you access to a location.','info')}
     const i=Math.max(-1,CTX.biz.findIndex(x=>x.id===saved.org)),order=[...CTX.biz.slice(i<0?0:i),...CTX.biz.slice(0,i<0?0:i)];
     const pick=order.find(x=>x.usable)||(CTX.biz.find(x=>x.id===saved.org)||CTX.biz[0]);   // none usable: the last used (its lock and Buy online show)
-    const ok=await openOrg(pick.id,ls.get(siteKey(pick.id))||(pick.id===saved.org?saved.site:null),true);
+    const ok=await openOrg(pick.id,ls.get(siteKey(pick.id))||(pick.id===saved.org?saved.site:null),true);   // saved.site: older builds
     if(!ok){await sb.auth.signOut();purge();return signInScreen('Ask your owner or Proview to give you access to a location.','info')}
     if(saved.org&&pick.id!==saved.org&&CTX.biz.some(x=>x.id===saved.org))ls.set(lastKey(),saved);   // a fallback is not saved over the last used
     fillLoc()}
@@ -176,7 +176,9 @@ async function afterSignIn(){
   else if(CTX.siteId==='all'){App.go('noloc');App.render()}
   else{if(['portal','locations','noloc',''].includes(App.current().split('--')[0]))App.go('dashboard');App.render()}
   loader(false)}
-function purge(){Object.keys(localStorage).filter(k=>k.startsWith('pq_')).forEach(k=>ls.del(k))}
+// sign-out forgets this device's cached app data, but keeps the business used last and each business's location
+// (pq_last_<email>, pq_site_<email>:<business>; MULTI_BUSINESS_PICKER_STANDARD.md)
+function purge(){Object.keys(localStorage).filter(k=>k.startsWith('pq_')&&!/^pq_(last|site)_/.test(k)).forEach(k=>ls.del(k))}
 async function signOut(){await flush();await sb.auth.signOut();purge();openSet(null);location.hash='';location.reload()}
 
 /* ---------- business / location switching ---------- */
@@ -204,10 +206,11 @@ async function openSite(id,quiet){
 function replaceState(d){const S=App.state;Object.keys(S).forEach(k=>delete S[k]);Object.assign(S,d);const n=$('#venueName');if(n)n.textContent=CTX.siteId==='all'?(CTX.org?.name||'Proview'):site()?.name||''}
 // the last location, per person (the master: per business opened, so the open business never changes)
 const lastKey=()=>'pq_last_'+CTX.email+(CTX.master?':'+(CTX.org?.id||openGet()||''):'');
-function remember(){if(!CTX.email)return;ls.set(lastKey(),{org:CTX.org?.id||null,site:CTX.siteId});if(CTX.org&&CTX.siteId!=='all')ls.set(siteKey(CTX.org.id),CTX.siteId)}
+// the business used last (non-master: the business only; the master: per business opened, with its location)
+function remember(){if(!CTX.email)return;ls.set(lastKey(),CTX.master?{org:CTX.org?.id||null,site:CTX.siteId}:{org:CTX.org?.id||null});if(CTX.org&&CTX.siteId!=='all')ls.set(siteKey(CTX.org.id),CTX.siteId)}
 // the location used last in each business (the header picks businesses; a page's location select picks the location)
 const siteKey=org=>'pq_site_'+CTX.email+':'+org;
-const byName=(a,b)=>String(a.name).localeCompare(String(b.name),undefined,{sensitivity:'base'});
+const byName=(a,b)=>String(a.name).toLowerCase().localeCompare(String(b.name).toLowerCase());   // localeCompare on the lower-cased names
 async function bizInfo(orgId){const [a,b]=await Promise.all([sb.rpc('pq_sites_of',{p_org:orgId}),sb.from('pq_orgs').select('*').eq('id',orgId).maybeSingle()]);return {org:b.data||null,sites:Array.isArray(a.data)?a.data:[]}}
 // usable = not paused, and at least one location this person can open with a working licence
 const usable=i=>!!i.org&&!i.org.suspended&&i.sites.some(x=>!x.archived&&['ok','trial'].includes(lic(x).k));
@@ -295,7 +298,8 @@ function fillLoc(){const sel=$('#hdr-site');if(!sel)return;
   const o=(v,t,on)=>`<option value="${esc(v)}" title="${esc(t)}"${on?' selected':''}>${esc(t)}</option>`;
   const w=sel.closest('.hdr-pick');if(w)w.hidden=!CTX.org;   // the master before a business is opened: no dropdown
   if(!CTX.org){sel.innerHTML='';sel.disabled=true;return}
-  const list=CTX.master?[]:(CTX.biz||[]);
+  // exact details (07:55): only usable businesses (the one open now is always there, so the box says where they are)
+  const list=CTX.master?[]:(CTX.biz||[]).filter(x=>x.usable||x.id===CTX.org.id);
   if(list.length<2){sel.innerHTML=o(CTX.org.id,CTX.org.name,true);sel.disabled=true}
   else{sel.disabled=false;sel.innerHTML=list.map(x=>o(x.id,x.name,x.id===CTX.org.id)).join('')}
   sel.title=CTX.org.name}
@@ -304,10 +308,12 @@ async function chooseBiz(v){
   loader(true);const ok=await openOrg(v,ls.get(siteKey(v)),true);loader(false);
   if(!ok){toast('There is no location for you in that business.');fillLoc();return}
   CTX.orgs=[CTX.org];fillAcct();toast('Opened '+CTX.org.name);
-  if(CTX.siteId==='all')App.go('noloc');else if(['noloc','users'].includes(App.current().split('--')[0])||CTX.role==='staff')App.go('dashboard');App.render()}
+  // the same page if it exists there (and they may see it), else the home page
+  const k=App.current().split('--')[0],f=featureOf(k);
+  if(CTX.siteId==='all')App.go('noloc');else if(k==='noloc'||(k==='users'&&!(isAdmin()&&can('users')))||(f&&!can(f)))App.go('dashboard');App.render()}
 // the location select at the top of a page, only when the open business has more than one location
 function locPickHTML(){const live=CTX.org?CTX.sites.filter(s=>!s.archived).slice().sort(byName):[];if(live.length<2)return '';
-  return `<div class="pq-locpick"><label for="pqLoc">Location</label><select id="pqLoc" class="input" data-change="pq-loc">${live.map(s=>`<option value="${esc(s.id)}"${s.id===CTX.siteId?' selected':''}>${esc(s.name)}</option>`).join('')}</select></div>`}
+  return `<div class="pq-locpick"><label for="pqLoc">Location</label><select id="pqLoc" class="input" aria-label="Location" data-change="pq-loc">${live.map(s=>`<option value="${esc(s.id)}"${s.id===CTX.siteId?' selected':''}>${esc(s.name)}</option>`).join('')}</select></div>`}
 async function chooseLoc(v){
   if(!CTX.org||v===CTX.siteId||!CTX.sites.some(s=>s.id===v&&!s.archived))return;   // only the open business's locations
   await openSite(v);App.render()}
