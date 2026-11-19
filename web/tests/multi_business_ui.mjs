@@ -63,7 +63,7 @@ const box = (p) => p.$eval('#hdr-site', (s) => s.disabled ? s.textContent.trim()
 const locOpts = (p) => p.$$eval('#pqLoc option', (o) => o.map((x) => x.textContent));
 const locNow = (p) => p.$eval('#pqLoc', (s) => s.options[s.selectedIndex].textContent).catch(() => null);
 const go = async (p, h) => { await p.evaluate((x) => { location.hash = x; }, h); await p.waitForTimeout(600); };
-const two = (ra = 'owner', rb = 'owner', extra = {}) => [{ org: A, role: ra, ...(extra.a || {}) }, { org: B, role: rb, ...(extra.b || {}) }];
+const two = (ra = 'admin', rb = 'admin', extra = {}) => [{ org: A, role: ra, ...(extra.a || {}) }, { org: B, role: rb, ...(extra.b || {}) }];
 const LAST = (org, site) => ({ ['pq_last_' + TWO]: { org, site } });
 const plain = async (p, who) => { const h = await p.$eval('.top', (e) => e.outerHTML);
   ok(who + ': header has no location breakdown (no optgroup, ▸, All my locations, Choose/Switch location)', !/optgroup|▸|All my locations|All locations|Choose location|Switch location/.test(h), h.slice(0, 300)); };
@@ -117,23 +117,23 @@ const done = async (n, x) => { ok(n + ': no page errors', !x.errs.length, x.errs
   ok('A no working licence: lands in Pizza Palace', await picked(x.p) === 'Pizza Palace', await picked(x.p));
   ok('A no working licence: only usable businesses listed, one left = disabled box (07:55)', await box(x.p) === 'Pizza Palace', JSON.stringify(await hdrOpts(x.p)));
   await done('fallback licence', x); }
-{ const x = await boot({ email: TWO, mems: two('manager', 'owner', { a: { site_ids: [] } }), ls: LAST(A, S1) });
+{ const x = await boot({ email: TWO, mems: two('manager', 'admin', { a: { site_ids: [] } }), ls: LAST(A, S1) });
   ok('A has no location for them: lands in Pizza Palace (one business left: disabled box)', await box(x.p) === 'Pizza Palace', JSON.stringify(await hdrOpts(x.p)));
   await done('fallback no locations', x); }
 { const x = await boot({ email: TWO, mems: two(), org: { [B]: { suspended: true } }, ls: LAST(B, S3) });
   ok('B paused, last used B: lands in Burger Barn', await picked(x.p) === 'Burger Barn', await picked(x.p));
   await done('fallback B', x); }
 { const x = await boot({ email: TWO, mems: two('manager', 'manager', { a: { site_ids: [] }, b: { site_ids: [] } }) });
-  ok('no business with a location: signed out', /Sign in/.test(await text(x.p)) && /Ask your owner or Proview/.test(await text(x.p)));
+  ok('no business with a location: signed out', /Sign in/.test(await text(x.p)) && /Ask your business admin or Proview/.test(await text(x.p)));
   await done('none usable', x); }
 
 // 4. one business: its name in a disabled box
-{ const x = await boot({ email: ONE, mems: [{ org: A, role: 'owner' }] }); const { p } = x;
+{ const x = await boot({ email: ONE, mems: [{ org: A, role: 'admin' }] }); const { p } = x;
   ok('one business: disabled box with the business name', await box(p) === 'Burger Barn', JSON.stringify(await hdrOpts(p)));
   await plain(p, 'one business');
   ok('one business, 2 locations: in-page select, first location open, Dashboard', JSON.stringify(await locOpts(p)) === JSON.stringify(['Camden', 'Soho']) && await locNow(p) === 'Camden' && await p.evaluate(() => window.App.current()) === 'dashboard');
   await done('one business', x); }
-{ const x = await boot({ email: ONE, mems: [{ org: B, role: 'owner' }] });
+{ const x = await boot({ email: ONE, mems: [{ org: B, role: 'admin' }] });
   ok('one location: disabled box with the business name, no in-page select', await box(x.p) === 'Pizza Palace' && !(await x.p.$('#pqLoc')));
   await done('one location', x); }
 
@@ -170,7 +170,7 @@ const noLoc = async (p, who) => {
   ok('owner: Renew opens the plans for that location', /12 months/.test(await p.evaluate(() => document.querySelector('#modal')?.innerText || '')) && await p.evaluate((id) => !!document.querySelector(`#modal a[href*="pvq__${id}__m12"]`), S1));
   await p.screenshot({ path: SHOTS + '/qr-thisloc.png' });
   await done('no Locations owner', x); }
-{ const x = await boot({ email: ONE, mems: [{ org: B, role: 'owner' }], lic: { [S3]: { license_type: null } } }); const { p } = x;
+{ const x = await boot({ email: ONE, mems: [{ org: B, role: 'admin' }], lic: { [S3]: { license_type: null } } }); const { p } = x;
   ok('locked: lock says the business needs a licence, buy online', /No licence yet/.test(await view(p)));
   await go(p, 'settings');
   ok('locked: Settings shows the lock with Buy online for that location', /No licence yet/.test(await view(p)) && await p.evaluate((id) => !!document.querySelector(`#view .pq-lock a[href*="pvq__${id}__m12"]`), S3) && /Buy online/.test(await view(p)));
@@ -195,7 +195,7 @@ const noLoc = async (p, who) => {
   const t = await text(x.p);
   ok('master direct: "Open a business from the licence portal", businesses added and linked there', /Open a business from the licence portal/.test(t) && /Businesses are added and linked there too \(New business, Link with another business\)/.test(t) && !/Open a location/.test(t), t.slice(0, 300));
   await done('wording master', x); }
-{ const x = await boot({ email: ONE, mems: [{ org: A, role: 'owner' }] }); await go(x.p, 'settings');
+{ const x = await boot({ email: ONE, mems: [{ org: A, role: 'admin' }] }); await go(x.p, 'settings');
   ok('owner: This location says businesses are set up by Proview', /Businesses are set up and linked by Proview/.test(await view(x.p)));
   await done('wording owner', x); }
 

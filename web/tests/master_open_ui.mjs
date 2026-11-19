@@ -116,7 +116,7 @@ const master = (seen) => seen.filter((x) => /pq_orgs_list|\/rest\/v1\/pq_sites |
   ok('sso refused: no page errors', !errs.length, errs.join(' | ')); await ctx.close(); }
 
 // 5. owner unchanged
-{ const { ctx, p, errs, seen, st } = await boot({ email: 'own@bb.test', role: 'owner', url: '#locations' });
+{ const { ctx, p, errs, seen, st } = await boot({ email: 'own@bb.test', role: 'admin', url: '#locations' });
   ok('owner: no x-pq-org header sent', st.hdrs.length > 0 && st.hdrs.every((h) => h === ''));
   const t = await text(p);
   ok('owner: old #locations goes to the Dashboard of their business, no banner', /#dashboard$/.test(p.url()) && await p.locator('.pq-master-bar').count() === 0, p.url());
@@ -129,7 +129,7 @@ const master = (seen) => seen.filter((x) => /pq_orgs_list|\/rest\/v1\/pq_sites |
   await p.screenshot({ path: SHOTS + '/qr-owner.png' });
   ok('owner: no page errors', !errs.length, errs.join(' | ')); await ctx.close(); }
 // 6. owner arriving with Sign in with Proview account: no open in the reply, nothing changes
-{ const { ctx, p, errs } = await boot({ email: 'own@bb.test', role: 'owner', url: '#pv_sso=T', reply: { body: { token_hash: 'h', email: 'own@bb.test' } } });
+{ const { ctx, p, errs } = await boot({ email: 'own@bb.test', role: 'admin', url: '#pv_sso=T', reply: { body: { token_hash: 'h', email: 'own@bb.test' } } });
   ok('owner sso: their business, no banner', await p.$eval('#hdr-site', (s) => s.textContent.trim() === 'Burger Barn') && await p.locator('.pq-master-bar').count() === 0);
   ok('owner sso: no page errors', !errs.length, errs.join(' | ')); await ctx.close(); }
 // 7. manager unchanged: one location, dashboard

@@ -30,14 +30,14 @@ window.PQ={sb,CTX,CFG};
 
 /* ---------- features ---------- */
 const FEATURES=[['menus','Menus & translations'],['website','AI Website Builder'],['brandkit','AI Brand Kit'],['media','AI Media Studio & Library'],['marketing','AI Marketing Hub'],['aireports','AI Reports'],['orders','Orders'],['reservations','Reservations'],['guests','Guests & Engagement'],['reports','Reports'],['marketplace','Marketplace'],['settings','Settings'],['users','Users']];
-const DEFAULTS={owner:'*',admin:'*',manager:['menus','website','brandkit','media','marketing','aireports','orders','reservations','guests','reports','settings'],staff:['orders','reservations','guests']};
+const DEFAULTS={admin:'*',manager:['menus','website','brandkit','media','marketing','aireports','orders','reservations','guests','reports','settings'],staff:['orders','reservations','guests']};
 function can(f){if(CTX.master)return true;const r=CTX.role;if(!r)return false;const o=(CTX.member?.features||{})[f];if(o===true||o===false)return o;const d=DEFAULTS[r];return d==='*'||d.includes(f)}
 function featureOf(key){if(key==='dashboard'||key==='locations')return null;if(key==='users')return'users';
   if(/^(menu-|translation-center|in-app-promotions)/.test(key))return'menus';if(key.startsWith('website-'))return'website';if(key.startsWith('brand-kit'))return'brandkit';
   if(key.startsWith('ai-media'))return'media';if(key.startsWith('ai-marketing'))return'marketing';if(key==='ai-reports')return'aireports';
   if(key.startsWith('orders'))return'orders';if(key.startsWith('reservations'))return'reservations';if(/^(engagement|feedback)/.test(key))return'guests';
   if(key.startsWith('reports'))return'reports';if(key.startsWith('marketplace'))return'marketplace';if(key.startsWith('settings'))return'settings';return null}
-const isAdmin=()=>CTX.master||['owner','admin'].includes(CTX.role);
+const isAdmin=()=>CTX.master||CTX.role==='admin';
 
 /* ---------- licence helpers ---------- */
 const site=()=>CTX.sites.find(s=>s.id===CTX.siteId);
@@ -118,7 +118,7 @@ function newPasswordScreen(note=''){authShow(`<h1>Choose a new password</h1><p c
 function trialSetupScreen(note=''){authShow(`<h1>Set up your business</h1><p class="auth2-mut">Add your business and first location${CTX.email?' as '+esc(CTX.email):''}. Then buy a licence to start using Proview QR Menu.</p>${msg(note)}
   <form id="pqTrial" ${FORM}>${inp('pqBiz','Business name','text','required maxlength="120" autocomplete="organization" placeholder="e.g. Alici\'s"')}${inp('pqLocName','First location','text','maxlength="120" placeholder="Same as the business name"')}${inp('pqPhone','Phone (optional)','tel','')}
   <button class="go" type="submit">Set up my business</button><button class="ghost2" type="button" data-pq="signout">Sign out</button>
-  <p class="hint">The location stays locked until you buy a licence (online straight after this, paid securely with Stripe, or call Proview on ${CFG.phone}). Joining an existing business? Ask its owner to add your email, then sign in again.</p></form>`);
+  <p class="hint">The location stays locked until you buy a licence (online straight after this, paid securely with Stripe, or call Proview on ${CFG.phone}). Joining an existing business? Ask its admin to add your email, then sign in again.</p></form>`);
   $('#pqTrial').onsubmit=async e=>{e.preventDefault();const b=$('#pqBiz').value.trim();if(!b)return trialSetupScreen('Enter your business name.');
     const go=e.target.querySelector('.go');go.disabled=true;go.textContent='Setting up…';
     const {error}=await sb.rpc('pq_self_trial',{p_business:b,p_location:$('#pqLocName').value||null,p_phone:$('#pqPhone').value||null});
@@ -162,11 +162,11 @@ async function afterSignIn(){
     // location for this person, the next usable one by name. No "choose a business" page. Signed out only when none can be opened.
     const infos=await Promise.all(mems.map(m=>bizInfo(m.org_id)));
     CTX.biz=mems.map((m,i)=>({id:m.org_id,name:m.org_name||infos[i].org?.name||'',live:infos[i].sites.filter(x=>!x.archived).length,usable:usable(infos[i])})).filter(x=>x.live).sort(byName);
-    if(!CTX.biz.length){await sb.auth.signOut();purge();return signInScreen('Ask your owner or Proview to give you access to a location.','info')}
+    if(!CTX.biz.length){await sb.auth.signOut();purge();return signInScreen('Ask your business admin or Proview to give you access to a location.','info')}
     const i=Math.max(-1,CTX.biz.findIndex(x=>x.id===saved.org)),order=[...CTX.biz.slice(i<0?0:i),...CTX.biz.slice(0,i<0?0:i)];
     const pick=order.find(x=>x.usable)||(CTX.biz.find(x=>x.id===saved.org)||CTX.biz[0]);   // none usable: the last used (its lock and Buy online show)
     const ok=await openOrg(pick.id,ls.get(siteKey(pick.id))||(pick.id===saved.org?saved.site:null),true);   // saved.site: older builds
-    if(!ok){await sb.auth.signOut();purge();return signInScreen('Ask your owner or Proview to give you access to a location.','info')}
+    if(!ok){await sb.auth.signOut();purge();return signInScreen('Ask your business admin or Proview to give you access to a location.','info')}
     if(saved.org&&pick.id!==saved.org&&CTX.biz.some(x=>x.id===saved.org))ls.set(lastKey(),saved);   // a fallback is not saved over the last used
     fillLoc()}
   CTX.orgs=CTX.org?[CTX.org]:[];   // never a list of every business
@@ -265,12 +265,12 @@ function decorateShell(){
   $('.side').insertAdjacentHTML('beforeend',`<div class="side-foot"><button class="sf-link" id="sfCollapse" data-action="collapse" title="${col?'Expand menu':'Collapse menu'}" aria-label="${col?'Expand menu':'Collapse menu'}">${SV('<path d="m15 18-6-6 6-6"/>')}<span class="lbl">COLLAPSE</span></button></div>`);
   const brand=$('.side .brand');if(brand)brand.outerHTML=`<a class="brand" href="#dashboard" title="Proview QR Menu"><span class="brand-mark" role="img" aria-label=""></span><span class="wordmark">PROVIEW<span>QR MENU</span></span></a>`;
   fillLoc();fillAcct()}
-const roleName=()=>CTX.master?'Proview master':({owner:'Owner',admin:'Admin',manager:'Manager',staff:'Staff'})[CTX.role]||'';
+const roleName=()=>CTX.master?'Proview master':({admin:'Admin',manager:'Manager',staff:'Staff'})[CTX.role]||'';
 // avatar initials from the email's first part, exactly as Signage ("A" for altun@)
 const avInit=()=>initials(CTX.email.split('@')[0].replace(/[._-]+/g,' '));
 function fillAcct(){const av=$('#pqAv');if(!av)return;av.textContent=avInit();
   av.title=[CTX.email.split('@')[0],[roleName(),CTX.org?.name].filter(Boolean).join(' · ')].filter(Boolean).join(' · ');
-  $('#pqDash').style.display=(CTX.master||['owner','admin'].includes(CTX.role))?'':'none'}
+  $('#pqDash').style.display=(CTX.master||CTX.role==='admin')?'':'none'}
 // the account menu under the avatar (Signage's PVHub.accountMenu look): who you are, then the account actions
 function acctMenu(kbd){let m=$('#pqAcct');const av=$('#pqAv');if(m){closeAcct();return}
   const it=(act,icon,label,cls='')=>`<button type="button" class="pv-acct-i ${cls}" role="menuitem" data-action="${act}">${icon}<span>${label}</span></button>`;
@@ -432,7 +432,7 @@ function thisLocHTML(){const s=site();if(!s)return '';const L=lic(s),M=CTX.maste
     :admin?`<button type="button" class="btn ${['none','expired'].includes(L.k)?'primary':'secondary'} sm" data-action="pq-buy-loc" data-id="${s.id}">${L.k==='none'?'Buy licence online':'Renew online'}</button>`:'';
   return `<section class="card pad pq-thisloc" id="pqThisLoc" style="margin-top:20px"><h3 style="margin:0 0 4px">This location · ${esc(s.name)}</h3><p class="help" style="margin:0 0 8px">Businesses are set up and linked by Proview. Address, opening hours and the rest are in Venue Information and Operating Hours above.</p>
     <div class="row"><div class="grow"><label for="pqLocName"><b>Location name</b></label><div class="help" style="margin:0">The name in the location select and your menu links.</div></div>${admin?`<input class="input" id="pqLocName" value="${esc(s.name)}" style="max-width:260px"><button type="button" class="btn primary sm" data-action="pq-loc-name-save" data-id="${s.id}">Save</button>`:`<span>${esc(s.name)}</span>`}</div>
-    <div class="row" id="pqThisLic"><div class="grow"><b>Business licence</b><div class="help" style="margin:0">${UI.pill(L.t,L.c)} Each business needs its own licence.${M?'':admin?'':' Ask your owner, or call Proview on '+CFG.phone+'.'}</div></div>${licBtn}</div>
+    <div class="row" id="pqThisLic"><div class="grow"><b>Business licence</b><div class="help" style="margin:0">${UI.pill(L.t,L.c)} Each business needs its own licence.${M?'':admin?'':' Ask your business admin, or call Proview on '+CFG.phone+'.'}</div></div>${licBtn}</div>
     ${M?masterBizHTML():''}</section>`}
 A('pq-loc-name-save',async el=>{const n=($('#pqLocName')?.value||'').trim();if(!n)return toast('Enter a name');if(!CTX.org||!CTX.sites.some(x=>x.id===el.dataset.id))return;
   const {error}=await sb.rpc('pq_update_site',{p_site:el.dataset.id,p_name:n,p_archived:null});if(error)return toast(error.message);
@@ -454,27 +454,27 @@ A('pq-trial-set',async el=>{const args={p_site:el.dataset.id,p_days:el.dataset.d
 let members=[];
 App.route('users',()=>`${UI.pageHead({title:'Users',sub:`Who can use Proview QR Menu at ${esc(CTX.org?.name||'')}`,actions:`<button class="btn primary" data-action="pq-user" data-email="">${ic('plus','sm')}Add user</button>`})}
   <div class="card">${UI.table({cols:['User','Role','Locations','Features',{label:'',align:'right'}],rows:members.map(m=>{const self=m.email===CTX.email;
-    const locs=['owner','admin'].includes(m.role)?'All locations':(m.site_ids||[]).map(id=>CTX.sites.find(s=>s.id===id)?.name).filter(Boolean).join(', ')||'<span style="color:var(--bad)">None</span>';
+    const locs=m.role==='admin'?'All locations':(m.site_ids||[]).map(id=>CTX.sites.find(s=>s.id===id)?.name).filter(Boolean).join(', ')||'<span style="color:var(--bad)">None</span>';
     const ov=Object.entries(m.features||{});
     return [`<div style="display:flex;gap:10px;align-items:center"><span class="avatar">${initials(m.name||m.email)}</span><div><strong style="color:var(--ink)">${esc(m.name||m.email.split('@')[0])}</strong>${self?' <span class="pill">You</span>':''}<div class="help" style="margin:0">${esc(m.email)}</div></div></div>`,
-      UI.pill({owner:'Owner',admin:'Admin',manager:'Manager',staff:'Staff'}[m.role],m.role==='owner'?'':'grey'),locs,ov.length?`${ov.length} custom`:'Role default',
+      UI.pill({admin:'Admin',manager:'Manager',staff:'Staff'}[m.role],m.role==='admin'?'':'grey'),locs,ov.length?`${ov.length} custom`:'Role default',
       self?'<span class="help">You can\'t change your own access</span>':`<div style="display:flex;gap:6px;justify-content:flex-end"><button class="btn secondary sm" data-action="pq-user" data-email="${esc(m.email)}">Edit</button><button class="btn ghost sm" data-action="pq-user-del" data-email="${esc(m.email)}" style="color:var(--bad)">Remove</button></div>`]}),empty:'No users yet'})}</div>
   <p class="help" style="margin-top:12px">People sign in at this address with the email you add here, using their own password (“Create a login” on the sign-in page creates one) or their Proview account. Owners and Admins always see every location. Managers and Staff see only the locations you tick.</p>`,{nav:'users'});
 App.after('users',()=>{if(!CTX._mLoaded){CTX._mLoaded=true;loadMembers()}});
 async function loadMembers(){const {data,error}=await sb.from('pq_members').select('*').eq('org_id',CTX.org.id).order('created_at');if(error)return toast(error.message);members=data||[];App.render();CTX._mLoaded=false}
-A('pq-user',el=>{const m=members.find(x=>x.email===el.dataset.email)||{email:'',role:'staff',site_ids:[],features:{}};const canOwner=CTX.master||CTX.role==='owner';
+A('pq-user',el=>{const m=members.find(x=>x.email===el.dataset.email)||{email:'',role:'staff',site_ids:[],features:{}};
   const live=CTX.sites.filter(s=>!s.archived);
   drawer({title:m.email?'Edit user':'Add user',body:`${UI.field({label:'Email',required:true,control:UI.input({id:'pqUe',type:'email',value:m.email,attrs:m.email?'readonly':''})})}${UI.field({label:'Name',control:UI.input({id:'pqUn',value:m.name||''})})}
-    ${UI.field({label:'Role',control:UI.select([...(canOwner?[{value:'owner',label:'Owner – everything, manages users and owners'}]:[]),{value:'admin',label:'Admin – everything, manages users'},{value:'manager',label:'Manager – ticked locations only'},{value:'staff',label:'Staff – ticked locations, front-of-house'}],m.role,'id="pqUr" data-change="pq-user-role"')})}
+    ${UI.field({label:'Role',control:UI.select([{value:'admin',label:'Admin – everything, manages users'},{value:'manager',label:'Manager – ticked locations only'},{value:'staff',label:'Staff – ticked locations, front-of-house'}],m.role,'id="pqUr" data-change="pq-user-role"')})}
     <div id="pqUsites">${UI.field({label:'Locations',control:live.map(s=>`<div style="padding:4px 0">${UI.check(esc(s.name),(m.site_ids||[]).includes(s.id),`data-site="${s.id}"`)}</div>`).join('')||'<p class="muted">No locations yet.</p>'})}</div>
     <h3 style="margin:18px 0 6px">Features</h3><p class="help" style="margin-top:0">“Role default” follows the role. Switch on or off to override.</p>
     ${FEATURES.map(([k,l])=>{const v=m.features?.[k];return `<div class="pq-feat"><span>${l}</span>${UI.select([{value:'',label:'Role default'},{value:'on',label:'On'},{value:'off',label:'Off'}],v===true?'on':v===false?'off':'','data-feat="'+k+'"')}</div>`}).join('')}`,
     footer:`<button class="btn secondary" data-close>Cancel</button><button class="btn primary" data-action="pq-user-save">Save</button>`});
   roleSites()});
-function roleSites(){const r=$('#pqUr')?.value;const b=$('#pqUsites');if(b)b.style.display=['owner','admin'].includes(r)?'none':''}
+function roleSites(){const r=$('#pqUr')?.value;const b=$('#pqUsites');if(b)b.style.display=r==='admin'?'none':''}
 A('pq-user-role',roleSites);
-A('pq-user-save',async()=>{const role=$('#pqUr').value;const sites=['owner','admin'].includes(role)?[]:$$('#drawer [data-site]').filter(c=>c.checked).map(c=>c.dataset.site);
-  if(!['owner','admin'].includes(role)&&!sites.length)return toast('Tick at least one location');
+A('pq-user-save',async()=>{const role=$('#pqUr').value;const sites=role==='admin'?[]:$$('#drawer [data-site]').filter(c=>c.checked).map(c=>c.dataset.site);
+  if(role!=='admin'&&!sites.length)return toast('Tick at least one location');
   const feats={};$$('#drawer [data-feat]').forEach(s=>{if(s.value)feats[s.dataset.feat]=s.value==='on'});
   const {error}=await sb.rpc('pq_set_member',{p_org:CTX.org.id,p_email:$('#pqUe').value,p_role:role,p_site_ids:sites,p_features:feats,p_name:$('#pqUn').value||null});
   if(error)return toast(error.message);closeDrawer();toast('User saved');loadMembers()});
