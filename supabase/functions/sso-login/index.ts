@@ -1,6 +1,7 @@
 // "Sign in with Proview account" — receiving end for Proview QR Menu.
 // dashboard.proviewcrm.co.uk signs a short-lived Ed25519 assertion; this checks it, checks the
-// email is a Proview master or an owner/admin/manager here (public.sso_entitled) and returns a
+// email is a Proview master or any member of a business here, staff included (public.sso_entitled; one password,
+// 19 Nov 2026: QR Menu still decides what each role sees; a login on hold is refused) and returns a
 // one-time magic-link token the app exchanges with supabase.auth.verifyOtp({ token_hash, type: "magiclink" }).
 // verify_jwt = false (caller isn't signed in yet). Only the public key lives here.
 //
