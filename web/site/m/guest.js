@@ -142,7 +142,7 @@ function renderMenu(){const m=MENU;if(!m){pickMenu();return}const V=D.venue||{};
       <div class="items ${grid?'grid':''}">${its.map(i=>card(i,s,grid)).join('')}</div></section>`}).join('');
   app.innerHTML=`${header(V.name||D.site.name,{back:MENUS().length>1?'menus':''})}
     <div class="chips" id="chips">${secs.map(s=>`<button data-to="${esc(s.id)}">${esc(s.name)}</button>`).join('')}</div>
-    <div class="mtitle">${esc(m.name)}</div>
+    <!-- menu name not shown: the tabs below name the menus when there are several -->
     ${others.length>1?`<div class="mtabs">${others.map(x=>`<button class="${x.id===m.id?'on':''}" data-menu="${esc(x.id)}">${esc(x.name)}</button>`).join('')}</div>`:''}
     ${TABLE&&mode==='dine'?`<div style="text-align:center;margin-top:10px"><span class="tbl-badge">${ic('pin','sm')}${esc(TABLE)}</span></div>`:''}
     ${C('dz.search',true)!==false?`<div class="srch"><label>${ic('search','sm')}<input id="q" type="search" placeholder="Search" value="${esc(term)}" aria-label="Search the menu"></label><button class="fb" id="fbtn" aria-label="Filter">${ic('filter')}${filt.avoid.length||filt.sort!=='rec'?`<span class="n">${filt.avoid.length+(filt.sort!=='rec'?1:0)}</span>`:''}</button></div>`:''}
