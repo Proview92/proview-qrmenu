@@ -125,8 +125,24 @@ function addonsHTML(){const n=window.MenuAddons?MenuAddons.countIn(M):0;if(!n)re
   return `<div class="card" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:12px 16px;margin-bottom:12px;border-left:4px solid var(--brand-700)">
     <span style="flex:1;min-width:220px"><strong style="color:var(--ink)">${n} dish${n>1?'es list':' lists'} extras in the description</strong><br><span class="muted" style="font-size:13px">e.g. “Add Halloumi 3.9 / Sujuk 3.9”. Turn them into add-on options guests can tick when ordering.</span></span>
     <button class="btn primary sm" data-action="ed-addons-apply">${ic('sparkle','sm')}Create add-on options</button></div>`}
-A('ed-addons-apply',()=>{const r=MenuAddons.scanMenu(M);if(!r.items)return toast('No extras found');$('#edAddons').innerHTML=addonsHTML();refresh();window.PQ&&PQ.paintThumbs&&PQ.paintThumbs();
-  toast(`Add-on options added to ${r.items} dish${r.items>1?'es':''} (${r.groups} modifier group${r.groups>1?'s':''})`)});
+// review first: list every dish with the extras found, tick which to apply
+A('ed-addons-apply',()=>{const rows=[];M.sections.forEach(s=>(s.items||[]).forEach(it=>{const f=MenuAddons.fromText(it.desc);if(f)rows.push({s,it,f})}));
+  if(!rows.length)return toast('No extras found');
+  App.modal({title:'Review add-on options',wide:true,body:`<p style="margin:0 0 12px">We found extras in ${rows.length} dish description${rows.length>1?'s':''}. Untick any you don't want; nothing changes until you press <b>Apply</b>.</p>
+    <label class="check" style="margin-bottom:8px"><input type="checkbox" id="adAll" checked><b>Select all</b></label>
+    <div style="max-height:52vh;overflow:auto;border:1px solid var(--border);border-radius:12px">${rows.map((r,k)=>`<label style="display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border-bottom:1px solid var(--border);cursor:pointer">
+      <input type="checkbox" data-adrow="${k}" checked style="margin-top:3px;accent-color:var(--brand-700)">
+      <span style="flex:1;min-width:0"><strong style="color:var(--ink)">${esc(r.it.name)}</strong> <span class="muted" style="font-size:12px">· ${esc(r.s.name)}</span>
+        <span style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0">${r.f.addons.map(a=>`<span class="pill" style="background:var(--brand-50,#eef1fb);color:var(--ink);padding:3px 9px;border-radius:999px;font-size:12.5px">+ ${esc(a.name)} £${(+a.price).toFixed(2)}</span>`).join('')}</span>
+        <span class="muted" style="font-size:12.5px;display:block"><s>${esc(r.it.desc)}</s></span>
+        <span style="font-size:12.5px;display:block;color:var(--ink)">→ ${r.f.desc?esc(r.f.desc):'<i class="muted">(no description)</i>'}</span></span></label>`).join('')}</div>`,
+    footer:`<button class="btn secondary" data-close>Cancel</button><button class="btn primary" data-action="ed-addons-ok" id="adOk">${ic('check','sm')}Apply to ${rows.length} dish${rows.length>1?'es':''}</button>`});
+  const upd=()=>{const n=$$('[data-adrow]:checked').length;const b=$('#adOk');b.disabled=!n;b.innerHTML=`${ic('check','sm')}Apply to ${n} dish${n===1?'':'es'}`;$('#adAll').checked=n===rows.length};
+  $('#adAll').onchange=e=>{$$('[data-adrow]').forEach(c=>c.checked=e.target.checked);upd()};$$('[data-adrow]').forEach(c=>c.onchange=upd);
+  App.action('ed-addons-ok',()=>{const pick=$$('[data-adrow]:checked').map(c=>rows[+c.dataset.adrow]);let groups=new Set();
+    pick.forEach(r=>{if(MenuAddons.applyItem(r.it))(r.it.modifiers||[]).forEach(id=>groups.add(id))});App.close();
+    $('#edAddons').innerHTML=addonsHTML();refresh();window.PQ&&PQ.paintThumbs&&PQ.paintThumbs();
+    toast(`Add-on options added to ${pick.length} dish${pick.length>1?'es':''} (${groups.size} modifier group${groups.size>1?'s':''})`)})});
 function genHTML(){
   const miss=allItems().filter(i=>!i.photo),n=genSel.size,cr=App.state.credits||0;
   return `<div class="card" style="margin-bottom:14px">
