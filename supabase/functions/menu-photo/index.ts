@@ -34,7 +34,8 @@ Deno.serve(async (req) => {
     const { data: site } = await db.from("pq_sites").select("id").eq("id", body.site).maybeSingle();
     if (!site) return json({ error: "You don't have access to this location." }, 403);
 
-    const cfAcc = Deno.env.get("CF_ACCOUNT_ID"), cfTok = Deno.env.get("CF_API_TOKEN"), oaKey = Deno.env.get("OPENAI_API_KEY");
+    const env = (k: string) => (Deno.env.get(k) || "").replace(/^\s*Bearer\s+/i, "").replace(/\s+/g, ""); // pasted values often carry spaces/newlines
+    const cfAcc = env("CF_ACCOUNT_ID"), cfTok = env("CF_API_TOKEN"), oaKey = env("OPENAI_API_KEY");
     if (!(cfAcc && cfTok) && !oaKey) return json({ error: "AI photos aren't switched on yet. Ask Proview to add the Cloudflare keys.", code: "not_configured" }, 503);
 
     const name = clean(body.name, 120), desc = clean(body.desc, 300), section = clean(body.section, 60);
@@ -50,7 +51,7 @@ Deno.serve(async (req) => {
         method: "POST",
         headers: { authorization: `Bearer ${cfTok}`, "content-type": "application/json" },
         body: JSON.stringify({ prompt, steps: 6 }),
-      }).catch(() => null);
+      }).catch((e) => { console.error("cloudflare fetch", String(e).slice(0, 300)); return null; });
       const out = r ? await r.json().catch(() => null) : null;
       if (r && r.ok && out?.result?.image) b64 = out.result.image;
       else {
