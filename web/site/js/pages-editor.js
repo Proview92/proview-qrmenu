@@ -119,8 +119,7 @@ function genHTML(){
    ${genOpen?(miss.length?`<div style="padding:0 18px 10px">${UI.check('<strong>Select all</strong>',n&&n===miss.length,'data-change="ed-gen-all"')}</div>
     <div class="ed-gen-grid">${miss.map(i=>`<label><input type="checkbox" data-change="ed-gen-item" data-id="${i.id}" ${genSel.has(i.id)?'checked':''} style="accent-color:var(--brand-700)"><span class="thumb none" style="width:36px;height:36px">${ic('camera','sm')}</span><span style="font-weight:600;color:var(--ink)">${esc(i.name)}</span></label>`).join('')}</div>
     <div style="display:flex;gap:10px;align-items:center;padding:12px 18px;border-top:1px solid var(--border);flex-wrap:wrap">
-     <div class="card" style="padding:8px 12px;background:var(--page)"><small class="muted">Available credits</small><div style="font-weight:700;color:var(--ink)">${cr}</div></div>
-     <div class="card" style="padding:8px 12px;background:var(--page)"><small class="muted">Cost</small><div style="font-weight:700;color:var(--ink)">${n?`${n*5} credits`:'—'}</div></div>
+     <small class="muted" style="max-width:420px">AI creates a realistic photo for each selected dish from its name and description. You can replace any photo later.</small>
      <button class="btn ai-btn" style="margin-left:auto" data-action="ed-gen-run" ${n?'':'disabled'}>${ic('sparkle','sm')}${n?`Generate ${n} photo${n>1?'s':''}`:'Select items to generate'}</button></div>`
     :`<div style="padding:0 18px 16px" class="muted">Every item in this menu has a photo.</div>`):''}
   </div>`}
@@ -161,7 +160,7 @@ function itemRow(i){
   return `<div class="item ${i.on?'':'off'}" data-action="ed-open-item" data-id="${i.id}" data-drop="i:${i.id}">
    <input type="checkbox" data-change="ed-check" data-key="i:${i.id}" ${sel.has('i:'+i.id)?'checked':''} aria-label="Select ${esc(i.name)}" style="accent-color:var(--brand-700);width:16px;height:16px">
    <span class="drag" draggable="true" data-drag="i:${i.id}" title="Drag to reorder">${ic('grip','sm')}</span>
-   <span class="thumb ${i.photo?'':'none'}">${i.photo?initials(i.name):ic('sparkle','sm')}</span>
+   <span class="thumb ${i.photo?'':'none'}" ${i.img?`style="background:center/cover url('${esc(i.img)}')"`:''}>${i.img?'':i.photo?initials(i.name):ic('sparkle','sm')}</span>
    <div style="min-width:0;display:flex;gap:8px;align-items:center"><span class="ed-dot ${i.on?'':'off'}"></span><span class="nm" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(i.name)}</span>${i.score&&i.score>=80?`<span class="score" title="AI score">${i.score}</span>`:''}${i.soldOut?UI.pill('Sold out','bad'):''}${i.combo?UI.pill('Combo'):''}</div>
    <div class="ed-price"><input data-ed-price data-id="${i.id}" value="${Number(i.price||0).toFixed(2)}" inputmode="decimal" aria-label="Price for ${esc(i.name)}"><span>£</span><button type="button" class="ed-enter" data-action="ed-price-save" data-id="${i.id}" aria-label="Save price">${ic('enter','sm')}</button></div>
    ${UI.toggle(i.on,`data-change="ed-item-on" data-id="${i.id}" aria-label="Available"`)}
@@ -196,7 +195,7 @@ function phoneHTML(full){
 function pvBody(pm){
   const ql=pvQ.trim().toLowerCase();
   const out=pm.sections.filter(s=>s.on!==false).map(s=>{const its=s.items.filter(i=>i.on&&(!ql||i.name.toLowerCase().includes(ql)));if(!its.length)return '';
-    return `<div class="ph-sec">${esc(s.name)}</div>${its.map(i=>`<div class="ph-item"><div class="t"><b>${esc(i.name)}</b><small>${esc(i.desc||'')}</small>${i.soldOut?'<small style="color:var(--bad);font-weight:700">Sold out</small>':''}</div><div style="text-align:right"><span class="thumb ${i.photo?'':'none'}" style="margin-bottom:4px">${i.photo?initials(i.name):''}</span><div class="p">${gbp(i.price)}</div></div></div>`).join('')}`}).join('');
+    return `<div class="ph-sec">${esc(s.name)}</div>${its.map(i=>`<div class="ph-item"><div class="t"><b>${esc(i.name)}</b><small>${esc(i.desc||'')}</small>${i.soldOut?'<small style="color:var(--bad);font-weight:700">Sold out</small>':''}</div><div style="text-align:right"><span class="thumb ${i.photo?'':'none'}" style="margin-bottom:4px;${i.img?`background:center/cover url('${esc(i.img)}')`:''}">${i.img?'':i.photo?initials(i.name):''}</span><div class="p">${gbp(i.price)}</div></div></div>`).join('')}`}).join('');
   return out||`<p class="muted" style="text-align:center;margin-top:30px;font-size:13px">No items found</p>`}
 
 /* ---------- partial refresh ---------- */
@@ -213,8 +212,25 @@ A('ed-score-toggle',()=>{scoreOpen=!scoreOpen;rScore()});
 A('ed-gen-toggle',()=>{genOpen=!genOpen;rGen()});
 A('ed-gen-all',el=>{const miss=allItems().filter(i=>!i.photo);genSel=el.checked?new Set(miss.map(i=>i.id)):new Set();rGen()});
 A('ed-gen-item',el=>{el.checked?genSel.add(el.dataset.id):genSel.delete(el.dataset.id);rGen()});
-A('ed-gen-run',()=>{const cost=genSel.size*5;if((App.state.credits||0)<cost)return noCredits(cost);
-  genSel.forEach(id=>{const {i}=findItem(id);if(i)i.photo=true});App.state.credits-=cost;genSel=new Set();refresh();toast('Photos generated')});
+A('ed-gen-run',()=>{const ids=[...genSel];if(!ids.length)return;aiPhotos(ids)});
+/* real AI dish photos: edge function menu-photo (OpenAI images) → Storage → item.img */
+async function aiPhoto(id){const P=window.PQ||{};const {i,s}=findItem(id);if(!i)return {error:'Item not found'};
+  let hdr={};try{const o=sessionStorage.getItem('pv_master_open');if(o)hdr['x-pq-org']=o}catch(e){}
+  let r;try{r=await P.sb.functions.invoke('menu-photo',{body:{site:P.CTX.siteId,name:i.name,desc:i.desc||'',section:s&&s.name||''},headers:hdr})}catch(e){r={error:e}}
+  if(r&&r.error){let msg='The AI couldn\'t make this photo.';try{const j=await r.error.context.json();if(j&&j.error)msg=j.error}catch(e){}return {error:msg}}
+  const url=r&&r.data&&r.data.url;if(!url)return {error:'No photo returned'};
+  i.img=url;i.imgs=[...(i.imgs||[]),url];i.photo=true;return {url}}
+let genBusy=false;
+async function aiPhotos(ids){if(genBusy)return;const P=window.PQ||{};if(!P.sb||!P.CTX||P.CTX.siteId==='all')return toast('Open a location first');
+  genBusy=true;let done=0,fail=0,lastErr='',stop=false;const total=ids.length;
+  const paint=()=>{const b=$('#genProg');if(b)b.innerHTML=`<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px"><span>${done+fail} of ${total}</span><span class="muted">${fail?fail+' failed':''}</span></div><div style="height:8px;border-radius:9px;background:var(--page);overflow:hidden"><i style="display:block;height:100%;width:${Math.round((done+fail)/total*100)}%;background:var(--grad,linear-gradient(90deg,#2f84d4,#5a5fbb));transition:width .3s"></i></div>`};
+  App.modal({title:'Generating photos',body:`<p style="margin:0 0 12px">AI is creating a photo for each dish. Each takes about 15–30 seconds; you can keep working – photos appear as they finish.</p><div id="genProg"></div>`,footer:`<button class="btn secondary" data-action="ed-gen-stop">Stop</button><button class="btn primary" data-close>Hide</button>`});paint();
+  A('ed-gen-stop',()=>{stop=true;App.closeModal();toast('Stopping after the photos in progress')});
+  const queue=[...ids];const worker=async()=>{while(queue.length&&!stop){const id=queue.shift();const r=await aiPhoto(id);if(r.error){fail++;lastErr=r.error;if(/switched on|out of credit|sign in|access/i.test(r.error))stop=true}else{done++;genSel.delete(id)}paint();if($('#edSecs')){refresh();window.PQ.paintThumbs&&PQ.paintThumbs()}}};
+  await Promise.all([worker(),worker(),worker()]);genBusy=false;
+  if($('#genProg'))App.closeModal();if($('#edSecs'))refresh();
+  if(fail&&!done)App.modal({title:'AI photos',body:`<p style="margin:0">${esc(lastErr)}</p>`,footer:'<button class="btn primary" data-close>OK</button>'});
+  else toast(`${done} photo${done===1?'':'s'} generated${fail?` · ${fail} failed`:''}`)}
 function noCredits(cost){App.modal({title:'Not enough credits',body:`<div style="display:flex;gap:14px;align-items:flex-start"><span class="itile">${ic('coin')}</span><div><p style="margin:0 0 6px">This needs <strong>${cost} credits</strong> and you have <strong>${App.state.credits||0}</strong>.</p><p class="muted" style="margin:0">Top up your credits to generate AI photos and enhance items.</p></div></div>`,
   footer:`<button class="btn secondary" data-close>Cancel</button><button class="btn primary" data-action="ed-buy-credits">${ic('coin','sm')}Buy credits</button>`})}
 A('ed-buy-credits',()=>{App.closeModal();toast('Our team will contact you to top up credits')});
@@ -391,7 +407,7 @@ A('ed-autofill',()=>{const n=($('#edName').value||'').trim();if(!n)return toast(
   const al=[];if(/egg|benedict|menemen|toast|pancake|breakfast|brekky|twist|kahvalti/.test(l))al.push('Eggs','Milk','Cereals containing gluten');if(/latte|cappuccino|flat white|cheese|halloumi/.test(l))al.push('Milk');if(/pistachio|baklava|kunafa|nut/.test(l))al.push('Tree nuts');if(/burger|wrap|toast|sourdough|bread|pitta/.test(l))al.push('Cereals containing gluten','Sesame');
   [...new Set(al)].forEach(a=>{const b=document.querySelector(`#edAllergens [data-val="${a}"]`);b&&b.classList.add('on')});
   if(!$('#edPrep').value)$('#edPrep').value=/coffee|latte|tea|cola/.test(l)?3:12;toast('Auto-filled with AI – please check the details')});
-A('ed-gen-image',()=>{if((App.state.credits||0)<5)return noCredits(5);App.state.credits-=5;toast('AI image generated');const {i}=findItem(ctx.item.id)||{};if(i)i.photo=true});
+A('ed-gen-image',async el=>{const id=ctx&&ctx.item&&ctx.item.id;if(!id)return toast('Save the item first');if(el)el.disabled=true;toast('Generating photo – about 20 seconds…');const r=await aiPhoto(id);if(el)el.disabled=false;if(r.error)return App.modal({title:'AI photo',body:`<p style="margin:0">${esc(r.error)}</p>`,footer:'<button class="btn primary" data-close>OK</button>'});toast('AI photo added');if($('#edSecs')){refresh();window.PQ.paintThumbs&&PQ.paintThumbs()}});
 A('ed-manage-badges',()=>App.modal({title:'Manage badges',body:`<div class="ed-chips" style="margin-bottom:12px">${BADGES.map(b=>`<span class="chip">${esc(b)}</span>`).join('')}</div>`+UI.field({label:'New badge',control:UI.input({id:'edNewBadge',placeholder:'e.g. Award Winner'})}),footer:`<button class="btn secondary" data-close>Cancel</button><button class="btn primary" data-action="ed-badge-save">Add badge</button>`}));
 A('ed-badge-save',()=>{const v=$('#edNewBadge').value.trim();if(!v)return toast('Enter a badge name');BADGES.push(v);const on=$$('#edBadges .chip-btn.on').map(b=>b.dataset.val);const w=$('#edBadgesWrap');if(w)w.innerHTML=chips('edBadges',BADGES,on);App.closeModal();toast('Badge added')});
 A('ed-manage-ingredients',()=>App.modal({title:'Manage Ingredients',body:`<div class="ed-chips" style="margin-bottom:12px">${REMOVABLE.map(b=>`<span class="chip">${esc(b)}</span>`).join('')}</div>`+UI.field({label:'New ingredient',control:UI.input({id:'edNewIng',placeholder:'e.g. Coriander'})}),footer:`<button class="btn secondary" data-close>Cancel</button><button class="btn primary" data-action="ed-ing-save">Add ingredient</button>`}));

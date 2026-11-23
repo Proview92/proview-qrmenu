@@ -608,5 +608,5 @@ function paintThumbs(){if(!/^menu-editor/.test(App.current()))return;const m=(Ap
 const _render3=App.render;App.render=function(){_render3();paintThumbs()};
 document.addEventListener('click',()=>setTimeout(paintThumbs,30));
 
-window.PQ.start=start;
+window.PQ.start=start;window.PQ.paintThumbs=()=>paintThumbs();
 })();
