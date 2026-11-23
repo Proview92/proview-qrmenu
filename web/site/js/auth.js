@@ -556,6 +556,11 @@ const _render2=App.render;App.render=function(){_render2();const k=App.current()
 
 /* ---------- real guest-menu links and scannable QR codes ---------- */
 App.guestUrl=(o={})=>{const sid=CTX.siteId&&CTX.siteId!=='all'?CTX.siteId:(CTX.sites.find(s=>!s.archived)||{}).id||'';
+  const st=CTX.sites.find(s=>s.id===sid)||{};
+  if(st.slug){ // short link: qrmenu.proviewcrm.co.uk/<business>[/<table>]
+    const tb=o.t?String(o.t).trim():'';const tseg=tb?'/'+encodeURIComponent((tb.match(/^table\s*(\d+)$/i)||[])[1]||tb):'';
+    const q=new URLSearchParams();if(o.m)q.set('m',o.m);if(o.o)q.set('o',o.o);if(o.v)q.set('v','1');if(o.p)q.set('p',o.p);
+    return location.origin+'/'+st.slug+tseg+(q.toString()?'?'+q.toString():'')}
   const q=new URLSearchParams({l:sid});if(o.t)q.set('t',o.t);if(o.m)q.set('m',o.m);if(o.o)q.set('o',o.o);if(o.v)q.set('v','1');if(o.p)q.set('p',o.p);
   return location.origin+'/m/?'+q.toString()};
 const baseQr=UI.qr;

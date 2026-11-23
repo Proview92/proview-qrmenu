@@ -6,7 +6,11 @@
 const SB_URL='https://yblafwttmqaqvfvedaoc.supabase.co',SB_KEY='sb_publishable_mcs45XaG9XHMWbyXO_PyCw_NQaQ08MR';
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const Q=new URLSearchParams(location.search);const SITE=Q.get('l')||'';
+const Q=new URLSearchParams(location.search);let SITE=Q.get('l')||'';
+// short links: /<business>[/<table>] (served by /404.html); the table can be a number ("5" → "Table 5") or a name
+const PATH=location.pathname.split('/').filter(Boolean).map(s=>{try{return decodeURIComponent(s)}catch(e){return s}});
+const SLUG=!SITE&&PATH[0]&&PATH[0]!=='m'?PATH[0]:'';
+const tableName=v=>{v=String(v||'').trim();return /^\d+$/.test(v)?'Table '+v:v};
 const store={get(k,d){try{const v=localStorage.getItem('pqm:'+SITE+':'+k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem('pqm:'+SITE+':'+k,JSON.stringify(v))}catch(e){}}};
 const sess={get(k,d){try{const v=sessionStorage.getItem('pqm:'+SITE+':'+k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{sessionStorage.setItem('pqm:'+SITE+':'+k,JSON.stringify(v))}catch(e){}}};
 const I={back:'<path d="m15 18-6-6 6-6"/>',menu:'<path d="M3 6h18M3 12h18M3 18h18"/>',x:'<path d="M18 6 6 18M6 6l12 12"/>',search:'<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
@@ -25,7 +29,7 @@ const I={back:'<path d="m15 18-6-6 6-6"/>',menu:'<path d="M3 6h18M3 12h18M3 18h1
 const ic=(n,c='')=>`<svg class="i ${c}" viewBox="0 0 24 24" aria-hidden="true">${I[n]||I.info}</svg>`;
 
 /* ---------- state ---------- */
-let D=null,cfg={},mode='view',TABLE=Q.get('t')||'',MENU=null,filt={sort:'rec',avoid:[]},term='';
+let D=null,cfg={},mode='view',TABLE=tableName(Q.get('t')||(SLUG?PATH[1]:'')||''),MENU=null,filt={sort:'rec',avoid:[]},term='';
 let cart=sess.get('cart',[]);const liked=new Set(store.get('liked',[]));let profile=store.get('profile',null);
 const F=(route,re,n=1)=>{const f=cfg.forms||{};const keys=Object.keys(f).filter(k=>k.startsWith(route+'|')&&re.test(k.split('|')[1]));const k=keys.find(k=>k.endsWith('|'+n))||keys[0];return k?f[k]:undefined};
 const C=(k,d)=>cfg[k]!==undefined&&cfg[k]!==''?cfg[k]:d;
@@ -385,12 +389,14 @@ function cookies(){if(store.get('cookies',null))return;const el=document.createE
 
 /* ---------- boot ---------- */
 async function boot(){const app=$('.app');app.innerHTML='<div class="load"><div class="dot"></div></div>';
+  if(!SITE&&SLUG){try{SITE=await rpc('pq_site_by_slug',{p_slug:SLUG})||''}catch(e){SITE=''}
+    if(SITE){cart=sess.get('cart',[]);store.get('liked',[]).forEach(x=>liked.add(x));profile=store.get('profile',null);promo=sess.get('promo',null);tipPct=sess.get('tip',0)}}
   if(!SITE){app.innerHTML=`<div class="err"><div>${ic('info')}<h1>Menu not found</h1><p class="mut">Scan the QR code on your table again.</p></div></div>`;return}
   try{D=await rpc('pq_public_menu',{p_site:SITE})}catch(e){D=null}
   if(!D){app.innerHTML=`<div class="err"><div>${ic('info')}<h1>This menu isn’t available right now</h1><p class="mut">Please ask a member of staff for help.</p></div></div>`;return}
   cfg=D.cfg||{};const o=Q.get('o');mode=Q.get('v')==='1'?'view':o==='pickup'||o==='delivery'||o==='tablet'?o:'dine';
   if(mode==='dine'&&!ordering())mode='view';
-  if(mode==='view'&&Q.get('t'))TABLE=Q.get('t');
+  if(mode==='view'&&Q.get('t'))TABLE=tableName(Q.get('t'));
   document.title=`${(D.venue||{}).name||D.site.name} | Menu`;theme();cookies();
   if(Q.get('p')==='reservation'){go('info');toast('Please call the venue to book a table');}
   const m=Q.get('m');if(m&&!location.hash){location.replace('#/menu/'+m);return route()}
