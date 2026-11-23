@@ -237,7 +237,8 @@ async function aiImport({file,url}){
     file=await shrinkImage(file);src=file.name;body={site,kind:'file',name:file.name,type:file.type||(/\.csv$/i.test(file.name)?'text/csv':''),data:await toB64(file)}}
   else{src=url;body={site,kind:'url',url}}
   aiBusy(true,src);
-  let res;try{res=await P.sb.functions.invoke('menu-import',{body})}catch(e){res={error:e}}
+  let hdr={};try{const o=sessionStorage.getItem('pv_master_open');if(o)hdr['x-pq-org']=o}catch(e){} // the master's open business, as on database calls
+  let res;try{res=await P.sb.functions.invoke('menu-import',{body,headers:hdr})}catch(e){res={error:e}}
   aiBusy(false);
   let data=res&&res.data,err=res&&res.error;
   if(err){let msg='The AI couldn\'t read this menu. Please try again.';try{const j=await err.context.json();if(j&&j.error)msg=j.error}catch(e){}
