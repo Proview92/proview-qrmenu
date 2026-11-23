@@ -311,7 +311,7 @@ A('theme-on',el=>{const th=v('themes',[{name:'Standard Theme',active:true},{name
 const WT=[['dinein','Dine-in QR'],['delivery','Delivery & Pick Up'],['tablet','Tablet']];
 App.route('settings-welcome',p=>{p=p||'dinein';const k=x=>`wp.${p}.${x}`;
   const body=`<div style="display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:24px;align-items:start"><div class="form-card" style="max-width:none">
-   ${trow(k('show'),'Display Welcome Page','Greet guests with your venue details before they open the menu.',true,'',`<a href="#" data-action="set-wp-what" style="font-size:13px">What is Welcome Page?</a>`)}
+   ${trow(k('show'),'Display Welcome Page','Greet guests with your venue details before they open the menu. Off: guests go straight to the menu.',false,'',`<a href="#" data-action="set-wp-what" style="font-size:13px">What is Welcome Page?</a>`)}
    ${UI.toggleRow('Display Venue Name','',v(k('name'),true),`data-k="${k('name')}"`)}
    ${trow(k('msg'),'Welcome Message','Add a short greeting under your venue name.',true,inp(k('msgText'),'Welcome to '+S.venue.name+'! Scan, browse and order from your table.','Welcome message'))}
    ${trow(k('landing'),'Enable Custom Landing Page'+newTag,'Open with your own photo or video and a single button before the welcome page.',false,

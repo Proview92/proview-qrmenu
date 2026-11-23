@@ -105,7 +105,7 @@ function home(){const c=ch(),wp=k=>C(`wp.${c}.${k}`,undefined);const V=D.venue||
       <div>${V.logo?`<img class="logo" src="${esc(V.logo)}" alt="${esc(V.name||D.site.name)}">`:`<div class="vn">${esc(V.name||D.site.name)}</div>`}</div>
       ${wp('btn')!==false?`<button class="cta" style="--btn:${esc(wp('btnColor')||'#fff')}" data-go="menus">${esc(wp('btnText')||'View Menu')}</button>`:'<span></span>'}
       ${wp('social')!==false?socials(wp('iconColor')):'<span></span>'}</div>`;bindGo(app);return}
-  if(wp('show')===false){pickMenu();return}
+  if(wp('show')!==true){pickMenu();return} // welcome page only when switched on: by default guests go straight to the menu
   const msg=wp('msg')!==false?(wp('msgText')||`Welcome to ${V.name||D.site.name}!`):'';
   app.innerHTML=`<div class="wel"><div class="lg" style="${V.logo?`background-image:url('${esc(V.logo)}')`:''}">${V.logo?'':esc(initials(V.name||D.site.name))}</div>
     ${wp('name')!==false?`<h1>${esc(V.name||D.site.name)}</h1>`:''}${msg?`<p class="mut" style="margin:0;max-width:360px">${esc(msg)}</p>`:''}
@@ -115,7 +115,7 @@ function home(){const c=ch(),wp=k=>C(`wp.${c}.${k}`,undefined);const V=D.venue||
 function bindGo(root){$$('[data-go]',root).forEach(b=>b.onclick=()=>go(b.dataset.go))}
 function pickMenu(){const ms=MENUS();if(!ms.length){$('.app').innerHTML=`<div class="err"><div>${ic('info')}<h1>No menu yet</h1><p class="mut">This venue hasn't published a menu for this link yet.</p></div></div>`;return}
   if(ms.length===1){location.replace('#/menu/'+ms[0].id);return}
-  if(!$('.app .wel')&&!$('.app .land')&&!$('.app .hd'))home();
+  if(!$('.app .wel')&&!$('.app .land')&&!$('.app .hd')){const V=D.venue||{};$('.app').innerHTML=header(V.name||D.site.name,{back:'',right:`<button class="ib" data-drawer aria-label="Menu">${ic('menu')}</button>`})+footer();bindHeader($('.app'))}
   sheet({title:'Select a Menu',body:ms.map(m=>`<button class="row" data-m="${esc(m.id)}"><span style="flex:1;font-weight:700">${esc(m.name)}</span>${ic('chev')}</button>`).join('')});
   $$('#sheet [data-m]').forEach(b=>b.onclick=()=>{closeSheet(true);go('/menu/'+b.dataset.m)})}
 const footer=()=>`<div class="foot">Powered by <b>PROVIEW</b> QR Menu</div>`;
