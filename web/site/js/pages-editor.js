@@ -109,6 +109,9 @@ function scoreHTML(){
   </div>`}
 
 /* ---------- AI photo generator ---------- */
+const PHOTO_STYLES=[['bright','Bright & clean – white table, daylight'],['dark','Dark & moody – slate, black background'],['rustic','Rustic – oak table, warm light'],['marble','Marble – white marble, studio light']];
+const photoStyle=()=>{const c=App.state.cfg||{};return c['ai.photoStyle']||'bright'};
+A('ed-photo-style',el=>{App.state.cfg=App.state.cfg||{};App.state.cfg['ai.photoStyle']=el.dataset.k;rGen();toast('Photo style: '+el.title.split(' – ')[0]+' – used for every new photo')});
 function genHTML(){
   const miss=allItems().filter(i=>!i.photo),n=genSel.size,cr=App.state.credits||0;
   return `<div class="card" style="margin-bottom:14px">
@@ -119,7 +122,8 @@ function genHTML(){
    ${genOpen?(miss.length?`<div style="padding:0 18px 10px">${UI.check('<strong>Select all</strong>',n&&n===miss.length,'data-change="ed-gen-all"')}</div>
     <div class="ed-gen-grid">${miss.map(i=>`<label><input type="checkbox" data-change="ed-gen-item" data-id="${i.id}" ${genSel.has(i.id)?'checked':''} style="accent-color:var(--brand-700)"><span class="thumb none" style="width:36px;height:36px">${ic('camera','sm')}</span><span style="font-weight:600;color:var(--ink)">${esc(i.name)}</span></label>`).join('')}</div>
     <div style="display:flex;gap:10px;align-items:center;padding:12px 18px;border-top:1px solid var(--border);flex-wrap:wrap">
-     <small class="muted" style="max-width:420px">AI creates a realistic photo for each selected dish from its name and description – free for up to about 150 photos a day. You can replace any photo later.</small>
+     <div style="flex:1;min-width:260px"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px"><strong style="color:var(--ink);font-size:13px">Photo style</strong>${PHOTO_STYLES.map(([k,l])=>`<button type="button" class="chip-btn ${photoStyle()===k?'on':''}" data-action="ed-photo-style" data-k="${k}" title="${esc(l)}">${esc(l.split(' – ')[0])}</button>`).join('')}</div>
+      <small class="muted">Every photo uses the same backdrop, light and 45° angle, so the menu looks like one photo shoot. Free for about 150 photos a day.</small></div>
      <button class="btn ai-btn" style="margin-left:auto" data-action="ed-gen-run" ${n?'':'disabled'}>${ic('sparkle','sm')}${n?`Generate ${n} photo${n>1?'s':''}`:'Select items to generate'}</button></div>`
     :`<div style="padding:0 18px 16px" class="muted">Every item in this menu has a photo.</div>`):''}
   </div>`}
@@ -216,7 +220,7 @@ A('ed-gen-run',()=>{const ids=[...genSel];if(!ids.length)return;aiPhotos(ids)});
 /* real AI dish photos: edge function menu-photo (OpenAI images) → Storage → item.img */
 async function aiPhoto(id){const P=window.PQ||{};const {i,s}=findItem(id);if(!i)return {error:'Item not found'};
   let hdr={};try{const o=sessionStorage.getItem('pv_master_open');if(o)hdr['x-pq-org']=o}catch(e){}
-  let r;try{r=await P.sb.functions.invoke('menu-photo',{body:{site:P.CTX.siteId,name:i.name,desc:i.desc||'',section:s&&s.name||''},headers:hdr})}catch(e){r={error:e}}
+  let r;try{r=await P.sb.functions.invoke('menu-photo',{body:{site:P.CTX.siteId,name:i.name,desc:i.desc||'',section:s&&s.name||'',style:photoStyle()},headers:hdr})}catch(e){r={error:e}}
   if(r&&r.error){let msg='The AI couldn\'t make this photo.';try{const j=await r.error.context.json();if(j&&j.error)msg=j.error}catch(e){}return {error:msg}}
   const url=r&&r.data&&r.data.url;if(!url)return {error:'No photo returned'};
   i.img=url;i.imgs=[...(i.imgs||[]),url];i.photo=true;return {url}}

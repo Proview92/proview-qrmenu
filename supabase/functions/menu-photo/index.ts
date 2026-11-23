@@ -39,9 +39,27 @@ Deno.serve(async (req) => {
     if (!(cfAcc && cfTok) && !oaKey) return json({ error: "AI photos aren't switched on yet. Ask Proview to add the Cloudflare keys.", code: "not_configured" }, 503);
 
     const name = clean(body.name, 120), desc = clean(body.desc, 300), section = clean(body.section, 60);
-    const prompt = `Professional restaurant menu photograph of "${name}"${section ? ` (${section})` : ""}${desc ? `: ${desc}` : ""}. ` +
-      `Appetising, realistic, served as a restaurant would plate or pour it, natural soft light, shallow depth of field, ` +
-      `clean neutral background, 45-degree angle, the dish fills most of the frame. No text, no labels, no logos, no people, no hands.`;
+    // One house style for every photo of a location, so the menu looks like one photo shoot:
+    // same backdrop, light, camera angle, lens and crop; only the dish changes. The seed is fixed per location + style.
+    const STYLES: Record<string, string> = {
+      bright: "on a plain warm-white tabletop against a seamless soft off-white background, bright soft daylight from the left, gentle natural shadows, airy and fresh",
+      dark: "on a dark charcoal slate tabletop against a deep black background, single soft spotlight from the upper left, rich contrast, moody fine-dining look",
+      rustic: "on a light oak wooden table against a softly blurred warm restaurant interior, warm golden-hour window light from the left, cosy and inviting",
+      marble: "on a white Carrara marble tabletop against a soft light-grey background, clean even studio light from above-left, modern and elegant",
+    };
+    const style = STYLES[String(body.style)] ? String(body.style) : "bright";
+    const text = (name + " " + desc + " " + section).toLowerCase();
+    const drink = /\b(drinks?|cocktail|mocktail|wine|beer|lager|ale|ipa|cider|spirit|gin|vodka|rum|whisk(?:e?y)?|tequila|bellini|mimosa|spritz|martini|mojito|margarita|sour|mary|prosecco|champagne|juice|smoothie|shake|coffee|latte|cappuccino|espresso|americano|flat white|tea|chai|soda|cola|lemonade|water|peroni|corona|guinness)s?\b/.test(text);
+    const dessert = /\b(desserts?|cake|brownie|cheesecake|ice cream|gelato|sundae|tart|pudding|baklava|kunafa|waffle|crepe|tiramisu|mousse)s?\b/.test(text);
+    const vessel = drink ? "served in the correct glass or cup for this drink, a single serving, condensation or crema where natural, a small garnish only if it belongs to the drink"
+      : dessert ? "a single portion on a small round matte white ceramic plate"
+      : "a single portion on a round matte white ceramic plate";
+    const prompt = `Professional food photography for a restaurant menu: ${name}${desc ? ` (${desc})` : ""}. ` +
+      `${vessel}, centred in the frame, the subject fills about 70% of a square frame, shot from a 45-degree three-quarter angle with an 85mm lens, ` +
+      `shallow depth of field, sharp focus on the food, ${STYLES[style]}. Same consistent styling as the rest of the menu series. ` +
+      `Photorealistic, appetising, natural colours. No text, no words, no logos, no menus, no people, no hands, no cutlery clutter, no extra dishes.`;
+    let seed = 0; for (const c of body.site + style) seed = (seed * 31 + c.charCodeAt(0)) >>> 0;
+    seed = seed % 2147483647;
 
     let b64 = "", why = "";
     // 1) Cloudflare Workers AI (free daily allocation)
@@ -50,7 +68,7 @@ Deno.serve(async (req) => {
       const r = await fetch(`https://api.cloudflare.com/client/v4/accounts/${cfAcc}/ai/run/${model}`, {
         method: "POST",
         headers: { authorization: `Bearer ${cfTok}`, "content-type": "application/json" },
-        body: JSON.stringify({ prompt, steps: 6 }),
+        body: JSON.stringify({ prompt, steps: 8, seed }),
       }).catch((e) => { console.error("cloudflare fetch", String(e).slice(0, 300)); return null; });
       const out = r ? await r.json().catch(() => null) : null;
       if (r && r.ok && out?.result?.image) b64 = out.result.image;
