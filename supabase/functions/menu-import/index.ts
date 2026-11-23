@@ -42,6 +42,11 @@ const TOOL = {
                     description: "Size/variant prices when an item has more than one price (e.g. Small/Large, Glass/Bottle)",
                     items: { type: "object", properties: { name: { type: "string" }, price: { type: "number" } }, required: ["name", "price"] },
                   },
+                  addons: {
+                    type: "array",
+                    description: "Optional paid extras guests can add to this item, e.g. 'Add Halloumi 3.9 / Sujuk 3.9' → [{name:'Halloumi',price:3.9},{name:'Sujuk',price:3.9}]",
+                    items: { type: "object", properties: { name: { type: "string" }, price: { type: "number" } }, required: ["name", "price"] },
+                  },
                 },
                 required: ["name", "price"],
               },
@@ -59,7 +64,8 @@ const PROMPT = `This is a restaurant menu. Read it carefully and call the save_m
 Rules:
 - Keep names exactly as printed (fix obvious OCR spacing only). Use the menu's own section headings; if there are none, group sensibly (e.g. "Mains", "Drinks").
 - price is a plain number without currency (e.g. 12.5). If an item has several prices (sizes, glass/bottle, single/double), put each in options and set price to the lowest.
-- desc is the printed description/ingredients, otherwise "".
+- desc is the printed description/ingredients, otherwise "". Do NOT include add-on lists in desc.
+- Extras guests can pay to add ("Add Halloumi 3.9 / Sujuk 3.9", "Extras: cheese +1", "Toppings £1 each: …") go in addons as {name, price}, per item they belong to. If a list of extras applies to a whole section, add it to every item in that section.
 - Ignore addresses, opening hours, allergen keys, footers and marketing text that are not dishes.
 - If this is not a menu at all, call save_menu with an empty sections list.`;
 
@@ -146,6 +152,7 @@ Deno.serve(async (req) => {
           desc: String(i.desc || "").slice(0, 500),
           price: Number.isFinite(+i.price) ? Math.max(0, +i.price) : 0,
           options: (i.options || []).filter((o: any) => o && o.name).slice(0, 10).map((o: any) => ({ name: String(o.name).slice(0, 40), price: Math.max(0, +o.price || 0) })),
+          addons: (i.addons || []).filter((o: any) => o && o.name).slice(0, 20).map((o: any) => ({ name: String(o.name).slice(0, 40), price: Math.max(0, +o.price || 0) })),
         })),
       }))
       .filter((s: any) => s.items.length);

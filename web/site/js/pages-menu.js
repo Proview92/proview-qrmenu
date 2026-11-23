@@ -245,7 +245,7 @@ async function aiImport({file,url}){
     App.modal({title:'Menu import',body:`<p style="margin:0">${esc(msg)}</p>`,footer:`<button class="btn secondary" data-close>Close</button><a class="btn primary" href="#menu-create" data-close>Create a menu instead</a>`});return}
   const secs=(data&&data.sections)||[];
   if(!secs.length){App.modal({title:'No dishes found',body:'<p style="margin:0">We couldn\'t find any dishes and prices in that file. Try a clearer photo (good light, the whole page in frame) or a PDF of the menu.</p>',footer:'<button class="btn primary" data-close>OK</button>'});return}
-  mb={step:1,src,ai:true,items:secs.map(s=>({name:s.name,items:s.items.map(i=>[i.name,+i.price||0,i.desc||'',i.options||[]])})),channels:['dine','pickup','delivery','tablet']};
+  mb={step:1,src,ai:true,items:secs.map(s=>({name:s.name,items:s.items.map(i=>[i.name,+i.price||0,i.desc||'',i.options||[],i.addons||[]])})),channels:['dine','pickup','delivery','tablet']};
   App.toast(`Found ${secs.reduce((a,s)=>a+s.items.length,0)} items in ${secs.length} sections`);
   if(App.current()==='menu-builder')App.render();else App.go('menu-builder')}
 
@@ -284,7 +284,36 @@ A('menu-mb-back',()=>{mbSync();mb.step=Math.max(0,mb.step-1);App.render()});
 A('menu-mb-next',()=>{mbSync();mb.step=2;App.render()});
 A('menu-mb-publish',()=>{const n=$('#mbName').value.trim();if(!n){App.toast('Enter a menu name');return}
   const m=newMenu(n,mb.items.map((s,i)=>({id:uid(),name:s.name,on:true,open:i===0,score:75,items:s.items.map(([nm,p,d,o])=>({id:uid(),name:nm,price:p,on:true,photo:false,score:65,desc:d||'',...((o||[]).length>1?{priceOptions:o.map(x=>({name:x.name,price:+x.price||0,caf:'',disc:''}))}:{})}))})));
+  // extras ("Add Halloumi 3.9 / Sujuk 3.9") → modifier groups on the dishes
+  let nx=0;m.sections.forEach((s,si)=>s.items.forEach((it,ii)=>{const src=(mb.items[si]||{}).items||[];if(window.MenuAddons.applyItem(it,(src[ii]||[])[4]))nx++}));
+  if(nx)setTimeout(()=>App.toast(`Add-on options created for ${nx} dish${nx>1?'es':''}`),900);
   m.channels=$$('[data-mbch]').filter(c=>c.checked).map(c=>c.dataset.mbch);m.status='Live';m.on=true;mb={step:0,src:'',items:null,channels:['dine','pickup','delivery','tablet']};App.go('menu-editor--'+m.id);App.toast('Menu published')});
+
+/* =================== ADD-ONS → MODIFIERS ===================
+   Menus often list extras inside a dish's description ("… Add Halloumi 3.9 / Sujuk 3.9 / Hash Brown 3.5").
+   These become a modifier group (optional add-ons) on the dish, and the description is tidied. Identical lists share one group. */
+window.MenuAddons=(()=>{
+  const KEY=/\b(?:add(?:[\s-]?ons?)?|extras?|toppings?|sides?)\b\s*[:\-–]?\s*/ig;
+  const PART=/^\+?\s*(.+?)\s*[-–:]?\s*\(?\+?\s*(?:£|€|\$)?\s*(\d{1,3}(?:[.,]\d{1,2})?)\s*(?:p)?\)?$/i;
+  function fromText(desc){desc=String(desc||'');let m,last=null;KEY.lastIndex=0;while((m=KEY.exec(desc)))last=m;if(!last)return null;
+    const tail=desc.slice(last.index+last[0].length).replace(/[.\s]+$/,'');
+    const parts=tail.split(/\s*(?:\/|\||,|;|\band\b|&)\s*/).map(s=>s.trim()).filter(Boolean);if(!parts.length)return null;
+    const addons=[];for(const s of parts){const x=s.match(PART);if(!x)return null;const name=x[1].replace(/^(?:a|an|extra)\s+/i,'').trim();const price=+x[2].replace(',','.');
+      if(!name||name.length>40||!(price>=0&&price<100))return null;addons.push({name:name[0].toUpperCase()+name.slice(1),price})}
+    const clean=desc.slice(0,last.index).replace(/[\s.,;:–-]+$/,'');return {desc:clean?clean+'.':'',addons}}
+  const key=a=>a.map(x=>x.name.toLowerCase()+'@'+(+x.price).toFixed(2)).sort().join('|');
+  function groupFor(addons){const S=App.state;S.modifiers=S.modifiers||[];const k=key(addons);
+    let g=S.modifiers.find(x=>key((x.mods||[]).map(m=>({name:m.name,price:+m.price||0})))===k);
+    if(!g){const label=addons.map(a=>a.name).join(', ');g={id:'g'+Math.random().toString(36).slice(2,9),name:('Extras: '+label).slice(0,60),mods:addons.map(a=>({name:a.name,price:+a.price||0,cal:'',on:true})),min:0,max:addons.length};S.modifiers.push(g)}
+    return g}
+  // apply to one item: addons from the AI import (preferred) or found in its description
+  function applyItem(it,aiAddons){let addons=(aiAddons||[]).filter(a=>a&&a.name);let desc=it.desc;
+    if(!addons.length){const f=fromText(it.desc);if(!f)return false;addons=f.addons;desc=f.desc}
+    else{const f=fromText(it.desc);if(f)desc=f.desc}
+    const g=groupFor(addons);it.modifiers=[...new Set([...(it.modifiers||[]),g.id])];it.desc=desc;return true}
+  function scanMenu(menu){let items=0;const groups=new Set();(menu.sections||[]).forEach(s=>(s.items||[]).forEach(it=>{if(applyItem(it)){items++;(it.modifiers||[]).forEach(id=>groups.add(id))}}));return {items,groups:groups.size}}
+  function countIn(menu){let n=0;(menu.sections||[]).forEach(s=>(s.items||[]).forEach(it=>{if(fromText(it.desc))n++}));return n}
+  return {fromText,applyItem,scanMenu,countIn}})();
 
 /* =================== MODIFIERS =================== */
 let modQ='';

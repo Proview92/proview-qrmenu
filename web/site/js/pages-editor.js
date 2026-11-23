@@ -79,6 +79,7 @@ App.route('menu-editor',id=>{
       <div class="actions"><button class="btn ghost" data-action="learn">${ic('book','sm')}Learn More</button></div></div>
     <div class="editor"><div style="min-width:0">
       <div id="edScore">${scoreHTML()}</div>
+      <div id="edAddons">${addonsHTML()}</div>
       <div id="edGen">${genHTML()}</div>
       <div style="display:flex;gap:10px;margin-bottom:14px">
         <label class="search" style="background:#fff;max-width:none;flex:1">${ic('search','sm')}<input id="edSearch" placeholder="Search for a section or item" value="${esc(q)}" data-input="ed-search"></label>
@@ -120,6 +121,12 @@ function secGenHTML(){const secs=M.sections;if(!secs.length)return '';const miss
    <div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn ai-btn" data-action="ed-secgen-run" ${secSel.size?'':'disabled'}>${ic('sparkle','sm')}${secSel.size?`Generate ${secSel.size} header photo${secSel.size>1?'s':''}`:'Select categories'}</button></div></div>`}
 A('ed-secgen-item',el=>{el.checked?secSel.add(el.dataset.id):secSel.delete(el.dataset.id);rGen()});
 A('ed-secgen-run',()=>{const ids=[...secSel];if(ids.length)aiPhotos(ids.map(id=>'sec:'+id))});
+function addonsHTML(){const n=window.MenuAddons?MenuAddons.countIn(M):0;if(!n)return '';
+  return `<div class="card" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:12px 16px;margin-bottom:12px;border-left:4px solid var(--brand-700)">
+    <span style="flex:1;min-width:220px"><strong style="color:var(--ink)">${n} dish${n>1?'es list':' lists'} extras in the description</strong><br><span class="muted" style="font-size:13px">e.g. “Add Halloumi 3.9 / Sujuk 3.9”. Turn them into add-on options guests can tick when ordering.</span></span>
+    <button class="btn primary sm" data-action="ed-addons-apply">${ic('sparkle','sm')}Create add-on options</button></div>`}
+A('ed-addons-apply',()=>{const r=MenuAddons.scanMenu(M);if(!r.items)return toast('No extras found');$('#edAddons').innerHTML=addonsHTML();refresh();window.PQ&&PQ.paintThumbs&&PQ.paintThumbs();
+  toast(`Add-on options added to ${r.items} dish${r.items>1?'es':''} (${r.groups} modifier group${r.groups>1?'s':''})`)});
 function genHTML(){
   const miss=allItems().filter(i=>!i.photo),n=genSel.size,cr=App.state.credits||0;
   return `<div class="card" style="margin-bottom:14px">
