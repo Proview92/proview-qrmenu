@@ -409,7 +409,7 @@ function renderFeedback(){const f=forms()[0];if(!f){go('');return}const app=$('.
 
 /* ---------- venue info ---------- */
 function renderInfo(){const V=D.venue||{};const app=$('.app');const days=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];const c=ch()==='tablet'?'dinein':ch();
-  const hrs=days.map(d=>{const o=cfg[`hrs.${c}.${d}.open`],cl=cfg[`hrs.${c}.${d}.close`],on=cfg[`hrs.${c}.${d}`];return [d,on===false?'Closed':o&&cl?`${o} – ${cl}`:'']}).filter(x=>x[1]);
+  const hrs=days.map(d=>{const o=cfg[`hrs.${c}.${d}.open`],cl=cfg[`hrs.${c}.${d}.close`],on=cfg[`hrs.${c}.${d}.on`]!==undefined?cfg[`hrs.${c}.${d}.on`]:cfg[`hrs.${c}.${d}`];return [d,on===false?'Closed':o&&cl?`${o} – ${cl}`:'']}).filter(x=>x[1]);
   const addr=[V.address,V.city,V.zip].filter(Boolean).join(', ');
   app.innerHTML=`${header(V.name||D.site.name,{right:'<span></span>'})}<div class="pg"><div class="bdy">
     <div class="card" style="text-align:center"><div class="lg" style="width:90px;height:90px;border-radius:22px;margin:0 auto 10px;background:var(--bg) center/contain no-repeat;${V.logo?`background-image:url('${esc(V.logo)}')`:''};display:grid;place-items:center;font-weight:800;font-size:28px;color:var(--hl)">${V.logo?'':esc(initials(V.name||D.site.name))}</div><h2 style="margin:0">${esc(V.name||D.site.name)}</h2></div>

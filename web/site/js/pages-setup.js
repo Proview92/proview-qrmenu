@@ -103,8 +103,39 @@ const rTabs=(base,items,a)=>UI.tabs(items.map(([k,l,x])=>({key:k,label:l,href:ba
 
 /* ---------- Venue Information ---------- */
 const VT=[['location','Location Settings'],['language','Language Options'],['social','Social Accounts'],['google','Google Business Profile']];
+/* ---------- fill in the venue from its website or Google listing (edge function venue-lookup) ---------- */
+function lookupCard(){return `<div class="card" style="padding:14px 16px;margin-bottom:16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;border-left:4px solid var(--brand-700)">
+  <span class="ai-grad" style="width:38px;height:38px;border-radius:10px;display:grid;place-items:center;color:#fff;flex:none">${ic('sparkle','sm')}</span>
+  <span style="flex:1;min-width:220px"><strong style="color:var(--ink)">Fill in from your website or Google</strong><br><span class="muted" style="font-size:13px">Paste your website or Google Maps link, or type the business name and town. AI finds the address, phone, opening hours, social links and logo – you review before anything changes.</span></span>
+  <div style="display:flex;gap:8px;flex:1;min-width:280px"><input class="input" id="vlQ" placeholder="bragsandbrams.com  or  Brags & Brams Hackney" style="flex:1" value="${esc(S.venue.website||'')}"><button class="btn primary" data-action="set-vl-go">${ic('search','sm')}Find</button></div></div>`}
+const DAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+A('vl-go',async()=>{const q=($('#vlQ').value||'').trim();if(!q)return App.toast('Enter a website, a Google link or the business name');const P=window.PQ||{};
+  let hdr={};try{const o=sessionStorage.getItem('pv_master_open');if(o)hdr['x-pq-org']=o}catch(e){}
+  App.modal({title:'Looking up your venue',body:`<div style="text-align:center;padding:8px 0"><span class="ai-spin">${ic('sparkle')}</span><p style="margin:12px 0 0">Reading ${esc(q)}… this takes 10–40 seconds.</p></div>`,footer:''});
+  let r;try{r=await P.sb.functions.invoke('venue-lookup',{body:{site:P.CTX.siteId,query:q},headers:hdr})}catch(e){r={error:e}}
+  if(r&&r.error){let msg='Lookup failed.';try{const j=await r.error.context.json();if(j&&j.error)msg=j.error}catch(e){}App.close();return App.modal({title:'Fill in from website',body:`<p style="margin:0">${esc(msg)}</p>`,footer:'<button class="btn primary" data-close>OK</button>'})}
+  const f=(r.data||{}).found||{};const rows=[];const cur=k=>v(k,k.startsWith('venue.')?S.venue[k.slice(6)]||'':'');
+  [['venue.name','Venue name',f.name],['venue.address','Address',f.address],['venue.city','City',f.city],['venue.zip','Postcode',f.zip],['venue.country','Country',f.country],['venue.phone','Phone',f.phone],['venue.email','Email',f.email],['venue.website','Website',f.website]]
+    .forEach(([k,l,val])=>{val=String(val||'').trim();if(val&&val!==String(cur(k)||''))rows.push({k,l,val,old:cur(k)})});
+  if(f.logo)rows.push({k:'venue.logo',l:'Logo',val:f.logo,old:S.venue.logo||'',img:true});
+  const h=f.hours||{};const hd=DAYS.filter(d=>h[d]&&(h[d].closed||h[d].open));
+  if(hd.length)rows.push({k:'__hours',l:'Opening hours',val:hd.map(d=>`${d.slice(0,3)} ${h[d].closed?'closed':`${h[d].open}–${h[d].close||''}`}`).join(' · '),old:''});
+  Object.entries(f.social||{}).forEach(([n,u])=>{u=String(u||'').trim();if(u&&/^https?:\/\//.test(u)&&u!==v('social.'+n,''))rows.push({k:'social.'+n,l:n,val:u,old:v('social.'+n,'')})});
+  App.close();
+  if(!rows.length)return App.modal({title:'Fill in from website',body:'<p style="margin:0">Nothing new found – your details already match, or that page didn\'t list them. Try your Google Maps link or the business name and town.</p>',footer:'<button class="btn primary" data-close>OK</button>'});
+  App.modal({title:'Review what we found',wide:true,body:`<p style="margin:0 0 12px">Found on ${esc(q)}${(r.data||{}).source==='search'?' (web search)':''}. Untick anything you don't want; nothing changes until you press <b>Apply</b>.</p>
+    <div style="max-height:56vh;overflow:auto;border:1px solid var(--border);border-radius:12px">${rows.map((x,i)=>`<label style="display:flex;gap:12px;align-items:flex-start;padding:11px 14px;border-bottom:1px solid var(--border);cursor:pointer">
+      <input type="checkbox" data-vl="${i}" checked style="margin-top:3px;accent-color:var(--brand-700)"><span style="flex:1;min-width:0"><strong style="color:var(--ink)">${esc(x.l)}</strong>
+      ${x.img?`<span style="display:flex;gap:10px;align-items:center;margin-top:6px"><img src="${esc(x.val)}" alt="" style="width:56px;height:56px;object-fit:contain;border-radius:10px;background:#fff;border:1px solid var(--border)"></span>`
+        :`<span style="display:block;font-size:13.5px;color:var(--ink);word-break:break-word">${esc(x.val)}</span>${x.old?`<span class="muted" style="display:block;font-size:12.5px">Now: <s>${esc(String(x.old))}</s></span>`:''}`}</span></label>`).join('')}</div>
+    ${hd.length?'<p class="muted" style="font-size:12.5px;margin:10px 0 0">Opening hours are applied to Dine-in, Delivery & Pick-Up and Tablet.</p>':''}`,
+    footer:`<button class="btn secondary" data-close>Cancel</button><button class="btn primary" id="vlOk">${ic('check','sm')}Apply</button>`});
+  $('#vlOk').onclick=()=>{const pick=$$('[data-vl]:checked').map(c=>rows[+c.dataset.vl]);
+    pick.forEach(x=>{if(x.k==='__hours'){['dinein','delivery','tablet'].forEach(p=>DAYS.forEach(d=>{const o=h[d];if(!o)return;S.cfg[`hrs.${p}.${d}.on`]=!o.closed;if(!o.closed){if(o.open)S.cfg[`hrs.${p}.${d}.open`]=o.open;if(o.close)S.cfg[`hrs.${p}.${d}.close`]=o.close}}));return}
+      S.cfg[x.k]=x.val;if(x.k.startsWith('venue.'))S.venue[x.k.slice(6)]=x.val});
+    App.close();App.render();App.toast(`Updated ${pick.length} detail${pick.length===1?'':'s'}`)}});
 App.route('settings-venue',p=>{p=p||'location';const V=S.venue;let body='';
-  if(p==='location')body=`<div class="form-card">${g2(F('Venue Name',inp('venue.name',V.name,'Venue name')),F('Venue ID',UI.input({value:V.id,attrs:'readonly style="background:var(--page)"'}),{help:'Used to log in to the tablet app and in your menu links.'}))}
+  if(p==='location')body=`${lookupCard()}<div class="form-card">${g2(F('Venue Name',inp('venue.name',V.name,'Venue name')),F('Venue ID',UI.input({value:V.id,attrs:'readonly style="background:var(--page)"'}),{help:'Used to log in to the tablet app and in your menu links.'}))}
     ${F('Logo',`<div style="display:flex;gap:12px;align-items:center">${UI.upload({label:'Upload',sm:true,accept:'.jpg,.jpeg,.png,.webp,.svg'})}<button class="btn secondary sm" data-action="set-logo-preview">${ic('eye','sm')}Preview</button></div>`,{help:'Square PNG or SVG works best, at least 512 × 512px.'})}
     ${F('Address',ta('venue.address',V.address,'Street address',2)+`<button class="btn ghost sm" style="margin-top:6px" data-action="set-map">${ic('pin','sm')}Select from the map</button>`)}
     ${g2(F('City',inp('venue.city',V.city)),F('Country',sel('venue.country',COUNTRIES,V.country)),F('State',inp('venue.state',V.state||'','County / state')),F('Zip Code',inp('venue.zip',V.zip)),F('Phone Number',inp('venue.phone',V.phone,'',{type:'tel'})),F('Timezone',sel('venue.timezone',TZ,V.timezone),{help:'Current date is '+nowStr()}))}
