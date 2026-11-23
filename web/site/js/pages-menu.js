@@ -92,7 +92,7 @@ function menuCards(){
   else list=list.filter(m=>m.status!=='Archived');
   if(mf.sort==='Name')list=[...list].sort((a,b)=>a.name.localeCompare(b.name));
   if(mf.sort==='Last updated')list=[...list].sort((a,b)=>new Date(b.updated)-new Date(a.updated));
-  if(!list.length)return UI.empty('menu','No menus found','Try a different filter, or create a new menu.',`<a class="btn primary" href="#menu-create">${ic('plus','sm')}Create a Menu</a>`);
+  if(!list.length)return S().menus.some(m=>m.status!=='Archived')||mf.status==='Archived'||mf.q?UI.empty('menu','No menus found','Try a different filter, or create a new menu.',`<a class="btn primary" href="#menu-create">${ic('plus','sm')}Create a Menu</a>`):`<p class="muted" style="text-align:center;margin:18px 0 0">Prefer to type it in? <a href="#menu-create">Create a menu</a> from scratch or start from a sample.</p>`;
   return list.map(m=>`<div class="card" draggable="true" data-mid="${m.id}" style="margin-bottom:14px;padding:16px 18px;display:flex;gap:12px">
     <span class="drag" title="Drag to reorder" style="padding-top:2px;cursor:grab">${ic('grip','sm')}</span>
     <div style="flex:1;min-width:0">
@@ -110,8 +110,9 @@ App.route('menu-management',()=>`
   <div class="toolbar">${UI.searchBox('Search Menu','id="mfQ" data-input="menu-filter" value="'+esc(mf.q)+'"')}
    ${UI.select(['Active','Live','Draft','Archived'],mf.status,'id="mfStatus" data-change="menu-filter" style="width:150px" aria-label="Status"')}
    ${UI.select(['Menu order','Last updated','Name'],mf.sort,'id="mfSort" data-change="menu-filter" style="width:160px" aria-label="Sort"')}</div>
+  ${aiImportCard(!S().menus.some(m=>m.status!=='Archived'))}
   <div id="menuCards">${menuCards()}</div>`,{nav:'menu-management'});
-App.after('menu-management',()=>{const box=$('#menuCards');let drag=null;
+App.after('menu-management',()=>{bindAiDrop();const box=$('#menuCards');let drag=null;
   box.addEventListener('dragstart',e=>{const c=e.target.closest('[data-mid]');if(!c)return;drag=c.dataset.mid;c.style.opacity=.5});
   box.addEventListener('dragend',e=>{const c=e.target.closest('[data-mid]');c&&(c.style.opacity='')});
   box.addEventListener('dragover',e=>e.preventDefault());
@@ -202,6 +203,51 @@ A('menu-sample',()=>{const mk=(n,p,d)=>({id:uid(),name:n,price:p,on:true,photo:t
   const m=newMenu('Sample Menu',[{id:uid(),name:'Starters',on:true,open:true,score:82,items:[mk('Soup of the Day',6.5,'Served with sourdough'),mk('Garlic Bread',4.95,'With mozzarella')]},{id:uid(),name:'Mains',on:true,open:false,score:80,items:[mk('Fish & Chips',15.95,'Beer-battered cod, mushy peas'),mk('Chicken Caesar',13.5,'Cos, parmesan, croutons')]},{id:uid(),name:'Desserts',on:true,open:false,score:78,items:[mk('Sticky Toffee Pudding',7.5,'With vanilla ice cream')]},{id:uid(),name:'Drinks',on:true,open:false,score:75,items:[mk('Lemonade',3.5,''),mk('Flat White',3.6,'')]}]);
   App.go('menu-editor--'+m.id);App.toast('Sample menu created')});
 
+/* =================== AI MENU IMPORT (photo / PDF / CSV / link → menu) =================== */
+const AI_ACCEPT='.jpg,.jpeg,.png,.webp,.pdf,.csv,.txt';
+function aiImportCard(big){
+  return `<div class="ai-import ${big?'big':''}" id="aiDrop">
+    <span class="ai-import-ic">${ic('sparkle')}</span>
+    <div class="ai-import-tx"><strong>Import your menu with AI</strong><p>Upload a photo or PDF of your menu – AI reads every section, dish, description and price and builds your digital menu. You check it before anything goes live.</p>
+      ${big?`<div class="ai-import-ok"><span>${ic('check','sm')}Photos of menu cards or boards</span><span>${ic('check','sm')}PDF menus</span><span>${ic('check','sm')}Screenshots</span><span>${ic('check','sm')}CSV files</span></div>`:''}</div>
+    <div class="ai-import-act"><label class="btn primary">${ic('upload','sm')}Upload photo or PDF<input type="file" hidden accept="${AI_ACCEPT}" data-aiimport></label>
+      <button class="btn ghost sm" data-action="ai-import-link">${ic('link','sm')}Import from a link</button></div>
+    ${big?`<div class="ai-import-drop">or drop the file here · JPG, PNG, PDF or CSV · max 10 MB</div>`:''}</div>`}
+function bindAiDrop(){const z=$('#aiDrop');if(!z)return;
+  ['dragenter','dragover'].forEach(ev=>z.addEventListener(ev,e=>{if(![...(e.dataTransfer?.types||[])].includes('Files'))return;e.preventDefault();z.classList.add('over')}));
+  ['dragleave','drop'].forEach(ev=>z.addEventListener(ev,()=>z.classList.remove('over')));
+  z.addEventListener('drop',e=>{const f=e.dataTransfer?.files?.[0];if(!f)return;e.preventDefault();aiImport({file:f})})}
+document.addEventListener('change',e=>{const i=e.target.closest&&e.target.closest('input[data-aiimport]');if(!i||!i.files[0])return;const f=i.files[0];i.value='';aiImport({file:f})});
+A('ai-import-link',()=>App.modal({title:'Import from a link',body:UI.field({label:'Menu web page or PDF link',help:'AI reads the page and pulls out the sections, dishes and prices.',control:UI.input({id:'aiUrl',prefix:'https://',placeholder:'yourrestaurant.co.uk/menu'})}),footer:`<button class="btn secondary" data-close>Cancel</button><button class="btn primary" data-action="ai-import-link-go">${ic('sparkle','sm')}Import menu</button>`}));
+A('ai-import-link-go',()=>{const v=($('#aiUrl').value||'').trim();if(!v){App.toast('Paste a link first');return}App.close();aiImport({url:/^https?:\/\//i.test(v)?v:'https://'+v})});
+const toB64=f=>new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(String(r.result).split(',')[1]||'');r.onerror=()=>no(new Error('Could not read the file'));r.readAsDataURL(f)});
+async function shrinkImage(f){ // big phone photos → ≤2400px JPEG, keeps text sharp and the upload small
+  if(!/^image\/(jpeg|png|webp)$/.test(f.type)||f.size<2.5e6)return f;
+  try{const bmp=await createImageBitmap(f);const k=Math.min(1,2400/Math.max(bmp.width,bmp.height));const c=document.createElement('canvas');c.width=Math.round(bmp.width*k);c.height=Math.round(bmp.height*k);c.getContext('2d').drawImage(bmp,0,0,c.width,c.height);
+    const b=await new Promise(r=>c.toBlob(r,'image/jpeg',.88));return b?new File([b],f.name.replace(/\.\w+$/,'.jpg'),{type:'image/jpeg'}):f}catch(e){return f}}
+function aiBusy(on,src){if(!on){App.close();return}
+  App.modal({title:'Reading your menu',body:`<div style="text-align:center;padding:10px 0 4px"><span class="ai-spin">${ic('sparkle')}</span><p style="margin:14px 0 4px;font-weight:600;color:var(--ink)">AI is reading ${esc(src)}</p><p class="muted" style="margin:0">Finding sections, dishes, descriptions and prices. This usually takes 20–60 seconds.</p></div>`,footer:''});
+  const m=$('#modal');if(m)m.querySelectorAll('[data-close]').forEach(b=>b.remove())}
+async function aiImport({file,url}){
+  const P=window.PQ||{};const site=P.CTX&&P.CTX.siteId;
+  if(!P.sb||!site||site==='all'){App.toast('Open a location first');return}
+  let body,src;
+  if(file){if(file.size>10*1024*1024){App.toast('That file is over 10 MB. Try a smaller photo or PDF.');return}
+    if(/\.(xlsx|xls)$/i.test(file.name)){App.modal({title:'Excel files',body:'<p style="margin:0">Save the sheet as <b>CSV</b> or <b>PDF</b> (File → Save As) and upload that instead.</p>',footer:'<button class="btn primary" data-close>OK</button>'});return}
+    file=await shrinkImage(file);src=file.name;body={site,kind:'file',name:file.name,type:file.type||(/\.csv$/i.test(file.name)?'text/csv':''),data:await toB64(file)}}
+  else{src=url;body={site,kind:'url',url}}
+  aiBusy(true,src);
+  let res;try{res=await P.sb.functions.invoke('menu-import',{body})}catch(e){res={error:e}}
+  aiBusy(false);
+  let data=res&&res.data,err=res&&res.error;
+  if(err){let msg='The AI couldn\'t read this menu. Please try again.';try{const j=await err.context.json();if(j&&j.error)msg=j.error}catch(e){}
+    App.modal({title:'Menu import',body:`<p style="margin:0">${esc(msg)}</p>`,footer:`<button class="btn secondary" data-close>Close</button><a class="btn primary" href="#menu-create" data-close>Create a menu instead</a>`});return}
+  const secs=(data&&data.sections)||[];
+  if(!secs.length){App.modal({title:'No dishes found',body:'<p style="margin:0">We couldn\'t find any dishes and prices in that file. Try a clearer photo (good light, the whole page in frame) or a PDF of the menu.</p>',footer:'<button class="btn primary" data-close>OK</button>'});return}
+  mb={step:1,src,ai:true,items:secs.map(s=>({name:s.name,items:s.items.map(i=>[i.name,+i.price||0,i.desc||'',i.options||[]])})),channels:['dine','pickup','delivery','tablet']};
+  App.toast(`Found ${secs.reduce((a,s)=>a+s.items.length,0)} items in ${secs.length} sections`);
+  if(App.current()==='menu-builder')App.render();else App.go('menu-builder')}
+
 /* =================== MENU BUILDER =================== */
 let mb={step:0,src:'',items:null,channels:['dine','pickup','delivery','tablet']};
 const MOCK=()=>[{name:'Starters',items:[['Lentil Soup',5.95],['Hummus & Pitta',6.50],['Halloumi Fries',7.50]]},{name:'Mains',items:[['Chicken Shish',15.95],['Lamb Kofte',16.50],['Mixed Grill',22.95]]},{name:'Desserts',items:[['Baklava',6.50],['Rice Pudding',5.50]]}];
@@ -214,13 +260,13 @@ App.route('menu-builder',()=>{
     <div class="thumbbg" style="border-radius:var(--r-lg);display:grid;place-items:center;color:#fff;min-height:180px">${ic('menu')}</div></div>
    <div class="card pad">
     ${UI.seg([{key:'up',label:'Upload Files',icon:'upload'},{key:'url',label:'Enter URL',icon:'link'}],'up','mb')}
-    <div data-segpanel="mb:up" style="margin-top:16px"><label class="upload" style="padding:40px">${ic('upload')}<div style="font-weight:600;margin-top:6px;color:var(--ink)">Click or drag your menu to upload</div><div class="help">Supports JPG, PNG, PDF, XLSX, XLS, CSV and XML (Max 10MB)</div><span class="btn secondary sm" style="margin-top:12px">Choose File</span><input type="file" hidden id="mbFile" data-upload accept=".jpg,.jpeg,.png,.pdf,.xlsx,.xls,.csv,.xml"></label></div>
+    <div data-segpanel="mb:up" style="margin-top:16px"><label class="upload" style="padding:40px">${ic('upload')}<div style="font-weight:600;margin-top:6px;color:var(--ink)">Click or drag your menu to upload</div><div class="help">Supports JPG, PNG, PDF, XLSX, XLS, CSV and XML (Max 10MB)</div><span class="btn secondary sm" style="margin-top:12px">Choose File</span><input type="file" hidden id="mbFile" accept=".jpg,.jpeg,.png,.webp,.pdf,.csv,.txt,.xlsx,.xls" data-change="mb-file"></label></div>
     <div data-segpanel="mb:url" hidden style="margin-top:16px">${UI.field({label:'Enter Website URL',help:'Paste a link to a web page that shows your menu and we\'ll pull the items out automatically.',control:UI.input({id:'mbUrl',prefix:'https://',placeholder:'example.com/menu'})})}</div>
     <div style="margin-top:16px"><strong style="color:var(--ink)">Tips for best results:</strong><ul style="margin:6px 0 0;padding-left:18px"><li>Make sure the text is clear and readable</li><li>Include every page if your menu has several sections</li><li>Good lighting helps if you're taking a photo</li></ul></div></div>
    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px"><a class="btn secondary" href="#menu-create">Cancel</a><button class="btn primary" data-action="menu-mb-create">${ic('sparkle','sm')}Create Digital Menu</button></div>`;
-  if(mb.step===1)return head+`<div class="card pad"><div style="display:flex;align-items:center;margin-bottom:12px"><div><h2>Review Items</h2><p class="muted" style="margin:4px 0 0">We found ${mb.items.reduce((a,s)=>a+s.items.length,0)} items in ${mb.items.length} sections from ${esc(mb.src)}. Check the names and prices before publishing.</p></div></div>
+  if(mb.step===1)return head+`<div class="card pad"><div style="display:flex;align-items:center;margin-bottom:12px"><div><h2>Review Items</h2><p class="muted" style="margin:4px 0 0">${mb.ai?`${ic('sparkle','sm')} AI found`:'We found'} ${mb.items.reduce((a,s)=>a+s.items.length,0)} items in ${mb.items.length} sections from ${esc(mb.src)}. Check the names and prices before publishing – AI can misread blurry text.</p></div></div>
     ${mb.items.map((s,si)=>`<div class="card" style="margin-bottom:12px"><div class="card-head"><input class="input" style="max-width:280px;font-weight:600" data-mbsec="${si}" value="${esc(s.name)}" aria-label="Section name"><button class="btn ghost sm right" data-action="menu-mb-additem" data-si="${si}">${ic('plus','sm')}Add item</button></div>
-     ${s.items.map((it,ii)=>`<div style="display:flex;gap:10px;padding:8px 16px;border-bottom:1px solid var(--border);align-items:center"><input class="input" data-mbn="${si}:${ii}" value="${esc(it[0])}" aria-label="Item name"><div class="input-group" style="width:140px;flex:none"><span>£</span><input data-mbp="${si}:${ii}" value="${it[1].toFixed(2)}" aria-label="Price"></div><button class="iconbtn" style="width:36px;height:36px;border:0" data-action="menu-mb-del" data-k="${si}:${ii}" aria-label="Remove">${ic('trash','sm')}</button></div>`).join('')}</div>`).join('')}</div>
+     ${s.items.map((it,ii)=>`<div style="display:flex;gap:10px;padding:8px 16px;border-bottom:1px solid var(--border);align-items:center"><div style="flex:1;min-width:0"><input class="input" data-mbn="${si}:${ii}" value="${esc(it[0])}" aria-label="Item name">${it[2]||(it[3]||[]).length?`<div class="help" style="margin:4px 2px 0">${esc(it[2]||'')}${(it[3]||[]).length?`${it[2]?' · ':''}${it[3].map(o=>esc(o.name)+' £'+(+o.price).toFixed(2)).join(' / ')}`:''}</div>`:''}</div><div class="input-group" style="width:140px;flex:none"><span>£</span><input data-mbp="${si}:${ii}" value="${it[1].toFixed(2)}" aria-label="Price"></div><button class="iconbtn" style="width:36px;height:36px;border:0" data-action="menu-mb-del" data-k="${si}:${ii}" aria-label="Remove">${ic('trash','sm')}</button></div>`).join('')}</div>`).join('')}</div>
     <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px"><button class="btn secondary" data-action="menu-mb-back">Back</button><button class="btn primary" data-action="menu-mb-next">Continue</button></div>`;
   return head+`<div class="card pad" style="max-width:640px"><h2>Publish</h2><p class="muted">Name your menu and choose where guests can see it.</p>
     ${UI.field({label:'Menu Name',required:true,control:UI.input({id:'mbName',value:'Imported Menu'})})}
@@ -229,13 +275,14 @@ App.route('menu-builder',()=>{
 },{nav:'menu-management'});
 function mbSync(){if(!mb.items)return;$$('[data-mbsec]').forEach(i=>mb.items[+i.dataset.mbsec].name=i.value);$$('[data-mbn]').forEach(i=>{const [s,k]=i.dataset.mbn.split(':');mb.items[s].items[k][0]=i.value});$$('[data-mbp]').forEach(i=>{const [s,k]=i.dataset.mbp.split(':');mb.items[s].items[k][1]=parseFloat(i.value)||0})}
 A('menu-mb-create',()=>{const f=$('#mbFile'),u=$('#mbUrl');const src=f&&f.files[0]?f.files[0].name:(u&&u.value.trim()?'https://'+u.value.trim():'');if(!src){App.toast('Upload a file or enter a URL first');return}
-  mb.src=src;App.toast('Reading your menu…');setTimeout(()=>{mb.items=MOCK();mb.step=1;App.render()},600)});
-A('menu-mb-additem',el=>{mbSync();mb.items[+el.dataset.si].items.push(['New item',0]);App.render()});
+  if(f&&f.files[0])aiImport({file:f.files[0]});else aiImport({url:src})});
+A('mb-file',el=>{const f=el.files[0];if(!f)return;const z=el.closest('label');if(z){const d=z.querySelector('div');if(d)d.textContent=f.name}});
+A('menu-mb-additem',el=>{mbSync();mb.items[+el.dataset.si].items.push(['New item',0,'',[]]);App.render()});
 A('menu-mb-del',el=>{mbSync();const [s,k]=el.dataset.k.split(':');mb.items[s].items.splice(k,1);App.render()});
 A('menu-mb-back',()=>{mbSync();mb.step=Math.max(0,mb.step-1);App.render()});
 A('menu-mb-next',()=>{mbSync();mb.step=2;App.render()});
 A('menu-mb-publish',()=>{const n=$('#mbName').value.trim();if(!n){App.toast('Enter a menu name');return}
-  const m=newMenu(n,mb.items.map((s,i)=>({id:uid(),name:s.name,on:true,open:i===0,score:75,items:s.items.map(([nm,p])=>({id:uid(),name:nm,price:p,on:true,photo:false,score:65,desc:''}))})));
+  const m=newMenu(n,mb.items.map((s,i)=>({id:uid(),name:s.name,on:true,open:i===0,score:75,items:s.items.map(([nm,p,d,o])=>({id:uid(),name:nm,price:p,on:true,photo:false,score:65,desc:d||'',...((o||[]).length>1?{priceOptions:o.map(x=>({name:x.name,price:+x.price||0,caf:'',disc:''}))}:{})}))})));
   m.channels=$$('[data-mbch]').filter(c=>c.checked).map(c=>c.dataset.mbch);m.status='Live';m.on=true;mb={step:0,src:'',items:null,channels:['dine','pickup','delivery','tablet']};App.go('menu-editor--'+m.id);App.toast('Menu published')});
 
 /* =================== MODIFIERS =================== */
