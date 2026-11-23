@@ -31,7 +31,11 @@ const ic=(n,c='')=>`<svg class="i ${c}" viewBox="0 0 24 24" aria-hidden="true">$
 /* ---------- state ---------- */
 let D=null,cfg={},mode='view',TABLE=tableName(Q.get('t')||(SLUG?PATH[1]:'')||''),MENU=null,filt={sort:'rec',avoid:[]},term='';
 let cart=sess.get('cart',[]);const liked=new Set(store.get('liked',[]));let profile=store.get('profile',null);
-const F=(route,re,n=1)=>{const f=cfg.forms||{};const keys=Object.keys(f).filter(k=>k.startsWith(route+'|')&&re.test(k.split('|')[1]));const k=keys.find(k=>k.endsWith('|'+n))||keys[0];return k?f[k]:undefined};
+const F=(route,re,n=1)=>{const f=cfg.forms||{};
+  // a settings page opened from the menu saves under its plain name (e.g. 'orders-settings') = its first tab ('--dinein', '--general')
+  const FIRST={'orders-settings':'dinein','engagement-settings':'general'};const base=route.split('--')[0];
+  const routes=[route,...(FIRST[base]&&route===base+'--'+FIRST[base]?[base]:[])];
+  const keys=Object.keys(f).filter(k=>routes.some(r=>k.startsWith(r+'|'))&&re.test(k.split('|')[1]));const k=keys.find(k=>k.endsWith('|'+n))||keys[0];return k?f[k]:undefined};
 const C=(k,d)=>cfg[k]!==undefined&&cfg[k]!==''?cfg[k]:d;
 const ORD_ROUTE=()=>mode==='dine'?'orders-settings--dinein':'orders-settings--delivery';
 const typeLabel=()=>({dine:'Dine-In',pickup:'Pick-Up',delivery:'Delivery'})[mode]||'';
@@ -84,6 +88,7 @@ const canOrder=()=>['dine','pickup','delivery','tablet'].includes(mode);
 // Engagement settings (back office → Guests & Engagement → Settings): switches saved as 'engagement-settings[--general]|<label>|n'
 const FE=re=>{const a=F('engagement-settings--general',re);return a!==undefined?a:F('engagement-settings',re)};
 const REVIEWS=()=>FE(/^Enable Review/)!==false,LIKES_ON=()=>FE(/^Enable Like/)!==false;
+const NOTES=()=>F(ORD_ROUTE(),/^Allow Notes for the Kitchen/,mode==='pickup'?2:1)!==false; // Orders settings switch, on by default
 const ordering=()=>{if(!canOrder())return false;if(mode==='dine'){const v=F('orders-settings--dinein',/^Enable Ordering$/);return v!==false}
   if(mode==='delivery'){const v=F('orders-settings--delivery',/^Enable Ordering$/,1);return v!==false}if(mode==='pickup'){const v=F('orders-settings--delivery',/^Enable Ordering$/,2);return v!==false}return true};
 
@@ -251,13 +256,13 @@ function openItem(id){const {i,s:sec}=findItem(MENU,id);if(!i){go('/menu/'+MENU.
     ${nf.length?`<div class="sec-t">Nutrition facts</div>${nf.map(([k,v])=>`<div class="line"><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('')}`:''}
     ${nc.length?`<div class="sec-t">Nutritional content</div>${nc.map(x=>`<div class="line"><span>${esc(x.label)}</span><b>${esc(x.value)}</b></div>`).join('')}`:''}
     ${recs.length?`<div class="sec-t">Goes well with</div><div class="rec">${recs.map(x=>`<button data-rec="${esc(x.id)}"><div class="ph" style="${imgOf(x)?`background-image:url('${esc(imgOf(x))}')`:''}"></div><b>${esc(x.name)}</b><small class="mut">${priceText(x)}</small></button>`).join('')}</div>`:''}
-    ${can?`<label class="fl" for="nt">Note for the kitchen</label><textarea class="inp" id="nt" maxlength="200" placeholder="Any requests? (optional)"></textarea>`:''}</div>`;
+    ${can&&NOTES()?`<label class="fl" for="nt">Note for the kitchen</label><textarea class="inp" id="nt" maxlength="200" placeholder="Any requests? (optional)"></textarea>`:''}</div>`;
   const foot=can?`<div style="display:flex;gap:10px;align-items:center"><div class="qty"><button id="qm" aria-label="Less">−</button><b id="qv">1</b><button id="qp" aria-label="More">+</button></div><button class="btn" id="addC" style="flex:1">Add to basket · <span id="tp">${money(unitPrice())}</span></button></div>`:'';
   const bd=sheet({title:'',body,foot,cls:'item-sh',onClose:()=>{}});bd.querySelector('header').style.display='none';
   const s=bd;const upd=()=>{$('#qv',s).textContent=st.qty;$('#tp',s).textContent=money(unitPrice()*st.qty)};
   if(can){$('#qm',s).onclick=()=>{st.qty=Math.max(1,st.qty-1);upd()};$('#qp',s).onclick=()=>{st.qty=Math.min(50,st.qty+1);upd()};
     s.addEventListener('change',e=>{const t=e.target;if(t.name==='po')st.po=+t.value;else if(t.dataset.g){const g=mods.find(x=>x.id===t.dataset.g);st.mods[g.id]=$$(`[data-g="${t.dataset.g}"]:checked`,s).map(c=>g.mods.filter(m=>m.on!==false&&m.name)[+c.dataset.k])}else if(t.dataset.rm!==undefined)st.rm=$$('[data-rm]:checked',s).map(c=>c.dataset.rm);upd()});
-    $('#addC',s).onclick=()=>{st.note=$('#nt',s).value.trim();const opts=[...(po.length>1?[po[st.po].name]:[]),...Object.values(st.mods).flat().map(m=>m.name),...st.rm.map(x=>'No '+x)];
+    $('#addC',s).onclick=()=>{st.note=(($('#nt',s)||{}).value||'').trim();const opts=[...(po.length>1?[po[st.po].name]:[]),...Object.values(st.mods).flat().map(m=>m.name),...st.rm.map(x=>'No '+x)];
       addToCart(i,{qty:st.qty,price:unitPrice(),opts,note:st.note,alcohol:isAlcohol(i,sec)});closeSheet()}}
   if($('#lk',s))$('#lk',s).onclick=async()=>{const on=!liked.has(i.id);if(on)liked.add(i.id);else liked.delete(i.id);store.set('liked',[...liked]);$('#lk',s).classList.toggle('on',on);$('#lk b',s).textContent=likes(i)||'';
     try{await submit('like',{item:i.id,name:i.name,on})}catch(e){}};
@@ -334,7 +339,7 @@ function renderCheckout(){if(!cart.length){go('basket');return}const app=$('.app
       ${mode==='delivery'?`<textarea class="inp co-addr" id="ca" autocomplete="street-address" placeholder="Delivery address *" aria-label="Delivery address"></textarea>`:''}
       <input class="inp ${p.email?'':'hidden'}" id="ce" type="email" autocomplete="email" placeholder="Email for your receipt" aria-label="Email" value="${esc(p.email||'')}">
       <textarea class="inp hidden co-note" id="on" maxlength="300" placeholder="Note for the kitchen (allergies, requests…)" aria-label="Order note"></textarea>
-      <div class="co-links">${p.email?'':`<button type="button" class="co-more" data-more="ce">${ic('plus','sm')}Email receipt</button>`}<button type="button" class="co-more" data-more="on">${ic('plus','sm')}Add a note</button></div>
+      <div class="co-links">${p.email?'':`<button type="button" class="co-more" data-more="ce">${ic('plus','sm')}Email receipt</button>`}${NOTES()?`<button type="button" class="co-more" data-more="on">${ic('plus','sm')}Add a note</button>`:''}</div>
     </div>
     ${pre?`<div class="card co-sec"><div class="seg co-seg"><button class="on" data-when="asap">As soon as possible</button><button data-when="later">Schedule</button></div><input class="inp hidden" id="wt" type="datetime-local" style="margin-top:8px" aria-label="Time"></div>`:''}
     ${pay.length?`<div class="card co-sec"><div class="co-lbl">${mode==='dine'?'Pay at the table':'Payment'}</div><div class="co-pay">${pay.map((x,k)=>`<label><input type="radio" name="pay" value="${esc(x)}" ${k?'':'checked'}><span>${x==='Cash'?'💷 Cash':'💳 Card'}</span></label>`).join('')}</div></div>`:''}
@@ -352,7 +357,7 @@ function renderCheckout(){if(!cart.length){go('basket');return}const app=$('.app
     const c2=charges();const b=$('#place');b.disabled=true;b.textContent='Sending…';
     const when=$('#wt')&&!$('#wt').classList.contains('hidden')&&$('#wt').value?$('#wt').value.replace('T',' '):'';
     const payload={type:typeLabel(),table:mode==='dine'?t:'',guests:+(($('#gc')||{}).value||1),customer:cust,items:cart.map(c=>({name:c.name,price:c.price,qty:c.qty,options:c.opts,notes:c.note})),
-      subtotal:c2.sub,service:c2.svc,discount:c2.disc,tip:c2.tip,fee:c2.fee,total:c2.total,promo:promo?promo.code:'',payment:(($('input[name=pay]:checked')||{}).value)||'',when,notes:$('#on').value.trim()};
+      subtotal:c2.sub,service:c2.svc,discount:c2.disc,tip:c2.tip,fee:c2.fee,total:c2.total,promo:promo?promo.code:'',payment:(($('input[name=pay]:checked')||{}).value)||'',when,notes:(($('#on')||{}).value||'').trim()};
     try{const r=await submit('order',payload);const orders=store.get('orders',[]);orders.unshift({ref:r.ref,at:Date.now(),total:c2.total,type:typeLabel(),table:payload.table});store.set('orders',orders.slice(0,20));
       if(cust.name||cust.email){profile={...(profile||{}),...cust};store.set('profile',profile)}cart=[];saveCart();promo=null;sess.set('promo',null);location.replace('#/order/'+r.ref)}
     catch(x){b.disabled=false;b.textContent='Place order';e(x.message)}}}
