@@ -317,24 +317,35 @@ function renderCheckout(){if(!cart.length){go('basket');return}const app=$('.app
   const pay=[['Credit/Debit Card through POS',/Credit\/Debit Card through POS/],['Cash',/^Cash$/]].filter(([l,re])=>F(R,re)!==false).map(x=>x[0]);
   const age=F(R,/Age Verification/)===true&&cart.some(c=>c.alcohol);const pre=mode!=='dine'&&F(R,/Pre-Order/)===true;const dTime=F(R,/Delivery Time/);
   const p=profile||{};
-  app.innerHTML=`${header('Checkout',{back:'basket',right:'<span></span>'})}<div class="pg"><div class="bdy">
-    <div class="card"><b>${typeLabel()}</b>${mode==='dine'?`<label class="fl">Table</label>${TABLE?`<div class="tbl-badge">${ic('pin','sm')}${esc(TABLE)}</div>`:tablePicker()}<label class="fl" for="gc">Guests</label><input class="inp" id="gc" type="number" min="1" max="30" value="2">`:''}
-      ${mode==='delivery'&&dTime?`<p class="mut" style="margin:8px 0 0">Estimated delivery: about ${esc(dTime)} minutes.</p>`:''}</div>
-    <div class="card"><b>Your details</b><label class="fl" for="cn">Name${mode==='dine'?'':' *'}</label><input class="inp" id="cn" autocomplete="name" value="${esc(p.name||'')}">
-      <label class="fl" for="cp">Phone${mode==='dine'?'':' *'}</label><input class="inp" id="cp" type="tel" autocomplete="tel" value="${esc(p.phone||'')}">
-      <label class="fl" for="ce">Email</label><input class="inp" id="ce" type="email" autocomplete="email" value="${esc(p.email||'')}">
-      ${mode==='delivery'?`<label class="fl" for="ca">Delivery address *</label><textarea class="inp" id="ca" autocomplete="street-address" style="min-height:70px"></textarea>`:''}</div>
-    ${pre?`<div class="card"><b>When?</b><div class="seg" style="margin-top:10px"><button class="on" data-when="asap">As soon as possible</button><button data-when="later">Schedule</button></div><input class="inp hidden" id="wt" type="datetime-local" style="margin-top:10px"></div>`:''}
-    ${pay.length?`<div class="card"><b>Payment</b>${pay.map((x,k)=>`<label class="opt"><input type="radio" name="pay" value="${esc(x)}" ${k?'':'checked'}>${esc(x==='Credit/Debit Card through POS'?'Card (pay staff)':x)}</label>`).join('')}</div>`:''}
-    <div class="card"><label class="fl" style="margin-top:0" for="on">Order note</label><textarea class="inp" id="on" maxlength="300" placeholder="Anything we should know? (optional)"></textarea></div>
-    ${age?`<div class="card"><label class="check"><input type="checkbox" id="age">I confirm I am 18 or over (your order includes alcohol).</label></div>`:''}
-    <label class="check" style="margin:6px 4px 0"><input type="checkbox" id="tos">I agree to share these details with ${esc((D.venue||{}).name||D.site.name)} to process my order.</label>
-    <div id="coErr"></div></div><div class="sticky-b"><button class="btn" id="place">Place order · ${money(charges().total)}</button></div></div>`;
+  const venue=esc((D.venue||{}).name||D.site.name);const nItems=cart.reduce((a,c)=>a+c.qty,0);
+  // compact, one-screen checkout for phones: only what's needed is visible, extras open on tap
+  app.innerHTML=`${header('Checkout',{back:'basket',right:'<span></span>'})}<div class="pg co"><div class="bdy">
+    <div class="card co-top">
+      ${mode==='dine'?`<div class="co-tbl">${TABLE?`<span class="tbl-badge">${ic('pin','sm')}${esc(TABLE)}</span>`:tablePicker()}</div>
+        <div class="co-guests"><span>Guests</span><div class="qty sm"><button type="button" data-g="-1" aria-label="Fewer guests">−</button><b id="gcv">2</b><button type="button" data-g="1" aria-label="More guests">+</button></div><input type="hidden" id="gc" value="2"></div>`
+       :`<b>${typeLabel()}</b>${mode==='delivery'&&dTime?`<span class="mut" style="font-size:13px">About ${esc(dTime)} min</span>`:''}`}
+    </div>
+    <div class="card co-sec">
+      <div class="co-row2"><input class="inp" id="cn" autocomplete="name" placeholder="Your name${mode==='dine'?'':' *'}" aria-label="Name" value="${esc(p.name||'')}">
+        <input class="inp" id="cp" type="tel" autocomplete="tel" placeholder="Phone${mode==='dine'?'':' *'}" aria-label="Phone" value="${esc(p.phone||'')}"></div>
+      ${mode==='delivery'?`<textarea class="inp co-addr" id="ca" autocomplete="street-address" placeholder="Delivery address *" aria-label="Delivery address"></textarea>`:''}
+      <input class="inp ${p.email?'':'hidden'}" id="ce" type="email" autocomplete="email" placeholder="Email for your receipt" aria-label="Email" value="${esc(p.email||'')}">
+      <textarea class="inp hidden co-note" id="on" maxlength="300" placeholder="Note for the kitchen (allergies, requests…)" aria-label="Order note"></textarea>
+      <div class="co-links">${p.email?'':`<button type="button" class="co-more" data-more="ce">${ic('plus','sm')}Email receipt</button>`}<button type="button" class="co-more" data-more="on">${ic('plus','sm')}Add a note</button></div>
+    </div>
+    ${pre?`<div class="card co-sec"><div class="seg co-seg"><button class="on" data-when="asap">As soon as possible</button><button data-when="later">Schedule</button></div><input class="inp hidden" id="wt" type="datetime-local" style="margin-top:8px" aria-label="Time"></div>`:''}
+    ${pay.length?`<div class="card co-sec"><div class="co-lbl">${mode==='dine'?'Pay at the table':'Payment'}</div><div class="co-pay">${pay.map((x,k)=>`<label><input type="radio" name="pay" value="${esc(x)}" ${k?'':'checked'}><span>${x==='Cash'?'💷 Cash':'💳 Card'}</span></label>`).join('')}</div></div>`:''}
+    ${age?`<label class="check co-check"><input type="checkbox" id="age">I'm 18 or over (your order includes alcohol)</label>`:''}
+    <p class="co-fine">Your details go to ${venue} only to prepare this order.</p>
+    <div id="coErr"></div></div>
+    <div class="sticky-b"><div class="co-sum"><span>${nItems} item${nItems>1?'s':''}</span><a href="#/basket">Edit basket</a></div><button class="btn" id="place">Place order · ${money(charges().total)}</button></div></div>`;
   bindHeader(app);$$('[data-when]',app).forEach(b=>b.onclick=()=>{$$('[data-when]',app).forEach(x=>x.classList.toggle('on',x===b));$('#wt').classList.toggle('hidden',b.dataset.when!=='later')});
-  $('#place').onclick=async()=>{const e=m=>{$('#coErr').innerHTML=`<div class="err-m">${esc(m)}</div>`};const t=TABLE||($('#tblSel')||{}).value||'';
+  $$('[data-g]',app).forEach(b=>b.onclick=()=>{const g=$('#gc');g.value=Math.min(30,Math.max(1,+g.value+ +b.dataset.g));$('#gcv').textContent=g.value});
+  $$('[data-more]',app).forEach(b=>b.onclick=()=>{const el=document.getElementById(b.dataset.more);el.classList.remove('hidden');el.focus();b.remove()});
+  $('#place').onclick=async()=>{const e=m=>{$('#coErr').innerHTML=`<div class="err-m">${esc(m)}</div>`;$('#coErr').scrollIntoView({block:'nearest'})};const t=TABLE||($('#tblSel')||{}).value||'';
     const cust={name:$('#cn').value.trim(),phone:$('#cp').value.trim(),email:$('#ce').value.trim(),address:($('#ca')||{}).value?.trim()||''};
     if(mode==='dine'&&!t)return e('Choose your table.');if(mode!=='dine'&&(!cust.name||!cust.phone))return e('Enter your name and phone number.');
-    if(mode==='delivery'&&!cust.address)return e('Enter your delivery address.');if(age&&!$('#age').checked)return e('Please confirm you are 18 or over.');if(!$('#tos').checked)return e('Please tick the box to agree.');
+    if(mode==='delivery'&&!cust.address)return e('Enter your delivery address.');if(age&&!$('#age').checked)return e('Please confirm you are 18 or over.');
     const c2=charges();const b=$('#place');b.disabled=true;b.textContent='Sending…';
     const when=$('#wt')&&!$('#wt').classList.contains('hidden')&&$('#wt').value?$('#wt').value.replace('T',' '):'';
     const payload={type:typeLabel(),table:mode==='dine'?t:'',guests:+(($('#gc')||{}).value||1),customer:cust,items:cart.map(c=>({name:c.name,price:c.price,qty:c.qty,options:c.opts,notes:c.note})),
