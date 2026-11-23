@@ -1,15 +1,21 @@
 name: Deploy Proview QR Menu to qrmenu.proviewcrm.co.uk
 on:
-  push: { branches: [main], paths: ["web/**"] }
+  push: { branches: [main], paths: ["web/**", "scripts/**", ".github/workflows/pages.yml"] }
   workflow_dispatch:
+  # rebuild the short-link pages (qrmenu.proviewcrm.co.uk/<business>) so new businesses get their own page and preview
+  schedule: [{ cron: "*/30 * * * *" }]
 permissions: { contents: read, pages: write, id-token: write }
-concurrency: { group: pages, cancel-in-progress: true }
+concurrency: { group: pages, cancel-in-progress: false }
 jobs:
   deploy:
     runs-on: ubuntu-24.04
     environment: { name: github-pages }
     steps:
       - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Build business link pages
+        run: node scripts/build-links.mjs
       - uses: actions/upload-pages-artifact@v3
         with: { path: web/site }
       - uses: actions/deploy-pages@v4
