@@ -31,6 +31,19 @@ const ic=(n,c='')=>`<svg class="i ${c}" viewBox="0 0 24 24" aria-hidden="true">$
 /* ---------- state ---------- */
 let D=null,cfg={},mode='view',TABLE=tableName(Q.get('t')||(SLUG?PATH[1]:'')||''),MENU=null,filt={sort:'rec',avoid:[]},term='';
 let cart=sess.get('cart',[]);const liked=new Set(store.get('liked',[]));let profile=store.get('profile',null);
+/* ---------- languages (Translation Center) ---------- */
+let LANG=null;const RTL=/^(Arabic|Urdu|Persian|Hebrew)/i;
+const LANG_CODES={tr:'Turkish',ar:'Arabic',fr:'French',de:'German',es:'Spanish',it:'Italian',pt:'Portuguese',pl:'Polish',ro:'Romanian',ru:'Russian',zh:'Chinese (Simplified)',ja:'Japanese',ko:'Korean',el:'Greek',nl:'Dutch',ur:'Urdu',hi:'Hindi',fa:'Persian',bg:'Bulgarian',bn:'Bengali'};
+const LANG_NATIVE={English:'English',Turkish:'Türkçe',Arabic:'العربية',French:'Français',German:'Deutsch',Spanish:'Español',Italian:'Italiano',Portuguese:'Português',Polish:'Polski',Romanian:'Română',Russian:'Русский','Chinese (Simplified)':'中文',Japanese:'日本語',Korean:'한국어',Greek:'Ελληνικά',Dutch:'Nederlands',Urdu:'اردو',Hindi:'हिन्दी',Persian:'فارسی',Bulgarian:'Български',Bengali:'বাংলা'};
+const T=s=>{if(!LANG||s==null||!D)return s;const d=(D.translations||{})[LANG];if(!d)return s;const k=String(s).trim();return d[k]||s};
+const L=T;
+const defLang=()=>cfg.defaultLang||'English';
+function availLangs(){const tr=(D&&D.translations)||{};return [defLang(),...(cfg.languages||[]).filter(l=>l!==defLang()&&tr[l]&&Object.keys(tr[l]).length)]}
+function setLang(l){LANG=l&&l!==defLang()?l:null;store.set('lang',l||defLang());const code=Object.keys(LANG_CODES).find(c=>LANG_CODES[c]===l)||'en';
+  document.documentElement.lang=code;document.documentElement.dir=LANG&&RTL.test(LANG)?'rtl':'ltr'}
+function openLang(){const ls=availLangs();const cur=LANG||defLang();
+  sheet({title:L('Language'),body:ls.map(l=>`<button class="row" data-pick="${esc(l)}" style="${l===cur?'font-weight:800':''}"><span style="flex:1">${esc(LANG_NATIVE[l]||l)}${LANG_NATIVE[l]&&LANG_NATIVE[l]!==l?` <span class="mut" style="font-weight:400">· ${esc(l)}</span>`:''}</span>${l===cur?ic('check','sm'):''}</button>`).join('')});
+  $$('#sheet [data-pick]').forEach(b=>b.onclick=()=>{setLang(b.dataset.pick);closeSheet(true);route()})}
 const F=(route,re,n=1)=>{const f=cfg.forms||{};
   // a settings page opened from the menu saves under its plain name (e.g. 'orders-settings') = its first tab ('--dinein', '--general')
   const FIRST={'orders-settings':'dinein','engagement-settings':'general'};const base=route.split('--')[0];
@@ -118,44 +131,44 @@ function home(){const c=ch(),wp=k=>C(`wp.${c}.${k}`,undefined);const V=D.venue||
   app.innerHTML=`<div class="wel"><div class="lg" style="${V.logo?`background-image:url('${esc(V.logo)}')`:''}">${V.logo?'':esc(initials(V.name||D.site.name))}</div>
     ${wp('name')!==false?`<h1>${esc(V.name||D.site.name)}</h1>`:''}${msg?`<p class="mut" style="margin:0;max-width:360px">${esc(msg)}</p>`:''}
     ${TABLE?`<span class="tbl-badge">${ic('pin','sm')}${esc(TABLE)}</span>`:mode==='pickup'?`<span class="tbl-badge">${ic('bag','sm')}Pick-Up</span>`:mode==='delivery'?`<span class="tbl-badge">${ic('bag','sm')}Delivery</span>`:''}
-    <div class="acts"><button class="btn" data-go="menus">View Menu</button>${forms().length?`<button class="btn sec" data-go="feedback">Give Feedback</button>`:''}${C('dz.info',true)!==false?`<button class="btn sec" data-go="info">Venue information</button>`:''}</div>
+    <div class="acts"><button class="btn" data-go="menus">View Menu</button>${forms().length?`<button class="btn sec" data-go="feedback">${L('Give Feedback')}</button>`:''}${C('dz.info',true)!==false?`<button class="btn sec" data-go="info">${L('Venue information')}</button>`:''}</div>
     ${wp('social')!==false?socials(wp('iconColor')):''}</div>${footer()}`;bindGo(app)}
 function bindGo(root){$$('[data-go]',root).forEach(b=>b.onclick=()=>go(b.dataset.go))}
 function pickMenu(){const ms=MENUS();if(!ms.length){$('.app').innerHTML=`<div class="err"><div>${ic('info')}<h1>No menu yet</h1><p class="mut">This venue hasn't published a menu for this link yet.</p></div></div>`;return}
   if(ms.length===1){location.replace('#/menu/'+ms[0].id);return}
   if(!$('.app .wel')&&!$('.app .land')&&!$('.app .hd')){const V=D.venue||{};$('.app').innerHTML=header(V.name||D.site.name,{back:'',right:`<button class="ib" data-drawer aria-label="Menu">${ic('menu')}</button>`})+footer();bindHeader($('.app'))}
-  sheet({title:'Select a Menu',body:ms.map(m=>`<button class="row" data-m="${esc(m.id)}"><span style="flex:1;font-weight:700">${esc(m.name)}</span>${ic('chev')}</button>`).join('')});
+  sheet({title:L('Select a Menu'),body:ms.map(m=>`<button class="row" data-m="${esc(m.id)}"><span style="flex:1;font-weight:700">${esc(T(m.name))}</span>${ic('chev')}</button>`).join('')});
   $$('#sheet [data-m]').forEach(b=>b.onclick=()=>{closeSheet(true);go('/menu/'+b.dataset.m)})}
-const footer=()=>`<div class="foot">Powered by <b>PROVIEW</b> QR Menu</div>`;
+const footer=()=>`<div class="foot">${L('Powered by')} <b>PROVIEW</b> QR Menu</div>`;
 function forms(){return (D.forms||[]).filter(f=>(f.questions||[]).length)}
 
 /* ---------- menu screen ---------- */
-function header(title,{back='',right=''}={}){return `<div class="hd"><button class="ib" data-back="${esc(back)}" aria-label="Back">${ic('back')}</button><h1>${esc(title)}</h1>${right||`<button class="ib" data-drawer aria-label="Menu">${ic('menu')}</button>`}</div>`}
-function bindHeader(root){$$('[data-back]',root).forEach(b=>b.onclick=()=>{const t=b.dataset.back;if(t)go(t);else if(history.length>1)history.back();else go('')});$$('[data-drawer]',root).forEach(b=>b.onclick=openDrawer)}
+function header(title,{back='',right=''}={}){return `<div class="hd"><button class="ib" data-back="${esc(back)}" aria-label="Back">${ic('back')}</button><h1>${esc(title)}</h1>${right||`<span style="display:flex">${availLangs().length>1?`<button class="ib" data-lang aria-label="Language">${ic('globe')}</button>`:''}<button class="ib" data-drawer aria-label="Menu">${ic('menu')}</button></span>`}</div>`}
+function bindHeader(root){$$('[data-back]',root).forEach(b=>b.onclick=()=>{const t=b.dataset.back;if(t)go(t);else if(history.length>1)history.back();else go('')});$$('[data-drawer]',root).forEach(b=>b.onclick=openDrawer);$$('[data-lang]',root).forEach(b=>b.onclick=openLang)}
 function sortItems(list){if(filt.sort==='top')return [...list].sort((a,b)=>(rating(b)?.avg||0)-(rating(a)?.avg||0));if(filt.sort==='liked')return [...list].sort((a,b)=>likes(b)-likes(a));return list}
 function visible(i){if(filt.avoid.length&&[...(i.allergens||[]),...(i.labels||[])].some(x=>filt.avoid.includes(x)))return false;
   if(term){const t=term.toLowerCase();return (i.name||'').toLowerCase().includes(t)||(i.desc||'').toLowerCase().includes(t)}return true}
 function card(i,s,grid){const r=rating(i),lk=likes(i),im=imgOf(i);const lbl=C('dz.warn',true)!==false?tags(i).slice(0,5):[];
-  return `<div class="it ${i.soldOut?'so':''}" data-item="${esc(i.id)}" role="button" tabindex="0" aria-label="${esc(i.name)}">
-    <div class="tx">${r?`<span class="rt">${ic('star','sm')}${r.avg.toFixed(1)} · ${r.n}</span>`:''}<span class="nm">${esc(i.name)}</span>${i.desc&&!grid?`<span class="ds">${esc(i.desc)}</span>`:''}
+  return `<div class="it ${i.soldOut?'so':''}" data-item="${esc(i.id)}" role="button" tabindex="0" aria-label="${esc(T(i.name))}">
+    <div class="tx">${r?`<span class="rt">${ic('star','sm')}${r.avg.toFixed(1)} · ${r.n}</span>`:''}<span class="nm">${esc(T(i.name))}</span>${i.desc&&!grid?`<span class="ds">${esc(T(i.desc))}</span>`:''}
       ${lbl.length?`<span class="lbls">${lbl.map(x=>`<span class="lb ${/^new$/i.test(x)?'new':''}">${/vegan|vegetarian/i.test(x)?ic('leaf','sm'):/spicy|hot/i.test(x)?ic('fire','sm'):''}${esc(x)}</span>`).join('')}</span>`:''}
-      ${i.soldOut?'<span class="so-b">Sold out</span>':`<span class="pr">${priceText(i)}</span>`}</div>
+      ${i.soldOut?'<span class="so-b">'+L('Sold out')+'</span>':`<span class="pr">${priceText(i)}</span>`}</div>
     ${im?`<div class="im" style="background-image:url('${esc(im)}')">${lk?`<span class="lk">${ic('heart')}${lk}</span>`:''}</div>`:grid?`<div class="im" style="display:grid;place-items:center;font-weight:800;color:var(--hl);font-size:22px">${esc(initials(i.name))}</div>`:''}
-    ${ordering()&&!i.soldOut?`<button class="add" data-quick="${esc(i.id)}" aria-label="Add ${esc(i.name)}">${ic('plus','sm')}</button>`:''}</div>`}
+    ${ordering()&&!i.soldOut?`<button class="add" data-quick="${esc(i.id)}" aria-label="Add ${esc(T(i.name))}">${ic('plus','sm')}</button>`:''}</div>`}
 function renderMenu(){const m=MENU;if(!m){pickMenu();return}const V=D.venue||{};const app=$('.app');const grid=C('dz.style','list')==='grid';const ts=C('dz.title','both');
   const secs=liveSecs(m);const others=MENUS();
   const mostLiked=LIKES_ON()&&FE(/Most Liked/)===true?[...secs.flatMap(liveItems)].filter(i=>likes(i)>0).sort((a,b)=>likes(b)-likes(a)).slice(0,5):[];
   const body=[mostLiked.length&&!term&&!filt.avoid.length?{id:'__liked',name:'Most Liked',items:mostLiked}:null,...secs].filter(Boolean).map(s=>{const its=sortItems((s.items||[]).filter(i=>i.on!==false&&visible(i)));if(!its.length)return '';const hero=s.id==='__liked'?'':secImg(s);
-    return `<section class="sec" id="s-${esc(s.id)}" data-sec="${esc(s.id)}">${hero&&ts!=='txt'?`<div class="hero" style="background-image:url('${esc(hero)}')"></div>`:''}${ts!=='img'||!hero?`<h2>${esc(s.name)}</h2>`:''}${s.desc?`<p class="sd">${esc(s.desc)}</p>`:''}
+    return `<section class="sec" id="s-${esc(s.id)}" data-sec="${esc(s.id)}">${hero&&ts!=='txt'?`<div class="hero" style="background-image:url('${esc(hero)}')"></div>`:''}${ts!=='img'||!hero?`<h2>${esc(T(s.name))}</h2>`:''}${s.desc?`<p class="sd">${esc(T(s.desc))}</p>`:''}
       <div class="items ${grid?'grid':''}">${its.map(i=>card(i,s,grid)).join('')}</div></section>`}).join('');
   app.innerHTML=`${header(V.name||D.site.name,{back:MENUS().length>1?'menus':''})}
-    <div class="chips" id="chips">${secs.map(s=>`<button data-to="${esc(s.id)}">${esc(s.name)}</button>`).join('')}</div>
+    <div class="chips" id="chips">${secs.map(s=>`<button data-to="${esc(s.id)}">${esc(T(s.name))}</button>`).join('')}</div>
     <!-- menu name not shown: the tabs below name the menus when there are several -->
-    ${others.length>1?`<div class="mtabs">${others.map(x=>`<button class="${x.id===m.id?'on':''}" data-menu="${esc(x.id)}">${esc(x.name)}</button>`).join('')}</div>`:''}
+    ${others.length>1?`<div class="mtabs">${others.map(x=>`<button class="${x.id===m.id?'on':''}" data-menu="${esc(x.id)}">${esc(T(x.name))}</button>`).join('')}</div>`:''}
     ${TABLE&&mode==='dine'?`<div style="text-align:center;margin-top:10px"><span class="tbl-badge">${ic('pin','sm')}${esc(TABLE)}</span></div>`:''}
-    ${C('dz.search',true)!==false?`<div class="srch"><label>${ic('search','sm')}<input id="q" type="search" placeholder="Search" value="${esc(term)}" aria-label="Search the menu"></label><button class="fb" id="fbtn" aria-label="Filter">${ic('filter')}${filt.avoid.length||filt.sort!=='rec'?`<span class="n">${filt.avoid.length+(filt.sort!=='rec'?1:0)}</span>`:''}</button></div>`:''}
+    ${C('dz.search',true)!==false?`<div class="srch"><label>${ic('search','sm')}<input id="q" type="search" placeholder="${L('Search')}" value="${esc(term)}" aria-label="Search the menu"></label><button class="fb" id="fbtn" aria-label="Filter">${ic('filter')}${filt.avoid.length||filt.sort!=='rec'?`<span class="n">${filt.avoid.length+(filt.sort!=='rec'?1:0)}</span>`:''}</button></div>`:''}
     ${promoBanners()}
-    <div class="tiles ${ts==='txt'?'txt':''}" id="tiles">${secs.map(s=>{const im=secImg(s);return `<button class="tile" data-to="${esc(s.id)}"><div class="ph" style="${im?`background-image:url('${esc(im)}')`:''}">${im?'':esc(initials(s.name))}</div><span>${esc(s.name)}</span></button>`}).join('')}</div>
+    <div class="tiles ${ts==='txt'?'txt':''}" id="tiles">${secs.map(s=>{const im=secImg(s);return `<button class="tile" data-to="${esc(s.id)}"><div class="ph" style="${im?`background-image:url('${esc(im)}')`:''}">${im?'':esc(initials(s.name))}</div><span>${esc(T(s.name))}</span></button>`}).join('')}</div>
     <div id="secs">${body||`<div class="empty">${term||filt.avoid.length?'No items match your search.':'This menu has no items yet.'}</div>`}</div>
     ${footer()}<button class="totop" id="totop" aria-label="Back to top">${ic('up')}</button>${basketBar()}`;
   bindHeader(app);bindMenu();showPromo()}
@@ -191,11 +204,11 @@ function showPromo(){clearTimeout(promoTimer);const ps=(D.promotions||[]).filter
     if(/^#\/menu\//.test(location.hash))openPromo(p)};
   promoTimer=setTimeout(tryOpen,wait)}
 function itemPromo(i){const p=(D.promotions||[]).find(p=>p.type==='selection'&&p.target&&norm(p.target)===norm(i.name)&&!promoSeen(p.id));if(p)setTimeout(()=>openPromo(p,true),400)}
-function promoBanners(){return (D.promotions||[]).filter(p=>p.type==='banner'&&(!p.target||norm(p.target)===norm(MENU.name)||liveSecs(MENU).some(s=>norm(s.name)===norm(p.target)))).map(p=>`<button class="pbanner" data-promo="${esc(p.id)}" style="${p.banner||p.img?`background-image:url('${esc(p.banner||p.img)}')`:''}" aria-label="${esc(p.name)}">${p.banner||p.img?'':`<b>${esc(p.name)}</b>${p.desc?`<span>${esc(p.desc)}</span>`:''}`}</button>`).join('')}
+function promoBanners(){return (D.promotions||[]).filter(p=>p.type==='banner'&&(!p.target||norm(p.target)===norm(MENU.name)||liveSecs(MENU).some(s=>norm(s.name)===norm(p.target)))).map(p=>`<button class="pbanner" data-promo="${esc(p.id)}" style="${p.banner||p.img?`background-image:url('${esc(p.banner||p.img)}')`:''}" aria-label="${esc(T(p.name))}">${p.banner||p.img?'':`<b>${esc(T(p.name))}</b>${p.desc?`<span>${esc(T(p.desc))}</span>`:''}`}</button>`).join('')}
 function openPromo(p,stack){promoMark(p.id);const bd=document.createElement('div');bd.className='pop';bd.id=stack?'promoPop':'sheet';bd.setAttribute('role','dialog');bd.setAttribute('aria-label',p.name||'Promotion');
   const media=p.content==='vid'&&p.video?`<video src="${esc(p.video)}" autoplay muted playsinline loop ${p.img?`poster="${esc(p.img)}"`:''}></video>`
     :p.img?`<img src="${esc(p.img)}" alt="${esc(p.name||'Promotion')}">`
-    :`<div class="ptxt"><h2>${esc(p.name)}</h2>${p.desc?`<p>${esc(p.desc)}</p>`:''}</div>`;
+    :`<div class="ptxt"><h2>${esc(T(p.name))}</h2>${p.desc?`<p>${esc(T(p.desc))}</p>`:''}</div>`;
   const link=p.url&&/^https?:\/\//i.test(p.url)?p.url:'';
   bd.innerHTML=`<button class="px" aria-label="Close">${ic('x')}</button>${link?`<a class="pm" href="${esc(link)}" target="_blank" rel="noopener">${media}</a>`:`<div class="pm">${media}</div>`}`;
   const close=()=>{bd.remove();clearTimeout(bd._t)};bd.onclick=e=>{if(e.target===bd||e.target.closest('.px'))close()};
@@ -203,9 +216,9 @@ function openPromo(p,stack){promoMark(p.id);const bd=document.createElement('div
 
 /* ---------- filter ---------- */
 function openFilter(){const av=avoidable();let st={...filt,avoid:[...filt.avoid]};
-  const draw=()=>`<div class="grp"><button data-tg="srt">Sort By ${ic('chevd','sm')}</button><div id="srt">${[['rec','Recommended (Default)'],...(REVIEWS()?[['top','Top Rated']]:[]),...(LIKES_ON()?[['liked','Most Liked']]:[])].map(([k,l])=>`<label class="opt"><input type="radio" name="srt" value="${k}" ${st.sort===k?'checked':''}>${l}</label>`).join('')}</div></div>
+  const draw=()=>`<div class="grp"><button data-tg="srt">${L('Sort By')} ${ic('chevd','sm')}</button><div id="srt">${[['rec','Recommended (Default)'],...(REVIEWS()?[['top','Top Rated']]:[]),...(LIKES_ON()?[['liked','Most Liked']]:[])].map(([k,l])=>`<label class="opt"><input type="radio" name="srt" value="${k}" ${st.sort===k?'checked':''}>${L(l)}</label>`).join('')}</div></div>
     ${av.length?`<div class="grp"><button data-tg="avd">Ingredients you avoid ${ic('chevd','sm')}</button><div id="avd"><p class="hint">Items containing any selected ingredient are hidden from the menu.</p>${av.map(a=>`<label class="opt"><input type="checkbox" value="${esc(a)}" ${st.avoid.includes(a)?'checked':''}>${esc(a)}</label>`).join('')}</div></div>`:''}`;
-  sheet({title:'Filter',left:'<button class="l" id="clr">Clear All</button>',body:draw(),foot:'<button class="btn" id="apply">Filter</button>'});
+  sheet({title:L('Filter'),left:'<button class="l" id="clr">'+L('Clear All')+'</button>',body:draw(),foot:'<button class="btn" id="apply">'+L('Filter')+'</button>'});
   const s=$('#sheet');s.addEventListener('change',e=>{if(e.target.name==='srt')st.sort=e.target.value;else if(e.target.type==='checkbox'){st.avoid=$$('#avd input:checked',s).map(x=>x.value)}});
   $$('[data-tg]',s).forEach(b=>b.onclick=()=>{const t=document.getElementById(b.dataset.tg);t.hidden=!t.hidden});
   $('#clr').onclick=()=>{st={sort:'rec',avoid:[]};$('.bdy',s).innerHTML=draw();$$('[data-tg]',s).forEach(b=>b.onclick=()=>{const t=document.getElementById(b.dataset.tg);t.hidden=!t.hidden})};
@@ -216,17 +229,18 @@ function openDrawer(){const V=D.venue||{};const bd=document.createElement('div')
   const orders=store.get('orders',[]);
   bd.innerHTML=`<div class="dr" role="dialog" aria-label="Menu"><button class="ib" data-x aria-label="Close">${ic('x')}</button>
     <div class="lg" style="${V.logo?`background-image:url('${esc(V.logo)}')`:''}">${V.logo?'':esc(initials(V.name||D.site.name))}</div>
-    ${mode==='dine'&&ordering()?`<button class="row" data-go="__waiter">${ic('bell')}Call waiter</button>`:''}
-    ${orders.length?`<button class="row" data-go="orders">${ic('receipt')}My orders</button>`:''}
-    ${forms().length?`<button class="row" data-go="feedback">${ic('msg')}Give Feedback</button>`:''}
-    ${C('dz.info',true)!==false?`<button class="row" data-go="info">${ic('info')}Venue information</button>`:''}
+    ${mode==='dine'&&ordering()?`<button class="row" data-go="__waiter">${ic('bell')}${L('Call waiter')}</button>`:''}
+    ${orders.length?`<button class="row" data-go="orders">${ic('receipt')}${L('My orders')}</button>`:''}
+    ${forms().length?`<button class="row" data-go="feedback">${ic('msg')}${L('Give Feedback')}</button>`:''}
+    ${C('dz.info',true)!==false?`<button class="row" data-go="info">${ic('info')}${L('Venue information')}</button>`:''}
     ${V.phone?`<a class="row" href="tel:${esc(String(V.phone).replace(/\s/g,''))}" style="text-decoration:none">${ic('phone')}${esc(V.phone)}</a>`:''}
-    <button class="row" data-go="join">${ic('user')}${profile?esc(profile.name||profile.email):'Login'}</button>
+    ${availLangs().length>1?`<button class="row" data-go="__lang">${ic('globe')}${esc(LANG_NATIVE[LANG||defLang()]||LANG||defLang())}</button>`:''}
+    <button class="row" data-go="join">${ic('user')}${profile?esc(profile.name||profile.email):L('Login')}</button>
     <div class="bot">${V.address?`<p>${esc(V.address)}</p>`:''}${socials()}</div></div>`;
-  bd.addEventListener('click',e=>{const g=e.target.closest('[data-go]');if(e.target===bd||e.target.closest('[data-x]')){bd.remove();return}if(g){bd.remove();if(g.dataset.go==='__waiter')callWaiter();else go(g.dataset.go)}});
+  bd.addEventListener('click',e=>{const g=e.target.closest('[data-go]');if(e.target===bd||e.target.closest('[data-x]')){bd.remove();return}if(g){bd.remove();if(g.dataset.go==='__waiter')callWaiter();else if(g.dataset.go==='__lang')openLang();else go(g.dataset.go)}});
   document.body.appendChild(bd)}
 function callWaiter(){const opts=(cfg.serviceOpts||[]).length?cfg.serviceOpts:['Call waiter','Request the bill'];let sel=opts[0];
-  sheet({title:'Call waiter',body:`${TABLE?'':`<label class="fl">Your table</label>${tablePicker()}`}<div class="pills" style="margin:10px 0">${opts.map((o,i)=>`<button class="${i?'':'on'}" data-o="${esc(o)}">${esc(o)}</button>`).join('')}</div><label class="fl">Note (optional)</label><input class="inp" id="svN" maxlength="160">`,foot:'<button class="btn" id="svSend">Send request</button>'});
+  sheet({title:L('Call waiter'),body:`${TABLE?'':`<label class="fl">Your table</label>${tablePicker()}`}<div class="pills" style="margin:10px 0">${opts.map((o,i)=>`<button class="${i?'':'on'}" data-o="${esc(o)}">${esc(o)}</button>`).join('')}</div><label class="fl">Note (optional)</label><input class="inp" id="svN" maxlength="160">`,foot:'<button class="btn" id="svSend">'+L('Send request')+'</button>'});
   $$('#sheet [data-o]').forEach(b=>b.onclick=()=>{sel=b.dataset.o;$$('#sheet [data-o]').forEach(x=>x.classList.toggle('on',x===b))});
   $('#svSend').onclick=async()=>{const t=TABLE||($('#tblSel')||{}).value;if(!t){toast('Choose your table');return}const b=$('#svSend');b.disabled=true;
     try{await submit('service',{table:t,request:sel,note:$('#svN').value.trim()});closeSheet(true);toast('Request sent – someone will be with you shortly')}catch(e){b.disabled=false;toast(e.message)}}}
@@ -243,21 +257,21 @@ function openItem(id){const {i,s:sec}=findItem(MENU,id);if(!i){go('/menu/'+MENU.
   const unitPrice=()=>{const base=po.length?+po[st.po].price||0:+i.price||0;return base+Object.values(st.mods).flat().reduce((a,m)=>a+(+m.price||0),0)};
   const body=`<div class="dt"><div class="gal"><div class="imgs">${imgs.length?imgs.map(u=>`<div style="background-image:url('${esc(u)}')"></div>`).join(''):`<div style="display:grid;place-items:center;font-size:44px;font-weight:800;color:var(--hl);aspect-ratio:16/7">${esc(initials(i.name))}</div>`}${i.video?`<video src="${esc(i.video)}" muted playsinline loop autoplay></video>`:''}</div>
       <button class="ov" style="left:12px" data-x aria-label="Back">${ic('back')}</button><button class="ov" style="right:12px" id="shr" aria-label="Share">${ic('share')}</button></div>
-    <h2><span>${esc(i.name)}</span>${LIKES_ON()?`<button class="like ${liked.has(i.id)?'on':''}" id="lk" aria-pressed="${liked.has(i.id)}">${ic('heart','sm')}<b>${likes(i)||''}</b></button>`:''}</h2>
+    <h2><span>${esc(T(i.name))}</span>${LIKES_ON()?`<button class="like ${liked.has(i.id)?'on':''}" id="lk" aria-pressed="${liked.has(i.id)}">${ic('heart','sm')}<b>${likes(i)||''}</b></button>`:''}</h2>
     ${tags(i).length&&C('dz.warn',true)!==false?`<div class="meta">${tags(i).map(x=>`<span class="lb ${/^new$/i.test(x)?'new':''}">${esc(x)}</span>`).join('')}</div>`:''}
-    ${i.desc?`<div class="desc">${esc(i.desc)}</div>`:''}
-    ${i.soldOut?'<div class="err-m">Sold out today</div>':po.length<2?`<div class="price">${money(po.length?po[0].price:i.price)}</div>`:''}
+    ${i.desc?`<div class="desc">${esc(T(i.desc))}</div>`:''}
+    ${i.soldOut?'<div class="err-m">'+L('Sold out today')+'</div>':po.length<2?`<div class="price">${money(po.length?po[0].price:i.price)}</div>`:''}
     ${cal?`<div class="meta"><span class="chipx">${cal} ${esc(unit)}</span>${C('dz.walk',false)?`<span class="chipx">≈ ${Math.max(1,Math.round(cal/4))} min walk</span>`:''}${i.prep?`<span class="chipx">${ic('clock','sm')}${esc(i.prep)} min</span>`:''}</div>`:''}
-    ${(i.allergens||[]).length&&C('dz.warn',true)!==false?`<div class="sec-t">Allergens</div><div class="meta">${i.allergens.map(a=>`<span class="chipx">${ic('warn','sm')}${esc(a)}</span>`).join('')}</div>`:''}
-    ${REVIEWS()?`<div class="revbar" id="rv">${r?`<span class="big">${r.avg.toFixed(1)}</span><div><div class="stars">${'★'.repeat(Math.round(r.avg))}${'☆'.repeat(5-Math.round(r.avg))}</div><small>${r.n} Review${r.n>1?'s':''} ›</small></div><q>${esc(r.last.text||'')}</q>`:`<span style="flex:1">Doesn't have any review yet.</span>`}<button id="addRv">Add Review</button></div>`:''}
-    ${po.length>1?`<div class="sec-t">${can?'Choose an option':'Prices'}</div>${po.map((p,k)=>can?`<label class="opt"><input type="radio" name="po" value="${k}" ${k===0?'checked':''}>${esc(p.name||'Option '+(k+1))}<span class="p">${money(p.price)}</span></label>`:`<div class="line"><span>${esc(p.name||'Option '+(k+1))}</span><b>${money(p.price)}</b></div>`).join('')}`:''}
-    ${can?mods.map(g=>`<div class="sec-t">${esc(/^Extras:/i.test(g.name||'')?'Add extras':(g.name||g.groupName))}</div>${(g.mods||[]).filter(m=>m.on!==false&&m.name).map((m,k)=>`<label class="opt"><input type="checkbox" data-g="${esc(g.id)}" data-k="${k}">${esc(m.name)}<span class="p">${+m.price?'+'+money(m.price):''}</span></label>`).join('')}`).join(''):''}
-    ${can&&(i.removable||[]).length?`<div class="sec-t">Remove ingredients</div>${i.removable.map(x=>`<label class="opt"><input type="checkbox" data-rm="${esc(x)}">No ${esc(x)}</label>`).join('')}`:''}
-    ${nf.length?`<div class="sec-t">Nutrition facts</div>${nf.map(([k,v])=>`<div class="line"><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('')}`:''}
+    ${(i.allergens||[]).length&&C('dz.warn',true)!==false?`<div class="sec-t">${L('Allergens')}</div><div class="meta">${i.allergens.map(a=>`<span class="chipx">${ic('warn','sm')}${esc(a)}</span>`).join('')}</div>`:''}
+    ${REVIEWS()?`<div class="revbar" id="rv">${r?`<span class="big">${r.avg.toFixed(1)}</span><div><div class="stars">${'★'.repeat(Math.round(r.avg))}${'☆'.repeat(5-Math.round(r.avg))}</div><small>${r.n} Review${r.n>1?'s':''} ›</small></div><q>${esc(r.last.text||'')}</q>`:`<span style="flex:1">Doesn't have any review yet.</span>`}<button id="addRv">${L('Add Review')}</button></div>`:''}
+    ${po.length>1?`<div class="sec-t">${can?L('Choose an option'):L('Prices')}</div>${po.map((p,k)=>can?`<label class="opt"><input type="radio" name="po" value="${k}" ${k===0?'checked':''}>${esc(p.name||'Option '+(k+1))}<span class="p">${money(p.price)}</span></label>`:`<div class="line"><span>${esc(p.name||'Option '+(k+1))}</span><b>${money(p.price)}</b></div>`).join('')}`:''}
+    ${can?mods.map(g=>`<div class="sec-t">${esc(/^Extras:/i.test(g.name||'')?L('Add extras'):(g.name||g.groupName))}</div>${(g.mods||[]).filter(m=>m.on!==false&&m.name).map((m,k)=>`<label class="opt"><input type="checkbox" data-g="${esc(g.id)}" data-k="${k}">${esc(T(m.name))}<span class="p">${+m.price?'+'+money(m.price):''}</span></label>`).join('')}`).join(''):''}
+    ${can&&(i.removable||[]).length?`<div class="sec-t">${L('Remove ingredients')}</div>${i.removable.map(x=>`<label class="opt"><input type="checkbox" data-rm="${esc(x)}">No ${esc(x)}</label>`).join('')}`:''}
+    ${nf.length?`<div class="sec-t">${L('Nutrition facts')}</div>${nf.map(([k,v])=>`<div class="line"><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('')}`:''}
     ${nc.length?`<div class="sec-t">Nutritional content</div>${nc.map(x=>`<div class="line"><span>${esc(x.label)}</span><b>${esc(x.value)}</b></div>`).join('')}`:''}
-    ${recs.length?`<div class="sec-t">Goes well with</div><div class="rec">${recs.map(x=>`<button data-rec="${esc(x.id)}"><div class="ph" style="${imgOf(x)?`background-image:url('${esc(imgOf(x))}')`:''}"></div><b>${esc(x.name)}</b><small class="mut">${priceText(x)}</small></button>`).join('')}</div>`:''}
-    ${can&&NOTES()?`<label class="fl" for="nt">Note for the kitchen</label><textarea class="inp" id="nt" maxlength="200" placeholder="Any requests? (optional)"></textarea>`:''}</div>`;
-  const foot=can?`<div style="display:flex;gap:10px;align-items:center"><div class="qty"><button id="qm" aria-label="Less">−</button><b id="qv">1</b><button id="qp" aria-label="More">+</button></div><button class="btn" id="addC" style="flex:1">Add to basket · <span id="tp">${money(unitPrice())}</span></button></div>`:'';
+    ${recs.length?`<div class="sec-t">${L('Goes well with')}</div><div class="rec">${recs.map(x=>`<button data-rec="${esc(x.id)}"><div class="ph" style="${imgOf(x)?`background-image:url('${esc(imgOf(x))}')`:''}"></div><b>${esc(T(x.name))}</b><small class="mut">${priceText(x)}</small></button>`).join('')}</div>`:''}
+    ${can&&NOTES()?`<label class="fl" for="nt">${L('Note for the kitchen')}</label><textarea class="inp" id="nt" maxlength="200" placeholder="Any requests? (optional)"></textarea>`:''}</div>`;
+  const foot=can?`<div style="display:flex;gap:10px;align-items:center"><div class="qty"><button id="qm" aria-label="Less">−</button><b id="qv">1</b><button id="qp" aria-label="More">+</button></div><button class="btn" id="addC" style="flex:1">${L('Add to basket')} · <span id="tp">${money(unitPrice())}</span></button></div>`:'';
   const bd=sheet({title:'',body,foot,cls:'item-sh',onClose:()=>{}});bd.querySelector('header').style.display='none';
   const s=bd;const upd=()=>{$('#qv',s).textContent=st.qty;$('#tp',s).textContent=money(unitPrice()*st.qty)};
   if(can){$('#qm',s).onclick=()=>{st.qty=Math.max(1,st.qty-1);upd()};$('#qp',s).onclick=()=>{st.qty=Math.min(50,st.qty+1);upd()};
@@ -279,14 +293,14 @@ function shareItem(i){const url=location.href;const txt=`${i.name} at ${(D.venue
   $('#cpl',bd).onclick=()=>{try{navigator.clipboard.writeText(url)}catch(e){}toast('Link copied');bd.remove()}}
 function addReview(i){if(!profile){sheet({title:'',center:true,body:`<div style="text-align:center;padding:10px 6px"><div style="font-size:40px">💙</div><h3 style="margin:8px 0">Join us and be valued in our community!</h3><p class="mut">Sign up to leave reviews, like your favourites and check out faster next time.</p><button class="btn" id="su">Sign Up</button><p style="margin:14px 0 0">Already have an account? <a href="#/join" id="lg">Login</a></p></div>`});
     $('#su').onclick=()=>{closeSheet(true);go('join')};$('#lg').onclick=()=>closeSheet(true);return}
-  let rate=0;sheet({title:'Add Review',body:`<p style="text-align:center;font-weight:700;margin:4px 0 10px">${esc(i.name)}</p><div class="qstars" id="rs">${[1,2,3,4,5].map(n=>`<button data-n="${n}" aria-label="${n} stars">★</button>`).join('')}</div><label class="fl" for="rtx">Your review</label><textarea class="inp" id="rtx" maxlength="500" placeholder="What did you think?"></textarea>`,foot:'<button class="btn" id="rsend" disabled>Submit review</button>'});
+  let rate=0;sheet({title:L('Add Review'),body:`<p style="text-align:center;font-weight:700;margin:4px 0 10px">${esc(T(i.name))}</p><div class="qstars" id="rs">${[1,2,3,4,5].map(n=>`<button data-n="${n}" aria-label="${n} stars">★</button>`).join('')}</div><label class="fl" for="rtx">Your review</label><textarea class="inp" id="rtx" maxlength="500" placeholder="What did you think?"></textarea>`,foot:'<button class="btn" id="rsend" disabled>Submit review</button>'});
   $$('#rs button').forEach(b=>b.onclick=()=>{rate=+b.dataset.n;$$('#rs button').forEach(x=>x.classList.toggle('on',+x.dataset.n<=rate));$('#rsend').disabled=false});
   $('#rsend').onclick=async()=>{const b=$('#rsend');b.disabled=true;try{await submit('review',{item:`${i.name} (${MENU.name})`,rate,text:$('#rtx').value.trim(),name:profile.name||'Guest',email:profile.email||''});closeSheet(true);toast('Thanks! Your review has been sent')}catch(e){b.disabled=false;toast(e.message)}}}
 function renderReviews(id){const {i}=findItem(MENU,id);if(!i||!REVIEWS()){go('/menu/'+MENU.id);return}const rs=reviewsOf(i),r=rating(i);const dist=[5,4,3,2,1].map(n=>[n,rs.filter(x=>Math.round(+x.rate)===n).length]);
-  $('.app').innerHTML=`${header('Review',{back:`/menu/${MENU.id}/item/${i.id}`,right:'<span></span>'})}<div class="pg"><div class="bdy"><h2 style="margin:0 0 12px">${esc(i.name)}</h2>
+  $('.app').innerHTML=`${header('Review',{back:`/menu/${MENU.id}/item/${i.id}`,right:'<span></span>'})}<div class="pg"><div class="bdy"><h2 style="margin:0 0 12px">${esc(T(i.name))}</h2>
     ${r?`<div class="card" style="display:flex;gap:18px;align-items:center"><div style="text-align:center"><div style="font-size:40px;font-weight:800">${r.avg.toFixed(1)}</div><div class="stars">${'★'.repeat(Math.round(r.avg))}</div><small class="mut">${r.n} Reviews</small></div><div style="flex:1">${dist.map(([n,c])=>`<div style="display:flex;align-items:center;gap:8px;font-size:12px"><span>${n}★</span><div style="flex:1;height:7px;border-radius:9px;background:var(--bg);overflow:hidden"><i style="display:block;height:100%;width:${rs.length?c/rs.length*100:0}%;background:var(--hl)"></i></div><span>${c}</span></div>`).join('')}</div></div>
     ${rs.map(x=>`<div class="card"><div style="display:flex;justify-content:space-between"><b>${esc(x.customer||'Guest')}</b><small class="mut">${esc(String(x.date||'').slice(0,10))}</small></div><div class="stars">${'★'.repeat(+x.rate||0)}</div>${x.text?`<p style="margin:6px 0 0">${esc(x.text)}</p>`:''}</div>`).join('')}`:`<div class="empty">No reviews yet.</div>`}</div>
-    <div class="sticky-b"><button class="btn" id="arv">Add Review</button></div></div>`;bindHeader($('.app'));$('#arv').onclick=()=>addReview(i)}
+    <div class="sticky-b"><button class="btn" id="arv">${L('Add Review')}</button></div></div>`;bindHeader($('.app'));$('#arv').onclick=()=>addReview(i)}
 
 /* ---------- basket ---------- */
 function saveCart(){sess.set('cart',cart)}
@@ -294,7 +308,7 @@ function addToCart(i,{qty=1,price,opts=[],note='',alcohol=false}){price=price??(
   const ex=cart.find(c=>c.key===key);if(ex)ex.qty+=qty;else cart.push({key,id:i.id,name:i.name,price,qty,opts,note,alcohol,img:imgOf(i)});saveCart();toast(`${i.name} added to basket`);
   const bb=$('#bar');if(bb)bb.outerHTML=basketBar();else $('.app').insertAdjacentHTML('beforeend',basketBar());const nb=$('#bar');if(nb)nb.onclick=()=>go('basket')}
 const cartQty=()=>cart.reduce((a,c)=>a+c.qty,0),cartSub=()=>cart.reduce((a,c)=>a+c.price*c.qty,0);
-function basketBar(){return ordering()&&cart.length?`<button class="bar" id="bar">${ic('bag')}<span class="c">${cartQty()}</span>View basket<span class="t">${money(cartSub())}</span></button>`:''}
+function basketBar(){return ordering()&&cart.length?`<button class="bar" id="bar">${ic('bag')}<span class="c">${cartQty()}</span>${L('View basket')}<span class="t">${money(cartSub())}</span></button>`:''}
 let promo=sess.get('promo',null),tipPct=sess.get('tip',0);
 function charges(){const sub=cartSub();const svc=((cfg.charges||{}).service||[]).reduce((a,c)=>a+sub*(+c.rate||0)/100,0);
   let disc=0;if(promo){if(sub>=(+promo.min||0)){disc=promo.type==='Amount'?Math.min(sub,+promo.off||0):sub*(+promo.off||0)/100}}
@@ -302,15 +316,15 @@ function charges(){const sub=cartSub();const svc=((cfg.charges||{}).service||[])
   return {sub,svc,disc,fee,tip,total:Math.max(0,sub-disc+svc+fee+tip)}}
 function renderBasket(){if(!MENU)MENU=MENUS()[0];const app=$('.app');const ch2=charges();const min=+(F(ORD_ROUTE(),/Minimum Order/)||0);const note=F(ORD_ROUTE(),/Restaurant Note/);
   const tipOn=F(ORD_ROUTE(),/^Accept tip/)===true;const rates=[10,12.5,15];
-  app.innerHTML=`${header('Your basket',{back:MENU?'/menu/'+MENU.id:'',right:'<span></span>'})}<div class="pg"><div class="bdy">
-    ${cart.length?`<div class="card">${cart.map((c,k)=>`<div class="bl">${c.img?`<div style="width:54px;height:54px;border-radius:10px;background:center/cover url('${esc(c.img)}');flex:none"></div>`:''}<div style="flex:1;min-width:0"><b>${esc(c.name)}</b>${c.opts.length?`<div class="mut" style="font-size:13px">${esc(c.opts.join(' · '))}</div>`:''}${c.note?`<div class="mut" style="font-size:13px">“${esc(c.note)}”</div>`:''}<div style="font-weight:700;margin-top:4px">${money(c.price*c.qty)}</div></div>
+  app.innerHTML=`${header(L('Your basket'),{back:MENU?'/menu/'+MENU.id:'',right:'<span></span>'})}<div class="pg"><div class="bdy">
+    ${cart.length?`<div class="card">${cart.map((c,k)=>`<div class="bl">${c.img?`<div style="width:54px;height:54px;border-radius:10px;background:center/cover url('${esc(c.img)}');flex:none"></div>`:''}<div style="flex:1;min-width:0"><b>${esc(T(c.name))}</b>${c.opts.length?`<div class="mut" style="font-size:13px">${esc(c.opts.join(' · '))}</div>`:''}${c.note?`<div class="mut" style="font-size:13px">“${esc(c.note)}”</div>`:''}<div style="font-weight:700;margin-top:4px">${money(c.price*c.qty)}</div></div>
       <div class="q"><button data-d="-1" data-k="${k}" aria-label="Less">−</button><b>${c.qty}</b><button data-d="1" data-k="${k}" aria-label="More">+</button></div></div>`).join('')}</div>
       ${note?`<div class="card" style="font-size:14px">${ic('info','sm')} ${esc(note)}</div>`:''}
-      <div class="card"><label class="fl" style="margin-top:0">Promo code</label><div style="display:flex;gap:8px"><input class="inp" id="pc" placeholder="Enter code" value="${esc(promo?promo.code:'')}" style="text-transform:uppercase"><button class="btn sm" id="pcA">${promo?'Remove':'Apply'}</button></div><div id="pcM"></div></div>
-      ${tipOn?`<div class="card"><b>Add a tip</b><div class="pills" style="margin-top:10px">${[0,...rates].map(r=>`<button data-tip="${r}" class="${tipPct===r?'on':''}">${r?r+'%':'No tip'}</button>`).join('')}</div></div>`:''}
-      <div class="card"><div class="line"><span>Subtotal</span><span>${money(ch2.sub)}</span></div>${ch2.disc?`<div class="line"><span>Discount (${esc(promo.code)})</span><span>−${money(ch2.disc)}</span></div>`:''}${ch2.svc?`<div class="line"><span>Service charge</span><span>${money(ch2.svc)}</span></div>`:''}${ch2.fee?`<div class="line"><span>Delivery fee</span><span>${money(ch2.fee)}</span></div>`:''}${ch2.tip?`<div class="line"><span>Tip</span><span>${money(ch2.tip)}</span></div>`:''}<div class="line tot"><span>Total</span><span>${money(ch2.total)}</span></div>
-        ${min&&ch2.sub<min?`<div class="err-m">Minimum order is ${money(min)}. Add ${money(min-ch2.sub)} more.</div>`:''}</div>`:`<div class="empty">${ic('bag')}<p>Your basket is empty.</p><button class="btn sec" data-back-menu>Browse the menu</button></div>`}
-    </div>${cart.length?`<div class="sticky-b"><button class="btn" id="toCo" ${min&&ch2.sub<min?'disabled':''}>Go to checkout · ${money(ch2.total)}</button></div>`:''}</div>`;
+      <div class="card"><label class="fl" style="margin-top:0">${L('Promo code')}</label><div style="display:flex;gap:8px"><input class="inp" id="pc" placeholder="Enter code" value="${esc(promo?promo.code:'')}" style="text-transform:uppercase"><button class="btn sm" id="pcA">${promo?L('Remove'):L('Apply')}</button></div><div id="pcM"></div></div>
+      ${tipOn?`<div class="card"><b>${L('Add a tip')}</b><div class="pills" style="margin-top:10px">${[0,...rates].map(r=>`<button data-tip="${r}" class="${tipPct===r?'on':''}">${r?r+'%':L('No tip')}</button>`).join('')}</div></div>`:''}
+      <div class="card"><div class="line"><span>${L('Subtotal')}</span><span>${money(ch2.sub)}</span></div>${ch2.disc?`<div class="line"><span>Discount (${esc(promo.code)})</span><span>−${money(ch2.disc)}</span></div>`:''}${ch2.svc?`<div class="line"><span>${L('Service charge')}</span><span>${money(ch2.svc)}</span></div>`:''}${ch2.fee?`<div class="line"><span>${L('Delivery fee')}</span><span>${money(ch2.fee)}</span></div>`:''}${ch2.tip?`<div class="line"><span>${L('Tip')}</span><span>${money(ch2.tip)}</span></div>`:''}<div class="line tot"><span>${L('Total')}</span><span>${money(ch2.total)}</span></div>
+        ${min&&ch2.sub<min?`<div class="err-m">Minimum order is ${money(min)}. Add ${money(min-ch2.sub)} more.</div>`:''}</div>`:`<div class="empty">${ic('bag')}<p>${L('Your basket is empty.')}</p><button class="btn sec" data-back-menu>${L('Browse the menu')}</button></div>`}
+    </div>${cart.length?`<div class="sticky-b"><button class="btn" id="toCo" ${min&&ch2.sub<min?'disabled':''}>${L('Go to checkout')} · ${money(ch2.total)}</button></div>`:''}</div>`;
   bindHeader(app);$$('[data-back-menu]',app).forEach(b=>b.onclick=()=>go(MENU?'/menu/'+MENU.id:''));
   $$('.bl [data-d]',app).forEach(b=>b.onclick=()=>{const c=cart[+b.dataset.k];c.qty+=+b.dataset.d;if(c.qty<1)cart.splice(+b.dataset.k,1);saveCart();renderBasket()});
   $$('[data-tip]',app).forEach(b=>b.onclick=()=>{tipPct=+b.dataset.tip;sess.set('tip',tipPct);renderBasket()});
@@ -327,26 +341,26 @@ function renderCheckout(){if(!cart.length){go('basket');return}const app=$('.app
   const p=profile||{};
   const venue=esc((D.venue||{}).name||D.site.name);const nItems=cart.reduce((a,c)=>a+c.qty,0);
   // compact, one-screen checkout for phones: only what's needed is visible, extras open on tap
-  app.innerHTML=`${header('Checkout',{back:'basket',right:'<span></span>'})}<div class="pg co"><div class="bdy">
+  app.innerHTML=`${header(L('Checkout'),{back:'basket',right:'<span></span>'})}<div class="pg co"><div class="bdy">
     <div class="card co-top">
       ${mode==='dine'?`<div class="co-tbl">${TABLE?`<span class="tbl-badge">${ic('pin','sm')}${esc(TABLE)}</span>`:tablePicker()}</div>
-        <div class="co-guests"><span>Guests</span><div class="qty sm"><button type="button" data-g="-1" aria-label="Fewer guests">−</button><b id="gcv">2</b><button type="button" data-g="1" aria-label="More guests">+</button></div><input type="hidden" id="gc" value="2"></div>`
+        <div class="co-guests"><span>${L('Guests')}</span><div class="qty sm"><button type="button" data-g="-1" aria-label="Fewer guests">−</button><b id="gcv">2</b><button type="button" data-g="1" aria-label="More guests">+</button></div><input type="hidden" id="gc" value="2"></div>`
        :`<b>${typeLabel()}</b>${mode==='delivery'&&dTime?`<span class="mut" style="font-size:13px">About ${esc(dTime)} min</span>`:''}`}
     </div>
     <div class="card co-sec">
-      <div class="co-row2"><input class="inp" id="cn" autocomplete="name" placeholder="Your name${mode==='dine'?'':' *'}" aria-label="Name" value="${esc(p.name||'')}">
-        <input class="inp" id="cp" type="tel" autocomplete="tel" placeholder="Phone${mode==='dine'?'':' *'}" aria-label="Phone" value="${esc(p.phone||'')}"></div>
+      <div class="co-row2"><input class="inp" id="cn" autocomplete="name" placeholder="${L('Your name')}${mode==='dine'?'':' *'}" aria-label="Name" value="${esc(p.name||'')}">
+        <input class="inp" id="cp" type="tel" autocomplete="tel" placeholder="${L('Phone')}${mode==='dine'?'':' *'}" aria-label="Phone" value="${esc(p.phone||'')}"></div>
       ${mode==='delivery'?`<textarea class="inp co-addr" id="ca" autocomplete="street-address" placeholder="Delivery address *" aria-label="Delivery address"></textarea>`:''}
       <input class="inp ${p.email?'':'hidden'}" id="ce" type="email" autocomplete="email" placeholder="Email for your receipt" aria-label="Email" value="${esc(p.email||'')}">
       <textarea class="inp hidden co-note" id="on" maxlength="300" placeholder="Note for the kitchen (allergies, requests…)" aria-label="Order note"></textarea>
-      <div class="co-links">${p.email?'':`<button type="button" class="co-more" data-more="ce">${ic('plus','sm')}Email receipt</button>`}${NOTES()?`<button type="button" class="co-more" data-more="on">${ic('plus','sm')}Add a note</button>`:''}</div>
+      <div class="co-links">${p.email?'':`<button type="button" class="co-more" data-more="ce">${ic('plus','sm')}${L('Email receipt')}</button>`}${NOTES()?`<button type="button" class="co-more" data-more="on">${ic('plus','sm')}${L('Add a note')}</button>`:''}</div>
     </div>
     ${pre?`<div class="card co-sec"><div class="seg co-seg"><button class="on" data-when="asap">As soon as possible</button><button data-when="later">Schedule</button></div><input class="inp hidden" id="wt" type="datetime-local" style="margin-top:8px" aria-label="Time"></div>`:''}
-    ${pay.length?`<div class="card co-sec"><div class="co-lbl">${mode==='dine'?'Pay at the table':'Payment'}</div><div class="co-pay">${pay.map((x,k)=>`<label><input type="radio" name="pay" value="${esc(x)}" ${k?'':'checked'}><span>${x==='Cash'?'💷 Cash':'💳 Card'}</span></label>`).join('')}</div></div>`:''}
+    ${pay.length?`<div class="card co-sec"><div class="co-lbl">${mode==='dine'?L('Pay at the table'):L('Payment')}</div><div class="co-pay">${pay.map((x,k)=>`<label><input type="radio" name="pay" value="${esc(x)}" ${k?'':'checked'}><span>${x==='Cash'?'💷 '+L('Cash'):'💳 '+L('Card')}</span></label>`).join('')}</div></div>`:''}
     ${age?`<label class="check co-check"><input type="checkbox" id="age">I'm 18 or over (your order includes alcohol)</label>`:''}
     <p class="co-fine">Your details go to ${venue} only to prepare this order.</p>
     <div id="coErr"></div></div>
-    <div class="sticky-b"><div class="co-sum"><span>${nItems} item${nItems>1?'s':''}</span><a href="#/basket">Edit basket</a></div><button class="btn" id="place">Place order · ${money(charges().total)}</button></div></div>`;
+    <div class="sticky-b"><div class="co-sum"><span>${nItems} item${nItems>1?'s':''}</span><a href="#/basket">${L('Edit basket')}</a></div><button class="btn" id="place">${L('Place order')} · ${money(charges().total)}</button></div></div>`;
   bindHeader(app);$$('[data-when]',app).forEach(b=>b.onclick=()=>{$$('[data-when]',app).forEach(x=>x.classList.toggle('on',x===b));$('#wt').classList.toggle('hidden',b.dataset.when!=='later')});
   $$('[data-g]',app).forEach(b=>b.onclick=()=>{const g=$('#gc');g.value=Math.min(30,Math.max(1,+g.value+ +b.dataset.g));$('#gcv').textContent=g.value});
   $$('[data-more]',app).forEach(b=>b.onclick=()=>{const el=document.getElementById(b.dataset.more);el.classList.remove('hidden');el.focus();b.remove()});
@@ -360,20 +374,20 @@ function renderCheckout(){if(!cart.length){go('basket');return}const app=$('.app
       subtotal:c2.sub,service:c2.svc,discount:c2.disc,tip:c2.tip,fee:c2.fee,total:c2.total,promo:promo?promo.code:'',payment:(($('input[name=pay]:checked')||{}).value)||'',when,notes:(($('#on')||{}).value||'').trim()};
     try{const r=await submit('order',payload);const orders=store.get('orders',[]);orders.unshift({ref:r.ref,at:Date.now(),total:c2.total,type:typeLabel(),table:payload.table});store.set('orders',orders.slice(0,20));
       if(cust.name||cust.email){profile={...(profile||{}),...cust};store.set('profile',profile)}cart=[];saveCart();promo=null;sess.set('promo',null);location.replace('#/order/'+r.ref)}
-    catch(x){b.disabled=false;b.textContent='Place order';e(x.message)}}}
+    catch(x){b.disabled=false;b.textContent=L('Place order');e(x.message)}}}
 let orderTimer=null;
 async function renderOrder(ref){clearInterval(orderTimer);const app=$('.app');const mine=store.get('orders',[]).find(o=>o.ref===ref)||{};
   const draw=st=>{const s=(st&&st.status)||'Sent';const flow=['Sent','Waiting','In Progress',mine.type==='Pick-Up'?'Ready for Pickup':'Ready','Closed'];const idx=s==='Sent'?0:Math.max(1,flow.findIndex(x=>x.toLowerCase()===s.toLowerCase()));
     const cancelled=/cancel|refund/i.test(s);const canCancel=F(ORD_ROUTE(),/Cancel Order/)===true&&(s==='Sent'||s==='Waiting');
-    app.innerHTML=`${header('Your order',{back:MENU?'/menu/'+MENU.id:'',right:'<span></span>'})}<div class="pg"><div class="bdy">
-      <div class="card" style="text-align:center"><div style="font-size:40px">${cancelled?'✕':idx>=3?'✓':'🧾'}</div><h2 style="margin:6px 0">${cancelled?'Order cancelled':idx>=3?'Your order is ready':'Order received'}</h2><p class="mut" style="margin:0">Reference <b>${esc(ref)}</b>${st&&st.id?` · Order ${esc(st.id)}`:''}${mine.table?` · ${esc(mine.table)}`:''}</p></div>
-      ${cancelled?'':`<div class="card"><div class="steps">${[['Sent','Sent to the venue'],['Waiting','Waiting to be accepted'],['In Progress','Being prepared'],[flow[3],mine.type==='Pick-Up'?'Ready to collect':'Ready'],['Closed','Completed']].map(([k,l],n)=>`<div class="step ${n<=idx?'done':''} ${n===idx?'cur':''}"><i>${n<idx?'✓':n+1}</i><div><b>${l}</b></div></div>`).join('')}</div><p class="mut" style="font-size:13px;margin:6px 0 0">This page updates automatically.</p></div>`}
-      ${canCancel?`<button class="btn sec" id="cxl">Cancel order</button>`:''}<button class="btn sec" style="margin-top:10px" data-back-menu>Back to menu</button></div></div>`;
+    app.innerHTML=`${header(L('Your order'),{back:MENU?'/menu/'+MENU.id:'',right:'<span></span>'})}<div class="pg"><div class="bdy">
+      <div class="card" style="text-align:center"><div style="font-size:40px">${cancelled?'✕':idx>=3?'✓':'🧾'}</div><h2 style="margin:6px 0">${cancelled?'Order cancelled':idx>=3?L('Your order is ready'):L('Order received')}</h2><p class="mut" style="margin:0">Reference <b>${esc(ref)}</b>${st&&st.id?` · Order ${esc(st.id)}`:''}${mine.table?` · ${esc(mine.table)}`:''}</p></div>
+      ${cancelled?'':`<div class="card"><div class="steps">${[['Sent','Sent to the venue'],['Waiting','Waiting to be accepted'],['In Progress','Being prepared'],[flow[3],mine.type==='Pick-Up'?'Ready to collect':'Ready'],['Closed','Completed']].map(([k,l],n)=>`<div class="step ${n<=idx?'done':''} ${n===idx?'cur':''}"><i>${n<idx?'✓':n+1}</i><div><b>${L(l)}</b></div></div>`).join('')}</div><p class="mut" style="font-size:13px;margin:6px 0 0">This page updates automatically.</p></div>`}
+      ${canCancel?`<button class="btn sec" id="cxl">Cancel order</button>`:''}<button class="btn sec" style="margin-top:10px" data-back-menu>${L('Back to menu')}</button></div></div>`;
     bindHeader(app);$$('[data-back-menu]',app).forEach(b=>b.onclick=()=>go(MENU?'/menu/'+MENU.id:''));
     const cx=$('#cxl');if(cx)cx.onclick=async()=>{cx.disabled=true;try{await submit('service',{table:mine.table||'',request:'Cancel order '+ref,note:'Guest asked to cancel this order'});toast('Cancellation requested')}catch(x){cx.disabled=false;toast(x.message)}}};
   draw(null);const tick=async()=>{try{const st=await rpc('pq_guest_order',{p_site:SITE,p_ref:ref});if(location.hash.includes(ref))draw(st)}catch(e){}};tick();orderTimer=setInterval(()=>{if(!location.hash.includes('/order/'))return clearInterval(orderTimer);tick()},10000)}
 function renderMyOrders(){const os=store.get('orders',[]);const app=$('.app');
-  app.innerHTML=`${header('My orders',{right:'<span></span>'})}<div class="pg"><div class="bdy">${os.length?os.map(o=>`<button class="row card" data-o="${esc(o.ref)}" style="border:0"><div style="flex:1"><b>${esc(o.type||'Order')} · ${esc(o.ref)}</b><div class="mut" style="font-size:13px">${new Date(o.at).toLocaleString('en-GB',{dateStyle:'medium',timeStyle:'short'})}${o.table?' · '+esc(o.table):''}</div></div><b>${money(o.total)}</b>${ic('chev')}</button>`).join(''):'<div class="empty">No orders yet.</div>'}</div></div>`;
+  app.innerHTML=`${header(L('My orders'),{right:'<span></span>'})}<div class="pg"><div class="bdy">${os.length?os.map(o=>`<button class="row card" data-o="${esc(o.ref)}" style="border:0"><div style="flex:1"><b>${esc(o.type||'Order')} · ${esc(o.ref)}</b><div class="mut" style="font-size:13px">${new Date(o.at).toLocaleString('en-GB',{dateStyle:'medium',timeStyle:'short'})}${o.table?' · '+esc(o.table):''}</div></div><b>${money(o.total)}</b>${ic('chev')}</button>`).join(''):'<div class="empty">No orders yet.</div>'}</div></div>`;
   bindHeader(app);$$('[data-o]',app).forEach(b=>b.onclick=()=>go('order/'+b.dataset.o))}
 
 /* ---------- feedback ---------- */
@@ -390,7 +404,7 @@ function renderFeedback(){const f=forms()[0];if(!f){go('');return}const app=$('.
     $$('button',g).forEach(x=>x.classList.toggle('on',g.classList.contains('qstars')?+x.dataset.v<=+b.dataset.v:x===b));chk()});
   app.addEventListener('input',e=>{if(e.target.matches('input[data-q]'))ans[e.target.dataset.q]=e.target.value;chk()});$('#ftos').onchange=chk;
   $('#fsend').onclick=async()=>{const b=$('#fsend');b.disabled=true;try{await submit('feedback',{form:f.name,table:TABLE||'—',answers:[...qs.map(x=>({q:x.q,a:ans[x.k]||'—'})),{q:'Name',a:$('#fn').value.trim()},{q:'Email',a:$('#fe').value.trim()}]});
-    app.innerHTML=`${header('Thank you',{right:'<span></span>'})}<div class="err"><div><div style="font-size:48px">🙏</div><h1>Thank you!</h1><p class="mut">Your feedback has been sent to ${esc((D.venue||{}).name||D.site.name)}.</p><button class="btn" data-back-menu style="margin-top:12px">Back to menu</button></div></div>`;bindHeader(app);$$('[data-back-menu]',app).forEach(x=>x.onclick=()=>go(MENU?'/menu/'+MENU.id:''))}
+    app.innerHTML=`${header('Thank you',{right:'<span></span>'})}<div class="err"><div><div style="font-size:48px">🙏</div><h1>Thank you!</h1><p class="mut">Your feedback has been sent to ${esc((D.venue||{}).name||D.site.name)}.</p><button class="btn" data-back-menu style="margin-top:12px">${L('Back to menu')}</button></div></div>`;bindHeader(app);$$('[data-back-menu]',app).forEach(x=>x.onclick=()=>go(MENU?'/menu/'+MENU.id:''))}
     catch(x){b.disabled=false;toast(x.message)}}}
 
 /* ---------- venue info ---------- */
@@ -440,6 +454,8 @@ async function boot(){const app=$('.app');app.innerHTML='<div class="load"><div 
   cfg=D.cfg||{};const o=Q.get('o');mode=Q.get('v')==='1'?'view':o==='pickup'||o==='delivery'||o==='tablet'?o:'dine';
   if(mode==='dine'&&!ordering())mode='view';
   if(mode==='view'&&Q.get('t'))TABLE=tableName(Q.get('t'));
+  {const ls=availLangs();const saved=store.get('lang',null);const phone=LANG_CODES[(navigator.language||'').slice(0,2).toLowerCase()];
+   setLang(ls.includes(saved)?saved:ls.includes(phone)?phone:defLang())}
   document.title=`${(D.venue||{}).name||D.site.name} | Menu`;theme();cookies();
   if(Q.get('p')==='reservation'){go('info');toast('Please call the venue to book a table');}
   const m=Q.get('m');if(m&&!location.hash){location.replace('#/menu/'+m);return route()}

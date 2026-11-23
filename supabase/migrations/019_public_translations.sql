@@ -1,0 +1,2 @@
+-- 019 (applied 24 Nov 2026): pq_public_menu also returns 'translations' (st.data->'translations': { "<Language>": { "<English>": "<translation>" } })
+-- so the guest menu can switch language. Full function text is in the database migration history; only the 'translations' line was added.
