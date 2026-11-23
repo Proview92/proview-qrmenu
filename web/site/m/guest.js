@@ -72,8 +72,8 @@ const liveSecs=m=>(m?.sections||[]).filter(s=>s.on!==false&&(s.items||[]).some(i
 const liveItems=s=>(s.items||[]).filter(i=>i.on!==false);
 const findItem=(m,id)=>{for(const s of m.sections||[])for(const i of s.items||[])if(i.id===id)return {s,i};return {}};
 const reviewsOf=i=>(D.reviews||[]).filter(r=>{const n=String(r.item||'');return n===i.name||n.startsWith(i.name+' (')});
-const rating=i=>{const r=reviewsOf(i);return r.length?{avg:r.reduce((a,b)=>a+(+b.rate||0),0)/r.length,n:r.length,last:r[0]}:null};
-const likes=i=>Math.max(0,(+(D.likes||{})[i.id]||0)+(liked.has(i.id)&&!store.get('likedSent',[]).includes(i.id)?1:0));
+const rating=i=>{if(!REVIEWS())return null;const r=reviewsOf(i);return r.length?{avg:r.reduce((a,b)=>a+(+b.rate||0),0)/r.length,n:r.length,last:r[0]}:null};
+const likes=i=>!LIKES_ON()?0:Math.max(0,(+(D.likes||{})[i.id]||0)+(liked.has(i.id)&&!store.get('likedSent',[]).includes(i.id)?1:0));
 const imgOf=i=>i.img||(i.imgs||[])[0]||'';
 const secImg=s=>s.img||(liveItems(s).find(imgOf)||{}).img||'';
 const initials=s=>String(s).split(/\s+/).filter(Boolean).map(w=>w[0]).join('').slice(0,2).toUpperCase();
@@ -81,6 +81,9 @@ const tags=i=>[...(i.badges||[]),...(i.labels||[])];
 const avoidable=()=>{const set=new Set();MENUS().forEach(m=>liveSecs(m).forEach(s=>liveItems(s).forEach(i=>[...(i.allergens||[]),...(i.labels||[])].forEach(x=>set.add(x)))));return [...set].sort()};
 const isAlcohol=(i,s)=>/alcohol/i.test([...(i.labels||[]),...(i.allergens||[])].join(' '))||/cocktail|wine|beer|gin|vodka|whisk|rum|cognac|shot|liqu|champagne|prosecco|spirit|lager|cider/i.test((s&&s.name)||'');
 const canOrder=()=>['dine','pickup','delivery','tablet'].includes(mode);
+// Engagement settings (back office → Guests & Engagement → Settings): switches saved as 'engagement-settings[--general]|<label>|n'
+const FE=re=>{const a=F('engagement-settings--general',re);return a!==undefined?a:F('engagement-settings',re)};
+const REVIEWS=()=>FE(/^Enable Review/)!==false,LIKES_ON=()=>FE(/^Enable Like/)!==false;
 const ordering=()=>{if(!canOrder())return false;if(mode==='dine'){const v=F('orders-settings--dinein',/^Enable Ordering$/);return v!==false}
   if(mode==='delivery'){const v=F('orders-settings--delivery',/^Enable Ordering$/,1);return v!==false}if(mode==='pickup'){const v=F('orders-settings--delivery',/^Enable Ordering$/,2);return v!==false}return true};
 
@@ -136,7 +139,7 @@ function card(i,s,grid){const r=rating(i),lk=likes(i),im=imgOf(i);const lbl=C('d
     ${ordering()&&!i.soldOut?`<button class="add" data-quick="${esc(i.id)}" aria-label="Add ${esc(i.name)}">${ic('plus','sm')}</button>`:''}</div>`}
 function renderMenu(){const m=MENU;if(!m){pickMenu();return}const V=D.venue||{};const app=$('.app');const grid=C('dz.style','list')==='grid';const ts=C('dz.title','both');
   const secs=liveSecs(m);const others=MENUS();
-  const mostLiked=F('engagement-settings--general',/Most Liked/)===true?[...secs.flatMap(liveItems)].filter(i=>likes(i)>0).sort((a,b)=>likes(b)-likes(a)).slice(0,5):[];
+  const mostLiked=LIKES_ON()&&FE(/Most Liked/)===true?[...secs.flatMap(liveItems)].filter(i=>likes(i)>0).sort((a,b)=>likes(b)-likes(a)).slice(0,5):[];
   const body=[mostLiked.length&&!term&&!filt.avoid.length?{id:'__liked',name:'Most Liked',items:mostLiked}:null,...secs].filter(Boolean).map(s=>{const its=sortItems((s.items||[]).filter(i=>i.on!==false&&visible(i)));if(!its.length)return '';const hero=s.id==='__liked'?'':secImg(s);
     return `<section class="sec" id="s-${esc(s.id)}" data-sec="${esc(s.id)}">${hero&&ts!=='txt'?`<div class="hero" style="background-image:url('${esc(hero)}')"></div>`:''}${ts!=='img'||!hero?`<h2>${esc(s.name)}</h2>`:''}${s.desc?`<p class="sd">${esc(s.desc)}</p>`:''}
       <div class="items ${grid?'grid':''}">${its.map(i=>card(i,s,grid)).join('')}</div></section>`}).join('');
@@ -195,7 +198,7 @@ function openPromo(p,stack){promoMark(p.id);const bd=document.createElement('div
 
 /* ---------- filter ---------- */
 function openFilter(){const av=avoidable();let st={...filt,avoid:[...filt.avoid]};
-  const draw=()=>`<div class="grp"><button data-tg="srt">Sort By ${ic('chevd','sm')}</button><div id="srt">${[['rec','Recommended (Default)'],['top','Top Rated'],['liked','Most Liked']].map(([k,l])=>`<label class="opt"><input type="radio" name="srt" value="${k}" ${st.sort===k?'checked':''}>${l}</label>`).join('')}</div></div>
+  const draw=()=>`<div class="grp"><button data-tg="srt">Sort By ${ic('chevd','sm')}</button><div id="srt">${[['rec','Recommended (Default)'],...(REVIEWS()?[['top','Top Rated']]:[]),...(LIKES_ON()?[['liked','Most Liked']]:[])].map(([k,l])=>`<label class="opt"><input type="radio" name="srt" value="${k}" ${st.sort===k?'checked':''}>${l}</label>`).join('')}</div></div>
     ${av.length?`<div class="grp"><button data-tg="avd">Ingredients you avoid ${ic('chevd','sm')}</button><div id="avd"><p class="hint">Items containing any selected ingredient are hidden from the menu.</p>${av.map(a=>`<label class="opt"><input type="checkbox" value="${esc(a)}" ${st.avoid.includes(a)?'checked':''}>${esc(a)}</label>`).join('')}</div></div>`:''}`;
   sheet({title:'Filter',left:'<button class="l" id="clr">Clear All</button>',body:draw(),foot:'<button class="btn" id="apply">Filter</button>'});
   const s=$('#sheet');s.addEventListener('change',e=>{if(e.target.name==='srt')st.sort=e.target.value;else if(e.target.type==='checkbox'){st.avoid=$$('#avd input:checked',s).map(x=>x.value)}});
@@ -235,13 +238,13 @@ function openItem(id){const {i,s:sec}=findItem(MENU,id);if(!i){go('/menu/'+MENU.
   const unitPrice=()=>{const base=po.length?+po[st.po].price||0:+i.price||0;return base+Object.values(st.mods).flat().reduce((a,m)=>a+(+m.price||0),0)};
   const body=`<div class="dt"><div class="gal"><div class="imgs">${imgs.length?imgs.map(u=>`<div style="background-image:url('${esc(u)}')"></div>`).join(''):`<div style="display:grid;place-items:center;font-size:44px;font-weight:800;color:var(--hl);aspect-ratio:16/7">${esc(initials(i.name))}</div>`}${i.video?`<video src="${esc(i.video)}" muted playsinline loop autoplay></video>`:''}</div>
       <button class="ov" style="left:12px" data-x aria-label="Back">${ic('back')}</button><button class="ov" style="right:12px" id="shr" aria-label="Share">${ic('share')}</button></div>
-    <h2><span>${esc(i.name)}</span><button class="like ${liked.has(i.id)?'on':''}" id="lk" aria-pressed="${liked.has(i.id)}">${ic('heart','sm')}<b>${likes(i)||''}</b></button></h2>
+    <h2><span>${esc(i.name)}</span>${LIKES_ON()?`<button class="like ${liked.has(i.id)?'on':''}" id="lk" aria-pressed="${liked.has(i.id)}">${ic('heart','sm')}<b>${likes(i)||''}</b></button>`:''}</h2>
     ${tags(i).length&&C('dz.warn',true)!==false?`<div class="meta">${tags(i).map(x=>`<span class="lb ${/^new$/i.test(x)?'new':''}">${esc(x)}</span>`).join('')}</div>`:''}
     ${i.desc?`<div class="desc">${esc(i.desc)}</div>`:''}
     ${i.soldOut?'<div class="err-m">Sold out today</div>':po.length<2?`<div class="price">${money(po.length?po[0].price:i.price)}</div>`:''}
     ${cal?`<div class="meta"><span class="chipx">${cal} ${esc(unit)}</span>${C('dz.walk',false)?`<span class="chipx">≈ ${Math.max(1,Math.round(cal/4))} min walk</span>`:''}${i.prep?`<span class="chipx">${ic('clock','sm')}${esc(i.prep)} min</span>`:''}</div>`:''}
     ${(i.allergens||[]).length&&C('dz.warn',true)!==false?`<div class="sec-t">Allergens</div><div class="meta">${i.allergens.map(a=>`<span class="chipx">${ic('warn','sm')}${esc(a)}</span>`).join('')}</div>`:''}
-    <div class="revbar" id="rv">${r?`<span class="big">${r.avg.toFixed(1)}</span><div><div class="stars">${'★'.repeat(Math.round(r.avg))}${'☆'.repeat(5-Math.round(r.avg))}</div><small>${r.n} Review${r.n>1?'s':''} ›</small></div><q>${esc(r.last.text||'')}</q>`:`<span style="flex:1">Doesn't have any review yet.</span>`}<button id="addRv">Add Review</button></div>
+    ${REVIEWS()?`<div class="revbar" id="rv">${r?`<span class="big">${r.avg.toFixed(1)}</span><div><div class="stars">${'★'.repeat(Math.round(r.avg))}${'☆'.repeat(5-Math.round(r.avg))}</div><small>${r.n} Review${r.n>1?'s':''} ›</small></div><q>${esc(r.last.text||'')}</q>`:`<span style="flex:1">Doesn't have any review yet.</span>`}<button id="addRv">Add Review</button></div>`:''}
     ${po.length>1?`<div class="sec-t">${can?'Choose an option':'Prices'}</div>${po.map((p,k)=>can?`<label class="opt"><input type="radio" name="po" value="${k}" ${k===0?'checked':''}>${esc(p.name||'Option '+(k+1))}<span class="p">${money(p.price)}</span></label>`:`<div class="line"><span>${esc(p.name||'Option '+(k+1))}</span><b>${money(p.price)}</b></div>`).join('')}`:''}
     ${can?mods.map(g=>`<div class="sec-t">${esc(g.name||g.groupName)}</div>${(g.mods||[]).filter(m=>m.on!==false&&m.name).map((m,k)=>`<label class="opt"><input type="checkbox" data-g="${esc(g.id)}" data-k="${k}">${esc(m.name)}<span class="p">${+m.price?'+'+money(m.price):''}</span></label>`).join('')}`).join(''):''}
     ${can&&(i.removable||[]).length?`<div class="sec-t">Remove ingredients</div>${i.removable.map(x=>`<label class="opt"><input type="checkbox" data-rm="${esc(x)}">No ${esc(x)}</label>`).join('')}`:''}
@@ -256,11 +259,11 @@ function openItem(id){const {i,s:sec}=findItem(MENU,id);if(!i){go('/menu/'+MENU.
     s.addEventListener('change',e=>{const t=e.target;if(t.name==='po')st.po=+t.value;else if(t.dataset.g){const g=mods.find(x=>x.id===t.dataset.g);st.mods[g.id]=$$(`[data-g="${t.dataset.g}"]:checked`,s).map(c=>g.mods.filter(m=>m.on!==false&&m.name)[+c.dataset.k])}else if(t.dataset.rm!==undefined)st.rm=$$('[data-rm]:checked',s).map(c=>c.dataset.rm);upd()});
     $('#addC',s).onclick=()=>{st.note=$('#nt',s).value.trim();const opts=[...(po.length>1?[po[st.po].name]:[]),...Object.values(st.mods).flat().map(m=>m.name),...st.rm.map(x=>'No '+x)];
       addToCart(i,{qty:st.qty,price:unitPrice(),opts,note:st.note,alcohol:isAlcohol(i,sec)});closeSheet()}}
-  $('#lk',s).onclick=async()=>{const on=!liked.has(i.id);if(on)liked.add(i.id);else liked.delete(i.id);store.set('liked',[...liked]);$('#lk',s).classList.toggle('on',on);$('#lk b',s).textContent=likes(i)||'';
+  if($('#lk',s))$('#lk',s).onclick=async()=>{const on=!liked.has(i.id);if(on)liked.add(i.id);else liked.delete(i.id);store.set('liked',[...liked]);$('#lk',s).classList.toggle('on',on);$('#lk b',s).textContent=likes(i)||'';
     try{await submit('like',{item:i.id,name:i.name,on})}catch(e){}};
   $('#shr',s).onclick=()=>shareItem(i);
-  $('#rv',s).onclick=e=>{if(e.target.closest('#addRv'))return;if(r){closeSheet(true);go(`/menu/${MENU.id}/item/${i.id}/reviews`)}};
-  $('#addRv',s).onclick=e=>{e.stopPropagation();addReview(i)};
+  if($('#rv',s))$('#rv',s).onclick=e=>{if(e.target.closest('#addRv'))return;if(r){closeSheet(true);go(`/menu/${MENU.id}/item/${i.id}/reviews`)}};
+  if($('#addRv',s))$('#addRv',s).onclick=e=>{e.stopPropagation();addReview(i)};
   $$('[data-rec]',s).forEach(b=>b.onclick=()=>{closeSheet(true);history.replaceState(null,'',`#/menu/${MENU.id}/item/${b.dataset.rec}`);openItem(b.dataset.rec)})}
 function shareItem(i){const url=location.href;const txt=`${i.name} at ${(D.venue||{}).name||D.site.name}`;
   if(navigator.share){navigator.share({title:txt,url}).catch(()=>{});return}
@@ -274,7 +277,7 @@ function addReview(i){if(!profile){sheet({title:'',center:true,body:`<div style=
   let rate=0;sheet({title:'Add Review',body:`<p style="text-align:center;font-weight:700;margin:4px 0 10px">${esc(i.name)}</p><div class="qstars" id="rs">${[1,2,3,4,5].map(n=>`<button data-n="${n}" aria-label="${n} stars">★</button>`).join('')}</div><label class="fl" for="rtx">Your review</label><textarea class="inp" id="rtx" maxlength="500" placeholder="What did you think?"></textarea>`,foot:'<button class="btn" id="rsend" disabled>Submit review</button>'});
   $$('#rs button').forEach(b=>b.onclick=()=>{rate=+b.dataset.n;$$('#rs button').forEach(x=>x.classList.toggle('on',+x.dataset.n<=rate));$('#rsend').disabled=false});
   $('#rsend').onclick=async()=>{const b=$('#rsend');b.disabled=true;try{await submit('review',{item:`${i.name} (${MENU.name})`,rate,text:$('#rtx').value.trim(),name:profile.name||'Guest',email:profile.email||''});closeSheet(true);toast('Thanks! Your review has been sent')}catch(e){b.disabled=false;toast(e.message)}}}
-function renderReviews(id){const {i}=findItem(MENU,id);if(!i){go('/menu/'+MENU.id);return}const rs=reviewsOf(i),r=rating(i);const dist=[5,4,3,2,1].map(n=>[n,rs.filter(x=>Math.round(+x.rate)===n).length]);
+function renderReviews(id){const {i}=findItem(MENU,id);if(!i||!REVIEWS()){go('/menu/'+MENU.id);return}const rs=reviewsOf(i),r=rating(i);const dist=[5,4,3,2,1].map(n=>[n,rs.filter(x=>Math.round(+x.rate)===n).length]);
   $('.app').innerHTML=`${header('Review',{back:`/menu/${MENU.id}/item/${i.id}`,right:'<span></span>'})}<div class="pg"><div class="bdy"><h2 style="margin:0 0 12px">${esc(i.name)}</h2>
     ${r?`<div class="card" style="display:flex;gap:18px;align-items:center"><div style="text-align:center"><div style="font-size:40px;font-weight:800">${r.avg.toFixed(1)}</div><div class="stars">${'★'.repeat(Math.round(r.avg))}</div><small class="mut">${r.n} Reviews</small></div><div style="flex:1">${dist.map(([n,c])=>`<div style="display:flex;align-items:center;gap:8px;font-size:12px"><span>${n}★</span><div style="flex:1;height:7px;border-radius:9px;background:var(--bg);overflow:hidden"><i style="display:block;height:100%;width:${rs.length?c/rs.length*100:0}%;background:var(--hl)"></i></div><span>${c}</span></div>`).join('')}</div></div>
     ${rs.map(x=>`<div class="card"><div style="display:flex;justify-content:space-between"><b>${esc(x.customer||'Guest')}</b><small class="mut">${esc(String(x.date||'').slice(0,10))}</small></div><div class="stars">${'★'.repeat(+x.rate||0)}</div>${x.text?`<p style="margin:6px 0 0">${esc(x.text)}</p>`:''}</div>`).join('')}`:`<div class="empty">No reviews yet.</div>`}</div>
