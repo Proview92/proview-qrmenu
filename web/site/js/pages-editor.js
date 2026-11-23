@@ -119,7 +119,7 @@ function genHTML(){
    ${genOpen?(miss.length?`<div style="padding:0 18px 10px">${UI.check('<strong>Select all</strong>',n&&n===miss.length,'data-change="ed-gen-all"')}</div>
     <div class="ed-gen-grid">${miss.map(i=>`<label><input type="checkbox" data-change="ed-gen-item" data-id="${i.id}" ${genSel.has(i.id)?'checked':''} style="accent-color:var(--brand-700)"><span class="thumb none" style="width:36px;height:36px">${ic('camera','sm')}</span><span style="font-weight:600;color:var(--ink)">${esc(i.name)}</span></label>`).join('')}</div>
     <div style="display:flex;gap:10px;align-items:center;padding:12px 18px;border-top:1px solid var(--border);flex-wrap:wrap">
-     <small class="muted" style="max-width:420px">AI creates a realistic photo for each selected dish from its name and description. You can replace any photo later.</small>
+     <small class="muted" style="max-width:420px">AI creates a realistic photo for each selected dish from its name and description – free for up to about 150 photos a day. You can replace any photo later.</small>
      <button class="btn ai-btn" style="margin-left:auto" data-action="ed-gen-run" ${n?'':'disabled'}>${ic('sparkle','sm')}${n?`Generate ${n} photo${n>1?'s':''}`:'Select items to generate'}</button></div>`
     :`<div style="padding:0 18px 16px" class="muted">Every item in this menu has a photo.</div>`):''}
   </div>`}
@@ -226,7 +226,7 @@ async function aiPhotos(ids){if(genBusy)return;const P=window.PQ||{};if(!P.sb||!
   const paint=()=>{const b=$('#genProg');if(b)b.innerHTML=`<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px"><span>${done+fail} of ${total}</span><span class="muted">${fail?fail+' failed':''}</span></div><div style="height:8px;border-radius:9px;background:var(--page);overflow:hidden"><i style="display:block;height:100%;width:${Math.round((done+fail)/total*100)}%;background:var(--grad,linear-gradient(90deg,#2f84d4,#5a5fbb));transition:width .3s"></i></div>`};
   App.modal({title:'Generating photos',body:`<p style="margin:0 0 12px">AI is creating a photo for each dish. Each takes about 15–30 seconds; you can keep working – photos appear as they finish.</p><div id="genProg"></div>`,footer:`<button class="btn secondary" data-action="ed-gen-stop">Stop</button><button class="btn primary" data-close>Hide</button>`});paint();
   A('ed-gen-stop',()=>{stop=true;App.closeModal();toast('Stopping after the photos in progress')});
-  const queue=[...ids];const worker=async()=>{while(queue.length&&!stop){const id=queue.shift();const r=await aiPhoto(id);if(r.error){fail++;lastErr=r.error;if(/switched on|out of credit|sign in|access/i.test(r.error))stop=true}else{done++;genSel.delete(id)}paint();if($('#edSecs')){refresh();window.PQ.paintThumbs&&PQ.paintThumbs()}}};
+  const queue=[...ids];const worker=async()=>{while(queue.length&&!stop){const id=queue.shift();const r=await aiPhoto(id);if(r.error){fail++;lastErr=r.error;if(/switched on|out of credit|used up|isn't working|sign in|access/i.test(r.error))stop=true}else{done++;genSel.delete(id)}paint();if($('#edSecs')){refresh();window.PQ.paintThumbs&&PQ.paintThumbs()}}};
   await Promise.all([worker(),worker(),worker()]);genBusy=false;
   if($('#genProg'))App.closeModal();if($('#edSecs'))refresh();
   if(fail&&!done)App.modal({title:'AI photos',body:`<p style="margin:0">${esc(lastErr)}</p>`,footer:'<button class="btn primary" data-close>OK</button>'});
