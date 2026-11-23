@@ -40,6 +40,46 @@ function pageFacts(html: string, base: string) {
   return `PAGE: ${base}\n\nSTRUCTURED DATA:\n${ld}\n\nMETA:\n${meta}\n\nLINKS:\n${links}\n\nLOGO/ICON CANDIDATES:\n${icons}\n\nTEXT:\n${text}`;
 }
 
+// logo candidates from a page, best first: structured-data logo, header/brand <img>, og/twitter image, apple-touch-icon, icon
+function logoCandidates(html: string, base: string): string[] {
+  const out: string[] = [];
+  const abs = (u?: string) => { if (!u) return; try { const x = new URL(u.replace(/&amp;/g, "&"), base); if (/^https?:$/.test(x.protocol)) out.push(x.href); } catch { /* skip */ } };
+  for (const m of html.matchAll(/"logo"\s*:\s*(?:\{[^}]*?"url"\s*:\s*)?"([^"]+)"/gi)) abs(m[1]);
+  for (const m of html.matchAll(/<img\b[^>]*>/gi)) { const tag = m[0]; if (/logo|brand|site-title|header/i.test(tag)) abs((tag.match(/\s(?:data-src|src)=["']([^"']+)["']/i) || [])[1]); }
+  for (const m of html.matchAll(/<meta[^>]+(?:property|name|itemprop)=["'](?:og:image|twitter:image|image)["'][^>]*>/gi)) abs((m[0].match(/content=["']([^"']+)["']/i) || [])[1]);
+  for (const m of html.matchAll(/<link[^>]+rel=["'][^"']*(?:apple-touch-icon|icon)[^"']*["'][^>]*>/gi)) abs((m[0].match(/href=["']([^"']+)["']/i) || [])[1]);
+  return [...new Set(out)];
+}
+function sniff(b: Uint8Array): string {
+  if (b[0] === 0x89 && b[1] === 0x50) return "image/png";
+  if (b[0] === 0xff && b[1] === 0xd8) return "image/jpeg";
+  if (b[0] === 0x47 && b[1] === 0x49) return "image/gif";
+  if (b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50) return "image/webp";
+  if (b[0] === 0 && b[1] === 0 && b[2] === 1 && b[3] === 0) return "image/x-icon";
+  const head = new TextDecoder().decode(b.slice(0, 600));
+  if (/<svg[\s>]/i.test(head)) return "image/svg+xml";
+  return "";
+}
+async function saveLogo(src: string, site: string, url: string): Promise<string> {
+  const tries = src.startsWith("http://") ? [src.replace(/^http:/, "https:"), src] : [src];
+  for (const u of tries) {
+    try {
+      const r = await fetch(u, { headers: { "user-agent": UA, accept: "image/*" }, redirect: "follow" });
+      if (!r.ok) continue;
+      const buf = new Uint8Array(await r.arrayBuffer());
+      const ct = sniff(buf);
+      if (!ct || buf.length < 200 || buf.length > 5_000_000) continue;
+      const ext = { "image/png": "png", "image/jpeg": "jpg", "image/gif": "gif", "image/webp": "webp", "image/x-icon": "ico", "image/svg+xml": "svg" }[ct];
+      const admin = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      const path = `${site}/logo-${Date.now()}.${ext}`;
+      const up = await admin.storage.from("qrmenu").upload(path, buf, { contentType: ct, upsert: false });
+      if (up.error) { console.error("logo upload", up.error.message); continue; }
+      return admin.storage.from("qrmenu").getPublicUrl(path).data.publicUrl;
+    } catch { /* try next */ }
+  }
+  return "";
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "Use POST" }, 405);
@@ -66,12 +106,13 @@ Deno.serve(async (req) => {
     let target: URL | null = null;
     try { target = new URL(/^https?:\/\//i.test(query) ? query : (/^[\w-]+(\.[\w-]+)+(\/.*)?$/.test(query) ? "https://" + query : "x:")); } catch { target = null; }
     const isGoogle = !!target && /(^|\.)google\.[a-z.]+$|goo\.gl$|g\.page$|maps\.app\.goo\.gl$/i.test(target.hostname);
-    let content: unknown[], tools: unknown[] | undefined;
+    let content: unknown[], tools: unknown[] | undefined, pageLogos: string[] = [];
     if (target && /^https?:$/.test(target.protocol) && !isGoogle) {
       if (/^(localhost|127\.|10\.|192\.168\.|169\.254\.|\[)/.test(target.hostname)) return json({ error: "That address can't be read." }, 400);
       const r = await fetch(target, { headers: { "user-agent": UA, accept: "text/html" }, redirect: "follow" }).catch(() => null);
       if (!r || !r.ok) return json({ error: "We couldn't open that website. Check the address, or type the business name and town instead." }, 422);
       const html = (await r.text()).slice(0, 1_500_000);
+      pageLogos = logoCandidates(html, r.url || target.href);
       content = [{ type: "text", text: `Find this venue's details from its own website below.\n${RULES}\n\n${pageFacts(html, r.url || target.href)}` }];
     } else {
       content = [{ type: "text", text: `Look up this restaurant/café/bar and find its current details (Google Business listing, its own website, its social pages): ${query}\n${RULES}` }];
@@ -93,21 +134,21 @@ Deno.serve(async (req) => {
     try { if (m) found = JSON.parse(m[0]); } catch { found = null; }
     if (!found || typeof found !== "object") return json({ error: "We couldn't find details for that. Try the venue's website address." }, 404);
 
-    // keep the logo: copy it into our storage
-    if (typeof found.logo === "string" && /^https:\/\//i.test(found.logo)) {
-      try {
-        const r = await fetch(found.logo, { headers: { "user-agent": UA } });
-        const ct = (r.headers.get("content-type") || "").split(";")[0];
-        const buf = new Uint8Array(await r.arrayBuffer());
-        if (r.ok && /^image\/(png|jpeg|webp|gif|svg\+xml)$/.test(ct) && buf.length > 200 && buf.length < 5_000_000) {
-          const ext = ct.includes("svg") ? "svg" : ct.split("/")[1].replace("jpeg", "jpg");
-          const admin = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-          const path = `${body.site}/logo-${Date.now()}.${ext}`;
-          const up = await admin.storage.from("qrmenu").upload(path, buf, { contentType: ct, upsert: false });
-          found.logo = up.error ? "" : admin.storage.from("qrmenu").getPublicUrl(path).data.publicUrl;
-        } else found.logo = "";
-      } catch { found.logo = ""; }
-    } else found.logo = "";
+    // keep the logo: try the AI's pick, then logos found in the page itself, and copy the first good image into our storage
+    const cands: string[] = [];
+    const add = (u: unknown, base?: string) => { if (typeof u !== "string" || !u.trim() || /^data:/i.test(u)) return; try { const x = new URL(u.trim(), base || "https://x.invalid"); if (/^https?:$/.test(x.protocol) && x.hostname !== "x.invalid" && !cands.includes(x.href)) cands.push(x.href); } catch { /* skip */ } };
+    add(found.logo);
+    for (const c of pageLogos) add(c);
+    const site0 = typeof found.website === "string" && /^https?:\/\//i.test(found.website) ? found.website : "";
+    if (!pageLogos.length && site0) { // search path: read the venue's own site for its logo
+      const r = await fetch(site0, { headers: { "user-agent": UA, accept: "text/html" }, redirect: "follow" }).catch(() => null);
+      if (r && r.ok) for (const c of logoCandidates((await r.text()).slice(0, 1_500_000), r.url || site0)) add(c);
+    }
+    found.logo = "";
+    for (const c of cands.slice(0, 8)) {
+      const saved = await saveLogo(c, body.site, url);
+      if (saved) { found.logo = saved; break; }
+    }
     return json({ found, source: tools ? "search" : "website" });
   } catch (e) {
     console.error(e);
