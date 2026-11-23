@@ -55,7 +55,7 @@ const TOOL = {
   },
 };
 
-const PROMPT = `This is a restaurant menu. Read it carefully and call save_menu with every section and every item, in the order they appear.
+const PROMPT = `This is a restaurant menu. Read it carefully and call the save_menu tool (always use the tool, never answer in plain text) with every section and every item, in the order they appear.
 Rules:
 - Keep names exactly as printed (fix obvious OCR spacing only). Use the menu's own section headings; if there are none, group sensibly (e.g. "Mains", "Drinks").
 - price is a plain number without currency (e.g. 12.5). If an item has several prices (sizes, glass/bottle, single/double), put each in options and set price to the lowest.
@@ -124,7 +124,6 @@ Deno.serve(async (req) => {
         model: Deno.env.get("MENU_AI_MODEL") || "claude-sonnet-5-5",
         max_tokens: 16000,
         tools: [TOOL],
-        tool_choice: { type: "tool", name: "save_menu" },
         messages: [{ role: "user", content: [block, { type: "text", text: PROMPT }] }],
       }),
     });
@@ -133,7 +132,12 @@ Deno.serve(async (req) => {
       console.error("anthropic", ai.status, JSON.stringify(out).slice(0, 500));
       return json({ error: "The AI couldn't read this menu right now. Please try again in a minute." }, 502);
     }
-    const use = (out?.content || []).find((c: { type: string }) => c.type === "tool_use");
+    let use = (out?.content || []).find((c: { type: string }) => c.type === "tool_use");
+    if (!use) { // answered in text: take the first JSON object in it
+      const txt = (out?.content || []).filter((c: any) => c.type === "text").map((c: any) => c.text).join("\n");
+      const m = txt.match(/\{[\s\S]*\}/);
+      try { if (m) use = { input: JSON.parse(m[0]) }; } catch { /* ignore */ }
+    }
     const sections = (use?.input?.sections || [])
       .map((s: any) => ({
         name: String(s?.name || "Menu").slice(0, 80),
