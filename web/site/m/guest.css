@@ -257,3 +257,6 @@ textarea.inp{min-height:80px;resize:vertical}
 .hd.two{grid-template-columns:88px minmax(0,1fr) 88px}
 .hd.two>span{justify-content:flex-end}
 html,body{overflow-x:clip}
+
+/* language picker flags */
+.lflag{font-size:22px;line-height:1;width:30px;flex:none;margin-right:10px;text-align:center;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}

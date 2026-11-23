@@ -41,8 +41,11 @@ const defLang=()=>cfg.defaultLang||'English';
 function availLangs(){const tr=(D&&D.translations)||{};return [defLang(),...(cfg.languages||[]).filter(l=>l!==defLang()&&tr[l]&&Object.keys(tr[l]).length)]}
 function setLang(l){LANG=l&&l!==defLang()?l:null;store.set('lang',l||defLang());const code=Object.keys(LANG_CODES).find(c=>LANG_CODES[c]===l)||'en';
   document.documentElement.lang=code;document.documentElement.dir=LANG&&RTL.test(LANG)?'rtl':'ltr'}
+const LANG_FLAG={English:'🇬🇧',Turkish:'🇹🇷',Arabic:'🇸🇦',French:'🇫🇷',German:'🇩🇪',Spanish:'🇪🇸',Italian:'🇮🇹',Portuguese:'🇵🇹',Polish:'🇵🇱',Romanian:'🇷🇴',Russian:'🇷🇺','Chinese (Simplified)':'🇨🇳','Chinese (Traditional)':'🇹🇼',Chinese:'🇨🇳',Japanese:'🇯🇵',Korean:'🇰🇷',Greek:'🇬🇷',Dutch:'🇳🇱',Urdu:'🇵🇰',Hindi:'🇮🇳',Persian:'🇮🇷',Bulgarian:'🇧🇬',Bengali:'🇧🇩',
+  Ukrainian:'🇺🇦',Swedish:'🇸🇪',Norwegian:'🇳🇴',Danish:'🇩🇰',Finnish:'🇫🇮',Czech:'🇨🇿',Hungarian:'🇭🇺',Albanian:'🇦🇱',Kurdish:'🇮🇶',Hebrew:'🇮🇱',Thai:'🇹🇭',Vietnamese:'🇻🇳',Indonesian:'🇮🇩',Malay:'🇲🇾',Filipino:'🇵🇭',Tagalog:'🇵🇭',Punjabi:'🇮🇳',Gujarati:'🇮🇳',Tamil:'🇮🇳',Somali:'🇸🇴',Amharic:'🇪🇹',Swahili:'🇰🇪',Croatian:'🇭🇷',Serbian:'🇷🇸',Slovak:'🇸🇰',Slovenian:'🇸🇮',Lithuanian:'🇱🇹',Latvian:'🇱🇻',Estonian:'🇪🇪',Georgian:'🇬🇪',Armenian:'🇦🇲',Azerbaijani:'🇦🇿',Irish:'🇮🇪',Welsh:'🏴󠁧󠁢󠁷󠁬󠁳󠁿'};
+const flagOf=l=>LANG_FLAG[l]||LANG_FLAG[String(l).replace(/\s*\(.*\)/,'')]||'🌐';
 function openLang(){const ls=availLangs();const cur=LANG||defLang();
-  sheet({title:L('Language'),body:ls.map(l=>`<button class="row" data-pick="${esc(l)}" style="${l===cur?'font-weight:800':''}"><span style="flex:1">${esc(LANG_NATIVE[l]||l)}${LANG_NATIVE[l]&&LANG_NATIVE[l]!==l?` <span class="mut" style="font-weight:400">· ${esc(l)}</span>`:''}</span>${l===cur?ic('check','sm'):''}</button>`).join('')});
+  sheet({title:L('Language'),body:ls.map(l=>`<button class="row" data-pick="${esc(l)}" style="${l===cur?'font-weight:800':''}"><span class="lflag" aria-hidden="true">${flagOf(l)}</span><span style="flex:1">${esc(LANG_NATIVE[l]||l)}${LANG_NATIVE[l]&&LANG_NATIVE[l]!==l?` <span class="mut" style="font-weight:400">· ${esc(l)}</span>`:''}</span>${l===cur?ic('check','sm'):''}</button>`).join('')});
   $$('#sheet [data-pick]').forEach(b=>b.onclick=()=>{setLang(b.dataset.pick);closeSheet(true);route()})}
 const F=(route,re,n=1)=>{const f=cfg.forms||{};
   // a settings page opened from the menu saves under its plain name (e.g. 'orders-settings') = its first tab ('--dinein', '--general')
@@ -244,7 +247,7 @@ function openDrawer(){const V=D.venue||{};const bd=document.createElement('div')
     ${forms().length?`<button class="row" data-go="feedback">${ic('msg')}${L('Give Feedback')}</button>`:''}
     ${C('dz.info',true)!==false?`<button class="row" data-go="info">${ic('info')}${L('Venue information')}</button>`:''}
     ${V.phone?`<a class="row" href="tel:${esc(String(V.phone).replace(/\s/g,''))}" style="text-decoration:none">${ic('phone')}${esc(V.phone)}</a>`:''}
-    ${availLangs().length>1?`<button class="row" data-go="__lang">${ic('globe')}${esc(LANG_NATIVE[LANG||defLang()]||LANG||defLang())}</button>`:''}
+    ${availLangs().length>1?`<button class="row" data-go="__lang">${ic('globe')}<span style="flex:1">${esc(LANG_NATIVE[LANG||defLang()]||LANG||defLang())}</span><span class="lflag" style="margin:0" aria-hidden="true">${flagOf(LANG||defLang())}</span></button>`:''}
     <button class="row" data-go="join">${ic('user')}${profile?esc(profile.name||profile.email):L('Login')}</button>
     <div class="bot">${V.address?`<p>${esc(V.address)}</p>`:''}${socials()}</div></div>`;
   bd.addEventListener('click',e=>{const g=e.target.closest('[data-go]');if(e.target===bd||e.target.closest('[data-x]')){bd.remove();return}if(g){bd.remove();if(g.dataset.go==='__waiter')callWaiter();else if(g.dataset.go==='__lang')openLang();else go(g.dataset.go)}});
