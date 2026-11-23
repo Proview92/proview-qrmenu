@@ -94,6 +94,16 @@ const likes=i=>!LIKES_ON()?0:Math.max(0,(+(D.likes||{})[i.id]||0)+(liked.has(i.i
 const imgOf=i=>i.img||(i.imgs||[])[0]||'';
 const secImg=s=>s.img||(liveItems(s).find(imgOf)||{}).img||'';
 const initials=s=>String(s).split(/\s+/).filter(Boolean).map(w=>w[0]).join('').slice(0,2).toUpperCase();
+/* ---------- dietary codes in dish names, e.g. "Shakshuka (V) (VS) (S)" → name + little icons ---------- */
+const DIET={V:['🥕','Vegetarian','#e8f5e3'],VG:['🌱','Vegan','#e3f5ea'],VE:['🌱','Vegan','#e3f5ea'],VS:['🌱','Vegan suitable','#e3f5ea'],VO:['🌱','Vegan option','#e3f5ea'],
+  S:['🌶️','Spicy','#fde8e4'],N:['🥜','Contains nuts','#f7ecdc'],D:['🥛','Contains dairy','#e8f0fb'],GF:['🌾','Gluten free','#fbf3d9'],DF:['🚫🥛','Dairy free','#e8f0fb'],
+  H:['☪️','Halal','#ecebfa'],E:['🥚','Contains egg','#fdf5dc'],SE:['🌰','Contains sesame','#f5eedf'],F:['🐟','Contains fish','#e2f1f6']};
+const DIET_RX=/\s*\((V|VG|VE|VS|VO|S|N|D|GF|DF|H|E|SE|F)\)/gi;
+const DN=s=>String(s||'').replace(DIET_RX,'').replace(/\s{2,}/g,' ').trim();
+const DCODES=s=>{const out=[];String(s||'').replace(DIET_RX,(_,c)=>{c=c.toUpperCase();if(!out.includes(c))out.push(c);return ''});return out};
+const DI=(s,big)=>{const c=DCODES(s);return c.length?`<span class="dg${big?' big':''}">${c.map(k=>`<span class="dti" style="background:${DIET[k][2]}" title="${esc(L(DIET[k][1]))}" aria-label="${esc(L(DIET[k][1]))}" role="img">${DIET[k][0]}${big?`<em>${esc(L(DIET[k][1]))}</em>`:''}</span>`).join('')}</span>`:''};
+const dietKey=items=>{const used=new Set();items.forEach(i=>DCODES(i.name).forEach(c=>used.add(c)));if(!used.size)return '';
+  const seen=new Set();return `<div class="dkey">${[...used].filter(c=>{const l=DIET[c][1];if(seen.has(l))return false;seen.add(l);return true}).map(c=>`<span><span class="dti" style="background:${DIET[c][2]}">${DIET[c][0]}</span>${esc(L(DIET[c][1]))}</span>`).join('')}</div>`};
 const tags=i=>[...(i.badges||[]),...(i.labels||[])];
 const avoidable=()=>{const set=new Set();MENUS().forEach(m=>liveSecs(m).forEach(s=>liveItems(s).forEach(i=>[...(i.allergens||[]),...(i.labels||[])].forEach(x=>set.add(x)))));return [...set].sort()};
 const isAlcohol=(i,s)=>/alcohol/i.test([...(i.labels||[]),...(i.allergens||[])].join(' '))||/cocktail|wine|beer|gin|vodka|whisk|rum|cognac|shot|liqu|champagne|prosecco|spirit|lager|cider/i.test((s&&s.name)||'');
@@ -143,18 +153,18 @@ const footer=()=>`<div class="foot">${L('Powered by')} <b>PROVIEW</b> QR Menu</d
 function forms(){return (D.forms||[]).filter(f=>(f.questions||[]).length)}
 
 /* ---------- menu screen ---------- */
-function header(title,{back='',right=''}={}){return `<div class="hd"><button class="ib" data-back="${esc(back)}" aria-label="Back">${ic('back')}</button><h1>${esc(title)}</h1>${right||`<span style="display:flex">${availLangs().length>1?`<button class="ib" data-lang aria-label="Language">${ic('globe')}</button>`:''}<button class="ib" data-drawer aria-label="Menu">${ic('menu')}</button></span>`}</div>`}
+function header(title,{back='',right=''}={}){return `<div class="hd${!right&&availLangs().length>1?' two':''}"><button class="ib" data-back="${esc(back)}" aria-label="Back">${ic('back')}</button><h1>${esc(title)}</h1>${right||`<span style="display:flex">${availLangs().length>1?`<button class="ib" data-lang aria-label="Language">${ic('globe')}</button>`:''}<button class="ib" data-drawer aria-label="Menu">${ic('menu')}</button></span>`}</div>`}
 function bindHeader(root){$$('[data-back]',root).forEach(b=>b.onclick=()=>{const t=b.dataset.back;if(t)go(t);else if(history.length>1)history.back();else go('')});$$('[data-drawer]',root).forEach(b=>b.onclick=openDrawer);$$('[data-lang]',root).forEach(b=>b.onclick=openLang)}
 function sortItems(list){if(filt.sort==='top')return [...list].sort((a,b)=>(rating(b)?.avg||0)-(rating(a)?.avg||0));if(filt.sort==='liked')return [...list].sort((a,b)=>likes(b)-likes(a));return list}
 function visible(i){if(filt.avoid.length&&[...(i.allergens||[]),...(i.labels||[])].some(x=>filt.avoid.includes(x)))return false;
   if(term){const t=term.toLowerCase();return (i.name||'').toLowerCase().includes(t)||(i.desc||'').toLowerCase().includes(t)}return true}
 function card(i,s,grid){const r=rating(i),lk=likes(i),im=imgOf(i);const lbl=C('dz.warn',true)!==false?tags(i).slice(0,5):[];
-  return `<div class="it ${i.soldOut?'so':''}" data-item="${esc(i.id)}" role="button" tabindex="0" aria-label="${esc(T(i.name))}">
-    <div class="tx">${r?`<span class="rt">${ic('star','sm')}${r.avg.toFixed(1)} · ${r.n}</span>`:''}<span class="nm">${esc(T(i.name))}</span>${i.desc&&!grid?`<span class="ds">${esc(T(i.desc))}</span>`:''}
+  return `<div class="it ${i.soldOut?'so':''}" data-item="${esc(i.id)}" role="button" tabindex="0" aria-label="${esc(DN(T(i.name)))}">
+    <div class="tx">${r?`<span class="rt">${ic('star','sm')}${r.avg.toFixed(1)} · ${r.n}</span>`:''}<span class="nm">${esc(DN(T(i.name)))}${DI(i.name)}</span>${i.desc&&!grid?`<span class="ds">${esc(T(i.desc))}</span>`:''}
       ${lbl.length?`<span class="lbls">${lbl.map(x=>`<span class="lb ${/^new$/i.test(x)?'new':''}">${/vegan|vegetarian/i.test(x)?ic('leaf','sm'):/spicy|hot/i.test(x)?ic('fire','sm'):''}${esc(x)}</span>`).join('')}</span>`:''}
       ${i.soldOut?'<span class="so-b">'+L('Sold out')+'</span>':`<span class="pr">${priceText(i)}</span>`}</div>
     ${im?`<div class="im" style="background-image:url('${esc(im)}')">${lk?`<span class="lk">${ic('heart')}${lk}</span>`:''}</div>`:grid?`<div class="im" style="display:grid;place-items:center;font-weight:800;color:var(--hl);font-size:22px">${esc(initials(i.name))}</div>`:''}
-    ${ordering()&&!i.soldOut?`<button class="add" data-quick="${esc(i.id)}" aria-label="Add ${esc(T(i.name))}">${ic('plus','sm')}</button>`:''}</div>`}
+    ${ordering()&&!i.soldOut?`<button class="add" data-quick="${esc(i.id)}" aria-label="Add ${esc(DN(T(i.name)))}">${ic('plus','sm')}</button>`:''}</div>`}
 function renderMenu(){const m=MENU;if(!m){pickMenu();return}const V=D.venue||{};const app=$('.app');const grid=C('dz.style','list')==='grid';const ts=C('dz.title','both');
   const secs=liveSecs(m);const others=MENUS();
   const mostLiked=LIKES_ON()&&FE(/Most Liked/)===true?[...secs.flatMap(liveItems)].filter(i=>likes(i)>0).sort((a,b)=>likes(b)-likes(a)).slice(0,5):[];
@@ -169,7 +179,7 @@ function renderMenu(){const m=MENU;if(!m){pickMenu();return}const V=D.venue||{};
     ${C('dz.search',true)!==false?`<div class="srch"><label>${ic('search','sm')}<input id="q" type="search" placeholder="${L('Search')}" value="${esc(term)}" aria-label="Search the menu"></label><button class="fb" id="fbtn" aria-label="Filter">${ic('filter')}${filt.avoid.length||filt.sort!=='rec'?`<span class="n">${filt.avoid.length+(filt.sort!=='rec'?1:0)}</span>`:''}</button></div>`:''}
     ${promoBanners()}
     <div class="tiles ${ts==='txt'?'txt':''}" id="tiles">${secs.map(s=>{const im=secImg(s);return `<button class="tile" data-to="${esc(s.id)}"><div class="ph" style="${im?`background-image:url('${esc(im)}')`:''}">${im?'':esc(initials(s.name))}</div><span>${esc(T(s.name))}</span></button>`}).join('')}</div>
-    <div id="secs">${body||`<div class="empty">${term||filt.avoid.length?'No items match your search.':'This menu has no items yet.'}</div>`}</div>
+    <div id="secs">${body||`<div class="empty">${term||filt.avoid.length?'No items match your search.':'This menu has no items yet.'}</div>`}</div>${body?dietKey(secs.flatMap(liveItems)):''}
     ${footer()}<button class="totop" id="totop" aria-label="Back to top">${ic('up')}</button>${basketBar()}`;
   bindHeader(app);bindMenu();showPromo()}
 function bindMenu(){const app=$('.app');
@@ -257,7 +267,8 @@ function openItem(id){const {i,s:sec}=findItem(MENU,id);if(!i){go('/menu/'+MENU.
   const unitPrice=()=>{const base=po.length?+po[st.po].price||0:+i.price||0;return base+Object.values(st.mods).flat().reduce((a,m)=>a+(+m.price||0),0)};
   const body=`<div class="dt"><div class="gal"><div class="imgs">${imgs.length?imgs.map(u=>`<div style="background-image:url('${esc(u)}')"></div>`).join(''):`<div style="display:grid;place-items:center;font-size:44px;font-weight:800;color:var(--hl);aspect-ratio:16/7">${esc(initials(i.name))}</div>`}${i.video?`<video src="${esc(i.video)}" muted playsinline loop autoplay></video>`:''}</div>
       <button class="ov" style="left:12px" data-x aria-label="Back">${ic('back')}</button><button class="ov" style="right:12px" id="shr" aria-label="Share">${ic('share')}</button></div>
-    <h2><span>${esc(T(i.name))}</span>${LIKES_ON()?`<button class="like ${liked.has(i.id)?'on':''}" id="lk" aria-pressed="${liked.has(i.id)}">${ic('heart','sm')}<b>${likes(i)||''}</b></button>`:''}</h2>
+    <h2><span>${esc(DN(T(i.name)))}</span>${LIKES_ON()?`<button class="like ${liked.has(i.id)?'on':''}" id="lk" aria-pressed="${liked.has(i.id)}">${ic('heart','sm')}<b>${likes(i)||''}</b></button>`:''}</h2>
+    ${DI(i.name,true)}
     ${tags(i).length&&C('dz.warn',true)!==false?`<div class="meta">${tags(i).map(x=>`<span class="lb ${/^new$/i.test(x)?'new':''}">${esc(x)}</span>`).join('')}</div>`:''}
     ${i.desc?`<div class="desc">${esc(T(i.desc))}</div>`:''}
     ${i.soldOut?'<div class="err-m">'+L('Sold out today')+'</div>':po.length<2?`<div class="price">${money(po.length?po[0].price:i.price)}</div>`:''}
@@ -269,7 +280,7 @@ function openItem(id){const {i,s:sec}=findItem(MENU,id);if(!i){go('/menu/'+MENU.
     ${can&&(i.removable||[]).length?`<div class="sec-t">${L('Remove ingredients')}</div>${i.removable.map(x=>`<label class="opt"><input type="checkbox" data-rm="${esc(x)}">No ${esc(x)}</label>`).join('')}`:''}
     ${nf.length?`<div class="sec-t">${L('Nutrition facts')}</div>${nf.map(([k,v])=>`<div class="line"><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('')}`:''}
     ${nc.length?`<div class="sec-t">Nutritional content</div>${nc.map(x=>`<div class="line"><span>${esc(x.label)}</span><b>${esc(x.value)}</b></div>`).join('')}`:''}
-    ${recs.length?`<div class="sec-t">${L('Goes well with')}</div><div class="rec">${recs.map(x=>`<button data-rec="${esc(x.id)}"><div class="ph" style="${imgOf(x)?`background-image:url('${esc(imgOf(x))}')`:''}"></div><b>${esc(T(x.name))}</b><small class="mut">${priceText(x)}</small></button>`).join('')}</div>`:''}
+    ${recs.length?`<div class="sec-t">${L('Goes well with')}</div><div class="rec">${recs.map(x=>`<button data-rec="${esc(x.id)}"><div class="ph" style="${imgOf(x)?`background-image:url('${esc(imgOf(x))}')`:''}"></div><b>${esc(DN(T(x.name)))}</b><small class="mut">${priceText(x)}</small></button>`).join('')}</div>`:''}
     ${can&&NOTES()?`<label class="fl" for="nt">${L('Note for the kitchen')}</label><textarea class="inp" id="nt" maxlength="200" placeholder="Any requests? (optional)"></textarea>`:''}</div>`;
   const foot=can?`<div style="display:flex;gap:10px;align-items:center"><div class="qty"><button id="qm" aria-label="Less">−</button><b id="qv">1</b><button id="qp" aria-label="More">+</button></div><button class="btn" id="addC" style="flex:1">${L('Add to basket')} · <span id="tp">${money(unitPrice())}</span></button></div>`:'';
   const bd=sheet({title:'',body,foot,cls:'item-sh',onClose:()=>{}});bd.querySelector('header').style.display='none';
@@ -293,11 +304,11 @@ function shareItem(i){const url=location.href;const txt=`${i.name} at ${(D.venue
   $('#cpl',bd).onclick=()=>{try{navigator.clipboard.writeText(url)}catch(e){}toast('Link copied');bd.remove()}}
 function addReview(i){if(!profile){sheet({title:'',center:true,body:`<div style="text-align:center;padding:10px 6px"><div style="font-size:40px">💙</div><h3 style="margin:8px 0">Join us and be valued in our community!</h3><p class="mut">Sign up to leave reviews, like your favourites and check out faster next time.</p><button class="btn" id="su">Sign Up</button><p style="margin:14px 0 0">Already have an account? <a href="#/join" id="lg">Login</a></p></div>`});
     $('#su').onclick=()=>{closeSheet(true);go('join')};$('#lg').onclick=()=>closeSheet(true);return}
-  let rate=0;sheet({title:L('Add Review'),body:`<p style="text-align:center;font-weight:700;margin:4px 0 10px">${esc(T(i.name))}</p><div class="qstars" id="rs">${[1,2,3,4,5].map(n=>`<button data-n="${n}" aria-label="${n} stars">★</button>`).join('')}</div><label class="fl" for="rtx">Your review</label><textarea class="inp" id="rtx" maxlength="500" placeholder="What did you think?"></textarea>`,foot:'<button class="btn" id="rsend" disabled>Submit review</button>'});
+  let rate=0;sheet({title:L('Add Review'),body:`<p style="text-align:center;font-weight:700;margin:4px 0 10px">${esc(DN(T(i.name)))}</p><div class="qstars" id="rs">${[1,2,3,4,5].map(n=>`<button data-n="${n}" aria-label="${n} stars">★</button>`).join('')}</div><label class="fl" for="rtx">Your review</label><textarea class="inp" id="rtx" maxlength="500" placeholder="What did you think?"></textarea>`,foot:'<button class="btn" id="rsend" disabled>Submit review</button>'});
   $$('#rs button').forEach(b=>b.onclick=()=>{rate=+b.dataset.n;$$('#rs button').forEach(x=>x.classList.toggle('on',+x.dataset.n<=rate));$('#rsend').disabled=false});
   $('#rsend').onclick=async()=>{const b=$('#rsend');b.disabled=true;try{await submit('review',{item:`${i.name} (${MENU.name})`,rate,text:$('#rtx').value.trim(),name:profile.name||'Guest',email:profile.email||''});closeSheet(true);toast('Thanks! Your review has been sent')}catch(e){b.disabled=false;toast(e.message)}}}
 function renderReviews(id){const {i}=findItem(MENU,id);if(!i||!REVIEWS()){go('/menu/'+MENU.id);return}const rs=reviewsOf(i),r=rating(i);const dist=[5,4,3,2,1].map(n=>[n,rs.filter(x=>Math.round(+x.rate)===n).length]);
-  $('.app').innerHTML=`${header('Review',{back:`/menu/${MENU.id}/item/${i.id}`,right:'<span></span>'})}<div class="pg"><div class="bdy"><h2 style="margin:0 0 12px">${esc(T(i.name))}</h2>
+  $('.app').innerHTML=`${header('Review',{back:`/menu/${MENU.id}/item/${i.id}`,right:'<span></span>'})}<div class="pg"><div class="bdy"><h2 style="margin:0 0 12px">${esc(DN(T(i.name)))}</h2>
     ${r?`<div class="card" style="display:flex;gap:18px;align-items:center"><div style="text-align:center"><div style="font-size:40px;font-weight:800">${r.avg.toFixed(1)}</div><div class="stars">${'★'.repeat(Math.round(r.avg))}</div><small class="mut">${r.n} Reviews</small></div><div style="flex:1">${dist.map(([n,c])=>`<div style="display:flex;align-items:center;gap:8px;font-size:12px"><span>${n}★</span><div style="flex:1;height:7px;border-radius:9px;background:var(--bg);overflow:hidden"><i style="display:block;height:100%;width:${rs.length?c/rs.length*100:0}%;background:var(--hl)"></i></div><span>${c}</span></div>`).join('')}</div></div>
     ${rs.map(x=>`<div class="card"><div style="display:flex;justify-content:space-between"><b>${esc(x.customer||'Guest')}</b><small class="mut">${esc(String(x.date||'').slice(0,10))}</small></div><div class="stars">${'★'.repeat(+x.rate||0)}</div>${x.text?`<p style="margin:6px 0 0">${esc(x.text)}</p>`:''}</div>`).join('')}`:`<div class="empty">No reviews yet.</div>`}</div>
     <div class="sticky-b"><button class="btn" id="arv">${L('Add Review')}</button></div></div>`;bindHeader($('.app'));$('#arv').onclick=()=>addReview(i)}
@@ -305,7 +316,7 @@ function renderReviews(id){const {i}=findItem(MENU,id);if(!i||!REVIEWS()){go('/m
 /* ---------- basket ---------- */
 function saveCart(){sess.set('cart',cart)}
 function addToCart(i,{qty=1,price,opts=[],note='',alcohol=false}){price=price??(+i.price||itemPrices(i)[0]);const key=i.id+'|'+opts.join(',')+'|'+note;
-  const ex=cart.find(c=>c.key===key);if(ex)ex.qty+=qty;else cart.push({key,id:i.id,name:i.name,price,qty,opts,note,alcohol,img:imgOf(i)});saveCart();toast(`${i.name} added to basket`);
+  const ex=cart.find(c=>c.key===key);if(ex)ex.qty+=qty;else cart.push({key,id:i.id,name:i.name,price,qty,opts,note,alcohol,img:imgOf(i)});saveCart();toast(`${DN(i.name)} added to basket`);
   const bb=$('#bar');if(bb)bb.outerHTML=basketBar();else $('.app').insertAdjacentHTML('beforeend',basketBar());const nb=$('#bar');if(nb)nb.onclick=()=>go('basket')}
 const cartQty=()=>cart.reduce((a,c)=>a+c.qty,0),cartSub=()=>cart.reduce((a,c)=>a+c.price*c.qty,0);
 function basketBar(){return ordering()&&cart.length?`<button class="bar" id="bar">${ic('bag')}<span class="c">${cartQty()}</span>${L('View basket')}<span class="t">${money(cartSub())}</span></button>`:''}
@@ -317,7 +328,7 @@ function charges(){const sub=cartSub();const svc=((cfg.charges||{}).service||[])
 function renderBasket(){if(!MENU)MENU=MENUS()[0];const app=$('.app');const ch2=charges();const min=+(F(ORD_ROUTE(),/Minimum Order/)||0);const note=F(ORD_ROUTE(),/Restaurant Note/);
   const tipOn=F(ORD_ROUTE(),/^Accept tip/)===true;const rates=[10,12.5,15];
   app.innerHTML=`${header(L('Your basket'),{back:MENU?'/menu/'+MENU.id:'',right:'<span></span>'})}<div class="pg"><div class="bdy">
-    ${cart.length?`<div class="card">${cart.map((c,k)=>`<div class="bl">${c.img?`<div style="width:54px;height:54px;border-radius:10px;background:center/cover url('${esc(c.img)}');flex:none"></div>`:''}<div style="flex:1;min-width:0"><b>${esc(T(c.name))}</b>${c.opts.length?`<div class="mut" style="font-size:13px">${esc(c.opts.join(' · '))}</div>`:''}${c.note?`<div class="mut" style="font-size:13px">“${esc(c.note)}”</div>`:''}<div style="font-weight:700;margin-top:4px">${money(c.price*c.qty)}</div></div>
+    ${cart.length?`<div class="card">${cart.map((c,k)=>`<div class="bl">${c.img?`<div style="width:54px;height:54px;border-radius:10px;background:center/cover url('${esc(c.img)}');flex:none"></div>`:''}<div style="flex:1;min-width:0"><b>${esc(DN(T(c.name)))}</b>${c.opts.length?`<div class="mut" style="font-size:13px">${esc(c.opts.join(' · '))}</div>`:''}${c.note?`<div class="mut" style="font-size:13px">“${esc(c.note)}”</div>`:''}<div style="font-weight:700;margin-top:4px">${money(c.price*c.qty)}</div></div>
       <div class="q"><button data-d="-1" data-k="${k}" aria-label="Less">−</button><b>${c.qty}</b><button data-d="1" data-k="${k}" aria-label="More">+</button></div></div>`).join('')}</div>
       ${note?`<div class="card" style="font-size:14px">${ic('info','sm')} ${esc(note)}</div>`:''}
       <div class="card"><label class="fl" style="margin-top:0">${L('Promo code')}</label><div style="display:flex;gap:8px"><input class="inp" id="pc" placeholder="Enter code" value="${esc(promo?promo.code:'')}" style="text-transform:uppercase"><button class="btn sm" id="pcA">${promo?L('Remove'):L('Apply')}</button></div><div id="pcM"></div></div>

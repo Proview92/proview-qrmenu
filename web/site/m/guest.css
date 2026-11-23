@@ -17,7 +17,7 @@ svg.i.sm{width:16px;height:16px}
 .err{min-height:100vh;display:grid;place-items:center;text-align:center;padding:30px}.err h1{font-size:22px;margin:12px 0 6px}
 
 /* header */
-.hd{position:sticky;top:0;z-index:20;background:var(--hl);color:var(--on-hl);display:grid;grid-template-columns:44px 1fr 44px;align-items:center;height:56px;padding:var(--safe-t) 6px 0}
+.hd{position:sticky;top:0;z-index:20;background:var(--hl);color:var(--on-hl);display:grid;grid-template-columns:44px minmax(0,1fr) 44px;align-items:center;height:56px;padding:var(--safe-t) 6px 0}
 .hd h1{margin:0;text-align:center;font-size:17px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ib{width:40px;height:40px;border:0;background:none;color:inherit;display:grid;place-items:center;border-radius:12px;cursor:pointer;position:relative}
 .ib:active{background:rgba(255,255,255,.15)}
@@ -242,3 +242,18 @@ textarea.inp{min-height:80px;resize:vertical}
 @media (max-width:340px){.co-row2{grid-template-columns:1fr}}
 .co-fine{margin:0 4px;font-size:12.5px;color:var(--mut)}
 .co-sum a{color:var(--hl-ink);font-weight:600;text-decoration:none}
+
+/* dietary icons from codes like (V) (VS) (S) in dish names */
+.dg{display:inline-flex;gap:4px;margin-left:7px;vertical-align:2px;flex-wrap:wrap}
+.dti{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 3px;border-radius:999px;font-size:12.5px;line-height:1;font-style:normal;box-shadow:inset 0 0 0 1px rgba(0,0,0,.05)}
+.dg.big{display:flex;margin:4px 0 12px;gap:6px}
+.dg.big .dti{height:28px;padding:0 10px 0 7px;gap:5px;grid-auto-flow:column;font-size:14px}
+.dg.big .dti em{font-style:normal;font-size:12.5px;font-weight:600;color:#333}
+.dkey{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 14px;margin:18px 16px 4px;padding:12px;border-radius:14px;background:var(--card,#fff);font-size:12.5px;color:var(--mut,#666)}
+.dkey>span{display:inline-flex;align-items:center;gap:6px}
+.dkey .dti{min-width:20px;height:20px;font-size:11.5px}
+
+/* header with the language globe: two buttons on the right, keep the title centred and inside the screen */
+.hd.two{grid-template-columns:88px minmax(0,1fr) 88px}
+.hd.two>span{justify-content:flex-end}
+html,body{overflow-x:clip}
