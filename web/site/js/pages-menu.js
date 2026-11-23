@@ -380,22 +380,24 @@ A('menu-promo-add',el=>{const p=el.dataset.id?S().promotions.find(x=>x.id===el.d
    ${UI.field({label:'Promotion Name',required:true,control:UI.input({id:'prName',value:p?p.name:'',placeholder:'New Year Promotion'})})}
    ${UI.field({label:'Description',control:UI.input({id:'prDesc',value:p?p.desc:'',placeholder:'10% Discount'})})}
    <div class="field"><label>Promotion Type</label><div class="radio-cards" id="prTypes">
-    <label class="radio-card"><input type="radio" name="prType" value="time" ${type==='time'?'checked':''} data-change="menu-promo-type"><div style="flex:1"><strong>Time Based ${UI.pill('Tablet Menu Only','grey')}</strong><small>The promotion appears after a set amount of time.</small>
-     <div data-ptype="time" style="margin-top:10px;display:flex;gap:8px;align-items:center"><span class="help" style="margin:0">Display After</span><div class="input-group" style="width:140px"><input value="120" inputmode="numeric" aria-label="Seconds"><span class="after">secs</span></div></div></div></label>
+    <label class="radio-card"><input type="radio" name="prType" value="time" ${type==='time'?'checked':''} data-change="menu-promo-type"><div style="flex:1"><strong>Time Based</strong><small>The promotion appears a set number of seconds after the menu opens.</small>
+     <div data-ptype="time" style="margin-top:10px;display:flex;gap:8px;align-items:center"><span class="help" style="margin:0">Display After</span><div class="input-group" style="width:140px"><input value="${p&&p.delay!=null&&p.delay!==''?p.delay:3}" inputmode="numeric" aria-label="Seconds"><span class="after">secs</span></div></div></div></label>
     <label class="radio-card"><input type="radio" name="prType" value="selection" ${type==='selection'?'checked':''} data-change="menu-promo-type"><div style="flex:1"><strong>Selection Based</strong><small>The promotion appears when a guest opens a chosen menu, section or item.</small><div data-ptype="selection">${secSearch(['Menu','Item'])}</div></div></label>
     <label class="radio-card"><input type="radio" name="prType" value="banner" ${type==='banner'?'checked':''} data-change="menu-promo-type"><div style="flex:1"><strong>Banner Based</strong><small>The promotion opens when a guest taps a banner. On the tablet menu, banners only show in Infinite Scroll mode; on the Dine-in QR and Delivery & Pick Up menus they show on the menu screen.</small>
      <div data-ptype="banner">${secSearch(['Menu','Section'])}<div style="margin-top:10px">${UI.upload({label:'Banner',hint:'.jpg .jpeg .png .webp .heic .mp4',accept:'.jpg,.jpeg,.png,.webp,.heic,.mp4'})}</div></div></div></label></div></div>
-   <div class="field"><label>Promotion Close</label><div style="display:flex;flex-direction:column;gap:8px">${UI.radio('prClose','Keep the promotion open until the user closes.',true,'value="user"')}<div style="display:flex;gap:8px;align-items:center">${UI.radio('prClose','Close promotion after',false,'value="auto"')}<div class="input-group" style="width:110px;height:34px"><input value="10" aria-label="Seconds"><span class="after">secs</span></div></div></div></div>
-   <div class="field"><label>Content Type</label>${UI.seg([{key:'img',label:'Image'},{key:'vid',label:'Video'},{key:'url',label:'URL'}],'img','prct')}
-    <div data-segpanel="prct:img" style="margin-top:10px;max-width:260px">${UI.upload({label:'Upload',hint:'Only .jpg, .jpeg, .png, .webp and .heic files are supported. Recommended aspect ratio is 9:16 (portrait), under 10MB.',accept:'.jpg,.jpeg,.png,.webp,.heic'})}</div>
-    <div data-segpanel="prct:vid" hidden style="margin-top:10px;max-width:260px">${UI.upload({label:'Upload',hint:'Only .mp4 files are supported. Portrait 9:16, under 50MB.',accept:'.mp4'})}</div>
-    <div data-segpanel="prct:url" hidden style="margin-top:10px">${UI.input({placeholder:'https://',id:'prUrl'})}</div></div>
+   <div class="field"><label>Promotion Close</label><div style="display:flex;flex-direction:column;gap:8px">${UI.radio('prClose','Keep the promotion open until the user closes.',!(p&&+p.autoClose>0),'value="user"')}<div style="display:flex;gap:8px;align-items:center">${UI.radio('prClose','Close promotion after',!!(p&&+p.autoClose>0),'value="auto"')}<div class="input-group" style="width:110px;height:34px"><input value="${p&&+p.autoClose>0?p.autoClose:10}" aria-label="Seconds"><span class="after">secs</span></div></div></div></div>
+   <div class="field"><label>Content Type</label>${UI.seg([{key:'img',label:'Image'},{key:'vid',label:'Video'},{key:'url',label:'URL'}],p&&p.content||'img','prct')}
+    <div data-segpanel="prct:img" ${p&&p.content&&p.content!=='img'?'hidden':''} style="margin-top:10px;max-width:260px">${UI.upload({label:'Upload',hint:'Only .jpg, .jpeg, .png, .webp and .heic files are supported. Recommended aspect ratio is 9:16 (portrait), under 10MB.',accept:'.jpg,.jpeg,.png,.webp,.heic'})}</div>
+    <div data-segpanel="prct:vid" ${p&&p.content==='vid'?'':'hidden'} style="margin-top:10px;max-width:260px">${UI.upload({label:'Upload',hint:'Only .mp4 files are supported. Portrait 9:16, under 50MB.',accept:'.mp4'})}</div>
+    <div data-segpanel="prct:url" ${p&&p.content==='url'?'':'hidden'} style="margin-top:10px">${UI.input({placeholder:'https://',id:'prUrl'})}</div></div>
    <div data-ptype="selection">${UI.toggleRow('Add URL','Send guests to a link when they tap the image. Dine-in, Delivery / Pick Up only.',false,'aria-label="Add URL"')}</div>
    <div class="field" style="margin-top:12px"><label>Scheduling</label><div class="help" style="margin:0 0 10px">Choose when this promotion is shown. Outside its schedule guests won't see it at all.</div>${UI.availability('prSched',p&&p.schedKey||'always')}</div>`,
    footer:`<button class="btn secondary" data-close>Cancel</button><button class="btn secondary" data-action="menu-promo-save" data-live="0" data-id="${p?p.id:''}">Save Draft</button><button class="btn primary" data-action="menu-promo-save" data-live="1" data-id="${p?p.id:''}">Go Live</button>`});
   promoType();
   if(p&&p.img){const tile=$('[data-segpanel="prct:img"] .upload');if(tile){tile.style.backgroundImage=`url("${p.img}")`;tile.style.backgroundSize='cover';tile.style.backgroundPosition='center';tile.style.color='#fff';tile.style.textShadow='0 1px 3px rgba(0,0,0,.6)'}}
-  if(p&&p.url&&$('#prUrl'))$('#prUrl').value=p.url;});
+  if(p&&p.url&&$('#prUrl'))$('#prUrl').value=p.url;
+  if(p&&p.target){const ti=$(`[data-ptype="${p.type}"] input[list=pvPromoTargets]`);if(ti)ti.value=p.target}
+  if(p&&p.video){const v=$('[data-segpanel="prct:vid"] .upload div');if(v)v.textContent='Video uploaded ✓'}});
 function promoType(){const v=($('input[name=prType]:checked')||{}).value||'time';$$('[data-ptype]').forEach(b=>b.hidden=b.dataset.ptype!==v)}
 A('menu-promo-type',promoType);
 A('menu-promo-save',el=>{const n=$('#prName').value.trim();if(!n){App.toast('Promotion Name is required');return}
@@ -408,7 +410,7 @@ A('menu-promo-save',el=>{const n=$('#prName').value.trim();if(!n){App.toast('Pro
   const d={name:n,desc:$('#prDesc').value.trim(),type,schedKey:sk,sched:{always:'Always',dates:'Specific Dates & Times',periodic:'Periodic'}[sk],on:el.dataset.live==='1',
     content,img:fileUrl('[data-segpanel="prct:img"] input[type=file]')||old.img||'',video:fileUrl('[data-segpanel="prct:vid"] input[type=file]')||old.video||'',
     url:(($('#prUrl')||{}).value||'').trim()||(content==='url'?old.url||'':''),banner:fileUrl('[data-ptype="banner"] input[type=file]')||old.banner||'',
-    delay:type==='time'?num(box&&box.querySelector('.input-group input'),120):0,target:((box&&box.querySelector('input[list=pvPromoTargets]'))||{}).value||old.target||'',
+    delay:type==='time'?num(box&&box.querySelector('.input-group input'),3):0,target:((box&&box.querySelector('input[list=pvPromoTargets]'))||{}).value||old.target||'',
     targetKind:((box&&box.querySelector('.seg .on,.seg [aria-pressed=true]'))||{}).textContent||old.targetKind||'',
     autoClose:autoBox&&autoBox.checked?num(autoBox.closest('div').querySelector('.input-group input'),10):0};
   if(d.content==='img'&&!d.img&&d.on){App.toast('Upload the promotion image first');return}

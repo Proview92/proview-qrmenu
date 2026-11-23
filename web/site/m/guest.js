@@ -178,7 +178,7 @@ let promoTimer=null;
 function showPromo(){clearTimeout(promoTimer);const ps=(D.promotions||[]).filter(p=>p.type!=='banner'&&!promoSeen(p.id));
   const menuHit=p=>p.type==='selection'&&p.target&&(norm(p.target)===norm(MENU.name)||liveSecs(MENU).some(s=>norm(s.name)===norm(p.target)));
   const p=ps.find(menuHit)||ps.find(p=>p.type!=='selection'&&(p.type==='time'||!p.type));if(!p)return;
-  const wait=p.type==='time'&&mode==='tablet'?Math.max(0,+p.delay||0)*1000:600;
+  const d=p.delay===undefined||p.delay===''?3:+p.delay;const wait=p.type==='time'?Math.min(600,Math.max(0,d||0))*1000+300:600; // "Display after" seconds (default 3)
   const tryOpen=()=>{if($('.ck')||$('#sheet')){promoTimer=setTimeout(tryOpen,700);return} // wait for the cookie notice / other sheets
     if(/^#\/menu\//.test(location.hash))openPromo(p)};
   promoTimer=setTimeout(tryOpen,wait)}
