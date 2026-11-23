@@ -18,4 +18,12 @@ jobs:
         run: node scripts/build-links.mjs
       - uses: actions/upload-pages-artifact@v3
         with: { path: web/site }
-      - uses: actions/deploy-pages@v4
+      # GitHub sometimes can't see the just-uploaded artifact yet: wait, and try once more if the first deploy fails
+      - run: sleep 15
+      - id: d1
+        uses: actions/deploy-pages@v4
+        continue-on-error: true
+      - if: steps.d1.outcome == 'failure'
+        run: sleep 45
+      - if: steps.d1.outcome == 'failure'
+        uses: actions/deploy-pages@v4
