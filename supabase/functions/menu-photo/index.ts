@@ -54,7 +54,14 @@ Deno.serve(async (req) => {
     const vessel = drink ? "served in the correct glass or cup for this drink, a single serving, condensation or crema where natural, a small garnish only if it belongs to the drink"
       : dessert ? "a single portion on a small round matte white ceramic plate"
       : "a single portion on a round matte white ceramic plate";
-    const prompt = `Professional food photography for a restaurant menu: ${name}${desc ? ` (${desc})` : ""}. ` +
+    const isSection = body.kind === "section";
+    const prompt = isSection
+      ? `Professional food photography for a restaurant menu category banner: "${name}". A small spread of three or four items from this category` +
+        `${desc ? ` (${desc})` : ""}, ${drink ? "each in its correct glass or cup" : "each on round matte white ceramic plates"}, arranged together on the table, ` +
+        `shot from a 45-degree three-quarter angle with an 85mm lens, wide composition with the items across the middle of the frame, shallow depth of field, ` +
+        `${STYLES[style]}. Same consistent styling as the rest of the menu series. ` +
+        `Photorealistic, appetising, natural colours. No text, no words, no logos, no menus, no people, no hands.`
+      : `Professional food photography for a restaurant menu: ${name}${desc ? ` (${desc})` : ""}. ` +
       `${vessel}, centred in the frame, the subject fills about 70% of a square frame, shot from a 45-degree three-quarter angle with an 85mm lens, ` +
       `shallow depth of field, sharp focus on the food, ${STYLES[style]}. Same consistent styling as the rest of the menu series. ` +
       `Photorealistic, appetising, natural colours. No text, no words, no logos, no menus, no people, no hands, no cutlery clutter, no extra dishes.`;

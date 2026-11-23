@@ -112,6 +112,14 @@ function scoreHTML(){
 const PHOTO_STYLES=[['bright','Bright & clean – white table, daylight'],['dark','Dark & moody – slate, black background'],['rustic','Rustic – oak table, warm light'],['marble','Marble – white marble, studio light']];
 const photoStyle=()=>{const c=App.state.cfg||{};return c['ai.photoStyle']||'bright'};
 A('ed-photo-style',el=>{App.state.cfg=App.state.cfg||{};App.state.cfg['ai.photoStyle']=el.dataset.k;rGen();toast('Photo style: '+el.title.split(' – ')[0]+' – used for every new photo')});
+let secSel=null;
+function secGenHTML(){const secs=M.sections;if(!secs.length)return '';const miss=secs.filter(s=>!s.img);if(secSel===null||secSel._m!==M.id){secSel=new Set(miss.map(s=>s.id));secSel._m=M.id}
+  return `<div style="border-top:1px solid var(--border);padding:14px 18px">
+   <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px"><strong style="color:var(--ink)">Category header photos</strong><span class="muted" style="font-size:13px">The banner at the top of each section and its tile on the guest menu · same photo style</span></div>
+   <div class="ed-gen-grid">${secs.map(s=>`<label><input type="checkbox" data-change="ed-secgen-item" data-id="${s.id}" ${secSel.has(s.id)?'checked':''} style="accent-color:var(--brand-700)"><span class="thumb ${s.img?'':'none'}" style="width:36px;height:36px;${s.img?`background:center/cover url('${esc(s.img)}')`:''}">${s.img?'':ic('camera','sm')}</span><span style="font-weight:600;color:var(--ink)">${esc(s.name)}</span>${s.img?'<small class="muted" style="margin-left:auto">has photo · replace</small>':''}</label>`).join('')}</div>
+   <div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn ai-btn" data-action="ed-secgen-run" ${secSel.size?'':'disabled'}>${ic('sparkle','sm')}${secSel.size?`Generate ${secSel.size} header photo${secSel.size>1?'s':''}`:'Select categories'}</button></div></div>`}
+A('ed-secgen-item',el=>{el.checked?secSel.add(el.dataset.id):secSel.delete(el.dataset.id);rGen()});
+A('ed-secgen-run',()=>{const ids=[...secSel];if(ids.length)aiPhotos(ids.map(id=>'sec:'+id))});
 function genHTML(){
   const miss=allItems().filter(i=>!i.photo),n=genSel.size,cr=App.state.credits||0;
   return `<div class="card" style="margin-bottom:14px">
@@ -126,6 +134,7 @@ function genHTML(){
       <small class="muted">Every photo uses the same backdrop, light and 45° angle, so the menu looks like one photo shoot. Free for about 150 photos a day.</small></div>
      <button class="btn ai-btn" style="margin-left:auto" data-action="ed-gen-run" ${n?'':'disabled'}>${ic('sparkle','sm')}${n?`Generate ${n} photo${n>1?'s':''}`:'Select items to generate'}</button></div>`
     :`<div style="padding:0 18px 16px" class="muted">Every item in this menu has a photo.</div>`):''}
+   ${genOpen?secGenHTML():''}
   </div>`}
 
 /* ---------- bulk bar ---------- */
@@ -150,7 +159,7 @@ function secsHTML(){
      <div class="sec-head ${open?'open':''}" data-action="ed-sec-expand" data-id="${s.id}">
       <input type="checkbox" data-change="ed-check" data-key="s:${s.id}" ${sel.has('s:'+s.id)?'checked':''} aria-label="Select ${esc(s.name)}" style="accent-color:var(--brand-700);width:16px;height:16px">
       <span class="drag" draggable="true" data-drag="s:${s.id}" title="Drag to reorder">${ic('grip','sm')}</span>
-      <span class="thumb" style="width:40px;height:40px;font-size:13px">${initials(s.name)}</span>
+      <span class="thumb" style="width:40px;height:40px;font-size:13px;${s.img?`background:center/cover url('${esc(s.img)}')`:''}">${s.img?'':initials(s.name)}</span>
       <span class="ed-dot ${s.on===false?'off':''}"></span>
       <div style="flex:1;min-width:0"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><h3 style="${s.on===false?'color:var(--muted)':''}">${esc(s.name)}</h3>${s.score!=null?`<span class="score" title="AI score">${s.score}</span>`:''}</div>
        <small class="muted">${s.items.length} items</small>${need?` <span class="pill warn" style="height:20px;font-size:11px;margin-left:4px">${ic('camera','sm')}${need} need photo${need>1?'s':''}</span>`:''}</div>
@@ -218,7 +227,14 @@ A('ed-gen-all',el=>{const miss=allItems().filter(i=>!i.photo);genSel=el.checked?
 A('ed-gen-item',el=>{el.checked?genSel.add(el.dataset.id):genSel.delete(el.dataset.id);rGen()});
 A('ed-gen-run',()=>{const ids=[...genSel];if(!ids.length)return;aiPhotos(ids)});
 /* real AI dish photos: edge function menu-photo (OpenAI images) → Storage → item.img */
-async function aiPhoto(id){const P=window.PQ||{};const {i,s}=findItem(id);if(!i)return {error:'Item not found'};
+async function aiPhoto(id){const P=window.PQ||{};
+  if(String(id).startsWith('sec:')){const sec=findSec(id.slice(4));if(!sec)return {error:'Category not found'};
+    let hdr={};try{const o=sessionStorage.getItem('pv_master_open');if(o)hdr['x-pq-org']=o}catch(e){}
+    const names=(sec.items||[]).filter(x=>x.on!==false).slice(0,4).map(x=>x.name).join(', ');
+    let r;try{r=await P.sb.functions.invoke('menu-photo',{body:{site:P.CTX.siteId,kind:'section',name:sec.name,desc:names,section:sec.name,style:photoStyle()},headers:hdr})}catch(e){r={error:e}}
+    if(r&&r.error){let msg='The AI couldn\'t make this photo.';try{const j=await r.error.context.json();if(j&&j.error)msg=j.error}catch(e){}return {error:msg}}
+    const url=r&&r.data&&r.data.url;if(!url)return {error:'No photo returned'};sec.img=url;secSel&&secSel.delete(sec.id);return {url}}
+  const {i,s}=findItem(id);if(!i)return {error:'Item not found'};
   let hdr={};try{const o=sessionStorage.getItem('pv_master_open');if(o)hdr['x-pq-org']=o}catch(e){}
   let r;try{r=await P.sb.functions.invoke('menu-photo',{body:{site:P.CTX.siteId,name:i.name,desc:i.desc||'',section:s&&s.name||'',style:photoStyle()},headers:hdr})}catch(e){r={error:e}}
   if(r&&r.error){let msg='The AI couldn\'t make this photo.';try{const j=await r.error.context.json();if(j&&j.error)msg=j.error}catch(e){}return {error:msg}}
