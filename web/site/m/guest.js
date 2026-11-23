@@ -146,6 +146,7 @@ function renderMenu(){const m=MENU;if(!m){pickMenu();return}const V=D.venue||{};
     ${others.length>1?`<div class="mtabs">${others.map(x=>`<button class="${x.id===m.id?'on':''}" data-menu="${esc(x.id)}">${esc(x.name)}</button>`).join('')}</div>`:''}
     ${TABLE&&mode==='dine'?`<div style="text-align:center;margin-top:10px"><span class="tbl-badge">${ic('pin','sm')}${esc(TABLE)}</span></div>`:''}
     ${C('dz.search',true)!==false?`<div class="srch"><label>${ic('search','sm')}<input id="q" type="search" placeholder="Search" value="${esc(term)}" aria-label="Search the menu"></label><button class="fb" id="fbtn" aria-label="Filter">${ic('filter')}${filt.avoid.length||filt.sort!=='rec'?`<span class="n">${filt.avoid.length+(filt.sort!=='rec'?1:0)}</span>`:''}</button></div>`:''}
+    ${promoBanners()}
     <div class="tiles ${ts==='txt'?'txt':''}" id="tiles">${secs.map(s=>{const im=secImg(s);return `<button class="tile" data-to="${esc(s.id)}"><div class="ph" style="${im?`background-image:url('${esc(im)}')`:''}">${im?'':esc(initials(s.name))}</div><span>${esc(s.name)}</span></button>`}).join('')}</div>
     <div id="secs">${body||`<div class="empty">${term||filt.avoid.length?'No items match your search.':'This menu has no items yet.'}</div>`}</div>
     ${footer()}<button class="totop" id="totop" aria-label="Back to top">${ic('up')}</button>${basketBar()}`;
@@ -158,6 +159,7 @@ function bindMenu(){const app=$('.app');
     if((i.priceOptions||[]).filter(p=>p.name).length>1||(i.modifiers||[]).length||(i.removable||[]).length)go(`/menu/${MENU.id}/item/${i.id}`);else addToCart(i,{qty:1})});
   const q=$('#q');if(q){q.oninput=()=>{term=q.value;const pos=q.selectionStart;renderMenu();const n=$('#q');n.focus();n.setSelectionRange(pos,pos)}}
   const fb=$('#fbtn');if(fb)fb.onclick=openFilter;
+  $$('[data-promo]',app).forEach(b=>b.onclick=()=>{const p=(D.promotions||[]).find(x=>x.id===b.dataset.promo);if(p)openPromo(p)});
   const tb=$('#totop');tb.onclick=()=>window.scrollTo({top:0,behavior:'smooth'});
   const bb=$('#bar');if(bb)bb.onclick=()=>go('basket');
   onScroll()}
@@ -166,9 +168,30 @@ function onScroll(){const tiles=$('#tiles'),chips=$('#chips'),tt=$('#totop');if(
   $$('#chips button,#tiles .tile').forEach(b=>b.classList.toggle('on',b.dataset.to===cur));
   const on=$('#chips button.on');if(on&&past){const r=on.getBoundingClientRect(),cr=chips.getBoundingClientRect();if(r.left<cr.left||r.right>cr.right)chips.scrollTo({left:on.offsetLeft-20,behavior:'smooth'})}}
 window.addEventListener('scroll',()=>{if(!window._st){window._st=requestAnimationFrame(()=>{window._st=0;onScroll()})}},{passive:true});
-function showPromo(){const ps=(D.promotions||[]);if(!ps.length||sess.get('promo:'+MENU.id,false))return;sess.set('promo:'+MENU.id,true);const p=ps[0];
-  const bd=document.createElement('div');bd.className='bd center';bd.id='sheet';bd.innerHTML=`<div class="promo" style="${p.img?`background-image:linear-gradient(180deg,transparent 40%,rgba(0,0,0,.65)),url('${esc(p.img)}')`:''}"><button class="ib x" aria-label="Close">${ic('x')}</button><h2>${esc(p.name)}</h2>${p.desc?`<p>${esc(p.desc)}</p>`:''}</div>`;
-  bd.onclick=e=>{if(e.target===bd||e.target.closest('.x'))bd.remove()};document.body.appendChild(bd)}
+/* ---------- in-app promotions (pop-ups) ----------
+   Set in the back office (In-App Promotions). Each live promotion shows once per visit:
+   time based → after its delay on the tablet menu, straight away on QR/pick-up/delivery menus;
+   selection based → when the chosen menu or item is opened; banner based → a banner on the menu, tap to open. */
+const norm=s=>String(s||'').trim().toLowerCase();
+const promoSeen=id=>sess.get('promo-seen',[]).includes(id),promoMark=id=>sess.set('promo-seen',[...sess.get('promo-seen',[]),id]);
+let promoTimer=null;
+function showPromo(){clearTimeout(promoTimer);const ps=(D.promotions||[]).filter(p=>p.type!=='banner'&&!promoSeen(p.id));
+  const menuHit=p=>p.type==='selection'&&p.target&&(norm(p.target)===norm(MENU.name)||liveSecs(MENU).some(s=>norm(s.name)===norm(p.target)));
+  const p=ps.find(menuHit)||ps.find(p=>p.type!=='selection'&&(p.type==='time'||!p.type));if(!p)return;
+  const wait=p.type==='time'&&mode==='tablet'?Math.max(0,+p.delay||0)*1000:600;
+  const tryOpen=()=>{if($('.ck')||$('#sheet')){promoTimer=setTimeout(tryOpen,700);return} // wait for the cookie notice / other sheets
+    if(/^#\/menu\//.test(location.hash))openPromo(p)};
+  promoTimer=setTimeout(tryOpen,wait)}
+function itemPromo(i){const p=(D.promotions||[]).find(p=>p.type==='selection'&&p.target&&norm(p.target)===norm(i.name)&&!promoSeen(p.id));if(p)setTimeout(()=>openPromo(p,true),400)}
+function promoBanners(){return (D.promotions||[]).filter(p=>p.type==='banner'&&(!p.target||norm(p.target)===norm(MENU.name)||liveSecs(MENU).some(s=>norm(s.name)===norm(p.target)))).map(p=>`<button class="pbanner" data-promo="${esc(p.id)}" style="${p.banner||p.img?`background-image:url('${esc(p.banner||p.img)}')`:''}" aria-label="${esc(p.name)}">${p.banner||p.img?'':`<b>${esc(p.name)}</b>${p.desc?`<span>${esc(p.desc)}</span>`:''}`}</button>`).join('')}
+function openPromo(p,stack){promoMark(p.id);const bd=document.createElement('div');bd.className='pop';bd.id=stack?'promoPop':'sheet';bd.setAttribute('role','dialog');bd.setAttribute('aria-label',p.name||'Promotion');
+  const media=p.content==='vid'&&p.video?`<video src="${esc(p.video)}" autoplay muted playsinline loop ${p.img?`poster="${esc(p.img)}"`:''}></video>`
+    :p.img?`<img src="${esc(p.img)}" alt="${esc(p.name||'Promotion')}">`
+    :`<div class="ptxt"><h2>${esc(p.name)}</h2>${p.desc?`<p>${esc(p.desc)}</p>`:''}</div>`;
+  const link=p.url&&/^https?:\/\//i.test(p.url)?p.url:'';
+  bd.innerHTML=`<button class="px" aria-label="Close">${ic('x')}</button>${link?`<a class="pm" href="${esc(link)}" target="_blank" rel="noopener">${media}</a>`:`<div class="pm">${media}</div>`}`;
+  const close=()=>{bd.remove();clearTimeout(bd._t)};bd.onclick=e=>{if(e.target===bd||e.target.closest('.px'))close()};
+  document.body.appendChild(bd);if(+p.autoClose>0)bd._t=setTimeout(close,+p.autoClose*1000)}
 
 /* ---------- filter ---------- */
 function openFilter(){const av=avoidable();let st={...filt,avoid:[...filt.avoid]};
@@ -203,6 +226,7 @@ function tablePicker(v=''){const ts=D.tables||[];return ts.length?`<select class
 
 /* ---------- item detail ---------- */
 function openItem(id){const {i,s:sec}=findItem(MENU,id);if(!i){go('/menu/'+MENU.id);return}
+  itemPromo(i);
   const imgs=[...(i.imgs||[]),...(i.img&&!(i.imgs||[]).includes(i.img)?[i.img]:[])];const r=rating(i);const po=(i.priceOptions||[]).filter(p=>p.name||p.price);
   const mods=(i.modifiers||[]).map(id=>(D.modifiers||[]).find(g=>g.id===id)).filter(Boolean);const can=ordering()&&!i.soldOut;
   let st={qty:1,po:0,mods:{},rm:[],note:''};

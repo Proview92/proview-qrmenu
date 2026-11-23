@@ -358,7 +358,7 @@ A('menu-tc-addlang-ok',()=>{const add=$$('[data-al]').filter(c=>c.checked).map(c
 let pf={status:'All',q:''};
 function promoRows(){const list=S().promotions.filter(p=>p.name.toLowerCase().includes(pf.q.toLowerCase())&&(pf.status==='All'||(pf.status==='Active'?p.on:!p.on)));
   return `<div class="card">${UI.table({cols:[{label:'Display Order',w:'120px'},'Promotion Name','Description','Scheduling','Status',{label:'Actions',align:'right'}],
-   rows:list.map(p=>({attrs:`draggable="true" data-pid="${p.id}"`,cells:[`<span style="display:flex;gap:8px;align-items:center"><span class="drag" style="cursor:grab">${ic('grip','sm')}</span>${S().promotions.indexOf(p)+1}</span>`,`<strong style="color:var(--ink)">${esc(p.name)}</strong>`,esc(p.desc),esc(p.sched||'Always'),UI.toggle(p.on,`data-change="menu-promo-toggle" data-id="${p.id}" aria-label="Status"`),`<button class="iconbtn" style="width:32px;height:32px;display:inline-grid" data-action="menu-promo-add" data-id="${p.id}" aria-label="Edit">${ic('edit','sm')}</button> <button class="iconbtn" style="width:32px;height:32px;display:inline-grid" data-action="menu-promo-del" data-id="${p.id}" aria-label="Delete">${ic('trash','sm')}</button>`]})),empty:'No promotions found'})}${UI.pagination()}</div>`}
+   rows:list.map(p=>({attrs:`draggable="true" data-pid="${p.id}"`,cells:[`<span style="display:flex;gap:8px;align-items:center"><span class="drag" style="cursor:grab">${ic('grip','sm')}</span>${S().promotions.indexOf(p)+1}</span>`,`<span style="display:flex;gap:10px;align-items:center">${p.img?`<span style="width:30px;height:44px;border-radius:6px;flex:none;background:center/cover url('${esc(p.img)}')"></span>`:''}<strong style="color:var(--ink)">${esc(p.name)}</strong></span>`,esc(p.desc),esc(p.sched||'Always'),UI.toggle(p.on,`data-change="menu-promo-toggle" data-id="${p.id}" aria-label="Status"`),`<button class="iconbtn" style="width:32px;height:32px;display:inline-grid" data-action="menu-promo-add" data-id="${p.id}" aria-label="Edit">${ic('edit','sm')}</button> <button class="iconbtn" style="width:32px;height:32px;display:inline-grid" data-action="menu-promo-del" data-id="${p.id}" aria-label="Delete">${ic('trash','sm')}</button>`]})),empty:'No promotions found'})}${UI.pagination()}</div>`}
 App.route('in-app-promotions',()=>`
   ${UI.pageHead({title:'In-App Promotions',back:'engagement',learn:true,tutorial:true,actions:`<button class="btn primary" data-action="menu-promo-add">${ic('plus','sm')}Add a Promotion</button>`})}
   <div class="toolbar">${UI.select(['All','Active','Inactive'].map(v=>({value:v,label:'Status: '+v})),pf.status,'id="pfStatus" data-change="menu-promo-filter" style="width:170px" aria-label="Status"')}${UI.searchBox('Search promotions','id="pfQ" data-input="menu-promo-filter" value="'+esc(pf.q)+'"')}</div>
@@ -393,12 +393,25 @@ A('menu-promo-add',el=>{const p=el.dataset.id?S().promotions.find(x=>x.id===el.d
    <div data-ptype="selection">${UI.toggleRow('Add URL','Send guests to a link when they tap the image. Dine-in, Delivery / Pick Up only.',false,'aria-label="Add URL"')}</div>
    <div class="field" style="margin-top:12px"><label>Scheduling</label><div class="help" style="margin:0 0 10px">Choose when this promotion is shown. Outside its schedule guests won't see it at all.</div>${UI.availability('prSched',p&&p.schedKey||'always')}</div>`,
    footer:`<button class="btn secondary" data-close>Cancel</button><button class="btn secondary" data-action="menu-promo-save" data-live="0" data-id="${p?p.id:''}">Save Draft</button><button class="btn primary" data-action="menu-promo-save" data-live="1" data-id="${p?p.id:''}">Go Live</button>`});
-  promoType()});
+  promoType();
+  if(p&&p.img){const tile=$('[data-segpanel="prct:img"] .upload');if(tile){tile.style.backgroundImage=`url("${p.img}")`;tile.style.backgroundSize='cover';tile.style.backgroundPosition='center';tile.style.color='#fff';tile.style.textShadow='0 1px 3px rgba(0,0,0,.6)'}}
+  if(p&&p.url&&$('#prUrl'))$('#prUrl').value=p.url;});
 function promoType(){const v=($('input[name=prType]:checked')||{}).value||'time';$$('[data-ptype]').forEach(b=>b.hidden=b.dataset.ptype!==v)}
 A('menu-promo-type',promoType);
 A('menu-promo-save',el=>{const n=$('#prName').value.trim();if(!n){App.toast('Promotion Name is required');return}
   const sk=($('input[name=prSched]:checked')||{}).value||'always';
-  const d={name:n,desc:$('#prDesc').value.trim(),type:($('input[name=prType]:checked')||{}).value,schedKey:sk,sched:{always:'Always',dates:'Specific Dates & Times',periodic:'Periodic'}[sk],on:el.dataset.live==='1'};
+  const old=S().promotions.find(x=>x.id===el.dataset.id)||{};const type=($('input[name=prType]:checked')||{}).value||'time';
+  const box=$(`[data-ptype="${type}"]`);const num=(i,d)=>{const v=parseInt(i&&i.value,10);return isFinite(v)&&v>=0?v:d};
+  const panel=$('[data-segpanel^="prct:"]:not([hidden])');const content=panel?panel.dataset.segpanel.split(':')[1]:'img';
+  const fileUrl=sel=>{const i=$(sel);return i&&i.dataset.url||''};
+  const autoBox=$('input[name=prClose][value=auto]');
+  const d={name:n,desc:$('#prDesc').value.trim(),type,schedKey:sk,sched:{always:'Always',dates:'Specific Dates & Times',periodic:'Periodic'}[sk],on:el.dataset.live==='1',
+    content,img:fileUrl('[data-segpanel="prct:img"] input[type=file]')||old.img||'',video:fileUrl('[data-segpanel="prct:vid"] input[type=file]')||old.video||'',
+    url:(($('#prUrl')||{}).value||'').trim()||(content==='url'?old.url||'':''),banner:fileUrl('[data-ptype="banner"] input[type=file]')||old.banner||'',
+    delay:type==='time'?num(box&&box.querySelector('.input-group input'),120):0,target:((box&&box.querySelector('input[list=pvPromoTargets]'))||{}).value||old.target||'',
+    targetKind:((box&&box.querySelector('.seg .on,.seg [aria-pressed=true]'))||{}).textContent||old.targetKind||'',
+    autoClose:autoBox&&autoBox.checked?num(autoBox.closest('div').querySelector('.input-group input'),10):0};
+  if(d.content==='img'&&!d.img&&d.on){App.toast('Upload the promotion image first');return}
   const p=S().promotions.find(x=>x.id===el.dataset.id);if(p)Object.assign(p,d);else S().promotions.push({id:'p'+uid(),...d});
   App.close();App.render();App.toast(d.on?'Promotion is live':'Promotion saved as draft')});
 })();
