@@ -55,6 +55,8 @@ function closeSheet(silent){const s=$('#sheet');if(s)s.remove();if(!silent&&/\/i
 function luminance(h){h=String(h||'').replace('#','');if(h.length===3)h=h.split('').map(c=>c+c).join('');const n=parseInt(h,16);if(isNaN(n))return .5;const r=(n>>16)/255,g=(n>>8&255)/255,b=(n&255)/255;return .2126*r+.7152*g+.0722*b}
 function theme(){const r=document.documentElement.style;const tx=C('dz.text','#17171c'),bg=C('dz.bg','#f4f3ef'),hl=C('dz.hl','#4a6cd0');
   r.setProperty('--tx',tx);r.setProperty('--bg',bg);r.setProperty('--hl',hl);r.setProperty('--on-hl',luminance(hl)>.6?'#17171c':'#fff');
+  // a light brand colour (sand, gold, pastel) can't be used for text on a light page: titles and links use the text colour instead
+  r.setProperty('--hl-ink',luminance(hl)>.55&&luminance(bg)>.5?tx:hl);
   r.setProperty('--card',luminance(bg)<.35?'rgba(255,255,255,.08)':'#fff');r.setProperty('--mut',luminance(bg)<.35?'rgba(255,255,255,.7)':'#6b6b75');
   const img=C('dz.bgImg','');const app=$('.app');if(app)app.style.backgroundImage=img?`url("${img}")`:'';
   document.querySelector('meta[name=theme-color]').content=hl}
