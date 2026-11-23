@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
 
     const name = clean(body.name, 120), desc = clean(body.desc, 300), section = clean(body.section, 60);
     // One house style for every photo of a location, so the menu looks like one photo shoot:
-    // same backdrop, light, camera angle, lens and crop; only the dish changes. The seed is fixed per location + style.
+    // same backdrop, light, camera angle, lens and crop; only the dish changes.
     const STYLES: Record<string, string> = {
       bright: "on a plain warm-white tabletop against a seamless soft off-white background, bright soft daylight from the left, gentle natural shadows, airy and fresh",
       dark: "on a dark charcoal slate tabletop against a deep black background, single soft spotlight from the upper left, rich contrast, moody fine-dining look",
@@ -58,8 +58,6 @@ Deno.serve(async (req) => {
       `${vessel}, centred in the frame, the subject fills about 70% of a square frame, shot from a 45-degree three-quarter angle with an 85mm lens, ` +
       `shallow depth of field, sharp focus on the food, ${STYLES[style]}. Same consistent styling as the rest of the menu series. ` +
       `Photorealistic, appetising, natural colours. No text, no words, no logos, no menus, no people, no hands, no cutlery clutter, no extra dishes.`;
-    let seed = 0; for (const c of body.site + style) seed = (seed * 31 + c.charCodeAt(0)) >>> 0;
-    seed = seed % 2147483647;
 
     let b64 = "", why = "";
     // 1) Cloudflare Workers AI (free daily allocation)
@@ -68,7 +66,7 @@ Deno.serve(async (req) => {
       const r = await fetch(`https://api.cloudflare.com/client/v4/accounts/${cfAcc}/ai/run/${model}`, {
         method: "POST",
         headers: { authorization: `Bearer ${cfTok}`, "content-type": "application/json" },
-        body: JSON.stringify({ prompt, steps: 8, seed }),
+        body: JSON.stringify({ prompt, steps: 8 }), // flux-1-schnell takes prompt + steps (max 8) only
       }).catch((e) => { console.error("cloudflare fetch", String(e).slice(0, 300)); return null; });
       const out = r ? await r.json().catch(() => null) : null;
       if (r && r.ok && out?.result?.image) b64 = out.result.image;
