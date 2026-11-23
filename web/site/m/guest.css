@@ -134,7 +134,7 @@ textarea.inp{min-height:80px;resize:vertical}
 .rec b{font-size:12.5px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* pages */
-.pg{min-height:100vh}
+.pg{min-height:calc(100vh - 56px);min-height:calc(100dvh - 56px - var(--safe-t,0px))}
 .pg .bdy{padding:16px 16px calc(110px + var(--safe-b))}
 .card{background:var(--card);border-radius:var(--r);padding:16px;margin-bottom:12px;box-shadow:0 1px 2px rgba(0,0,0,.05)}
 .line{display:flex;justify-content:space-between;gap:12px;padding:6px 0}

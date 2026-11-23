@@ -89,7 +89,7 @@ const go=h=>{location.hash=h};
 window.addEventListener('hashchange',route);
 let lastPage='';
 function route(){const h=location.hash.replace(/^#\/?/,'');const p=h.split('/');closeSheet(true);
-  if(!D)return;const pageKey=p[0]+'/'+(p[1]||'');if(pageKey!==lastPage){lastPage=pageKey;window.scrollTo(0,0)}
+  if(!D)return;const pageKey=p[0]+'/'+(p[1]||'');const newPage=pageKey!==lastPage;lastPage=pageKey;if(newPage){window.scrollTo(0,0);requestAnimationFrame(()=>window.scrollTo(0,0))} // again after drawing, so a page never opens part-scrolled
   if(p[0]==='menu'&&p[1]){MENU=findMenu(p[1])||MENUS()[0];renderMenu();if(p[2]==='item'&&p[3]){if(p[4]==='reviews')renderReviews(p[3]);else openItem(p[3])}return}
   ({'':home,menus:pickMenu,basket:renderBasket,checkout:renderCheckout,order:()=>renderOrder(p[1]),orders:renderMyOrders,feedback:renderFeedback,info:renderInfo,join:renderJoin}[p[0]]||home)()}
 
