@@ -557,6 +557,7 @@ const _render2=App.render;App.render=function(){_render2();const k=App.current()
 /* ---------- real guest-menu links and scannable QR codes ---------- */
 App.guestUrl=(o={})=>{const sid=CTX.siteId&&CTX.siteId!=='all'?CTX.siteId:(CTX.sites.find(s=>!s.archived)||{}).id||'';
   const st=CTX.sites.find(s=>s.id===sid)||{};
+  if(o.pv)return location.origin+'/m/?'+new URLSearchParams({l:sid,...(o.m?{m:o.m}:{}),pv:'1'}).toString(); // real menu inside the back-office phone preview
   if(st.slug){ // short link: qrmenu.proviewcrm.co.uk/<business>[/<table>]
     const tb=o.t?String(o.t).trim():'';const tseg=tb?'/'+encodeURIComponent((tb.match(/^table\s*(\d+)$/i)||[])[1]||tb):'';
     const live=(App.state.menus||[]).filter(m=>m.status!=='Archived');const oneMenu=live.length<=1; // only one menu: no need to name it

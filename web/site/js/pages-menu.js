@@ -129,7 +129,11 @@ function phone(m){const secs=m.sections.filter(s=>s.on!==false&&s.items.some(i=>
    <div class="ph-tabs" style="border:0">${secs.map((s,i)=>`<span class="${i===0?'on':''}">${esc(s.name)}</span>`).join('')}</div>
    <div class="ph-body">${secs.map(s=>`<div class="ph-sec">${esc(s.name)}</div>${s.items.filter(i=>i.on).map(i=>`<div class="ph-item"><div class="t"><b>${esc(i.name)}</b><small>${esc(i.desc||'')}</small><div class="p" style="margin-top:4px">${gbp(i.price)}</div></div><span class="thumb ${i.photo?'':'none'}" style="width:52px;height:52px">${i.photo?UI.initials(i.name):''}</span></div>`).join('')}`).join('')||'<p class="muted" style="text-align:center;margin-top:40px">No items yet</p>'}</div></div>`}
 App.menuPhone=phone;
-A('menu-preview',el=>{const m=menuById(el.dataset.id);App.modal({title:'Preview – '+esc(m.name),body:phone(m),footer:`<button class="btn secondary" data-action="copy-menu-link">${ic('link','sm')}Copy Menu Link</button><a class="btn primary" href="#menu-editor--${m.id}" data-close>Edit Menu</a>`})});
+/* the real guest menu, as a phone shows it (390×844 scaled into the frame); draft menus aren't public yet, so they keep the sketch */
+function livePhone(m){const sc=.74;return `<div class="phone" style="margin:0 auto;width:${Math.floor(390*sc)+20}px;height:${Math.floor(844*sc)+20}px;position:relative;padding:0;display:block;background:#17171c">
+  <iframe src="${esc(App.guestUrl({m:m.id,pv:1}))}" title="Guest menu preview" style="width:390px;height:844px;border:0;transform:scale(${sc});transform-origin:0 0;position:absolute;inset:0;background:#fff"></iframe></div>
+  <p class="muted" style="text-align:center;font-size:12.5px;margin:10px 0 0">This is the live menu your guests see – tap around to try it. Unpublished changes show after you publish.</p>`}
+A('menu-preview',el=>{const m=menuById(el.dataset.id);const live=m.on!==false&&m.status!=='Draft'&&m.status!=='Archived';App.modal({title:'Preview – '+esc(m.name),body:live?livePhone(m):phone(m)+'<p class="muted" style="text-align:center;font-size:12.5px;margin:10px 0 0">Draft menu – a sketch until it goes live.</p>',footer:`<button class="btn secondary" data-action="copy-menu-link">${ic('link','sm')}Copy Menu Link</button><a class="btn primary" href="#menu-editor--${m.id}" data-close>Edit Menu</a>`})});
 
 /* settings drawer */
 A('menu-settings',el=>{const m=menuById(el.dataset.id);const vis=m.visibility||{tablet:[1,1],dine:[1,1],delivery:[1,1],pickup:[1,1]};

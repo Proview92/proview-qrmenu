@@ -450,7 +450,7 @@ function renderJoin(){const app=$('.app');const p=profile||{};
   const so=$('#jout');if(so)so.onclick=()=>{profile=null;store.set('profile',null);toast('Signed out');go('')}}
 
 /* ---------- cookie consent ---------- */
-function cookies(){if(store.get('cookies',null))return;const el=document.createElement('div');el.className='ck';el.setAttribute('role','dialog');
+function cookies(){if(store.get('cookies',null)||Q.get('pv')==='1')return;const el=document.createElement('div');el.className='ck';el.setAttribute('role','dialog');
   el.innerHTML=`<h3>We value your privacy</h3><p>We use cookies and similar storage to remember your basket and preferences and to understand how the menu is used.</p><div class="bs"><button class="btn sec" id="ckC">Customize</button><button class="btn sec" id="ckE">Essential only</button><button class="btn" id="ckA">Accept all</button></div>`;
   document.body.appendChild(el);const done=v=>{store.set('cookies',v);el.remove()};
   $('#ckA',el).onclick=()=>done({ess:1,mkt:1,an:1});$('#ckE',el).onclick=()=>done({ess:1,mkt:0,an:0});
